@@ -1,0 +1,32 @@
+{
+  "domain": "solis_modbus",
+  "name": "Solis Modbus",
+  "version": "0.5",
+  "documentation": "https://link-to-your-docs",
+  "dependencies": [],
+  "codeowners": ["@pho3nix90"],
+  "iot_class": "local_polling",
+  "integration_type": "device",
+  "requirements": ["pymodbus==3.5.4"],
+  "quality_scale": "silver",
+  "dhcp": [
+    {
+      "hostname": "D_7*"
+    },
+    {
+      "hostname": "Solis_7*"
+    },
+    {
+      "registered_devices": true
+    }
+  ],
+  "config_flow": {
+    "async_step_import": "async_import_config",
+    "init_step": "user",
+    "config": {
+      "host": "",
+      "port": 502
+    }
+  },
+  "translations": []
+}
