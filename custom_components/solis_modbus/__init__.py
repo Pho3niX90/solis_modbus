@@ -2,8 +2,9 @@
 import asyncio
 import logging
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, CONTROLLER
 from .modbus_controller import ModbusController
@@ -12,16 +13,36 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor"]
 
+SCHEME_HOLDING_REGISTER = vol.Schema(
+    {
+        vol.Required("address"): vol.Coerce(int),
+        vol.Required("value"): vol.Coerce(int),
+    }
+)
+
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Modbus integration."""
     # Check if there are any configurations in the YAML file
-    #if DOMAIN in config:
+    # if DOMAIN in config:
     #    hass.async_create_task(
     #        hass.config_entries.flow.async_init(
     #            DOMAIN, data=config[DOMAIN], context={"source": "import"}
     #        )
     #    )
+
+    def write_holding_register(call: ServiceCall):
+        address = call.data.get('address')
+        value = call.data.get('value')
+        controller = hass.data[DOMAIN][CONTROLLER]
+        # Perform the logic to write to the holding register using register_address and value_to_write
+        # ...
+        controller.write_holding_register(address, value)
+
+    hass.services.async_register(
+        DOMAIN, "solis_write_holding_register", write_holding_register, schema=SCHEME_HOLDING_REGISTER
+    )
+
     return True
 
 

@@ -470,6 +470,23 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unit_of_measurement": UnitOfPower.WATT,
                  "state_class": SensorStateClass.MEASUREMENT}
             ]
+        },
+        {
+            "register_start": 43141,
+            "entities": [
+                {"type": "SS", "name": "Solis Inverter Time-Charging Charge Current",
+                 "unique": "solis_modbus_inverter_time_charging_charge_current",
+                 "register": ['43141'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Time-Charging Discharge Current",
+                 "unique": "solis_modbus_inverter_time_charging_discharge_current",
+                 "register": ['43142'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+            ]
         }
     ]
     sensorsDerived = [{"type": "SDS", "name": "Solis Inverter Current Status String",
@@ -501,7 +518,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         for sensor_group in sensors:
             start_register = sensor_group['register_start']
             count = sum(len(entity.get('register', [])) for entity in sensor_group.get('entities', []))
-            values = controller.read_register(start_register, count)
+
+            if start_register >= 40000:
+                values = controller.read_holding_register(start_register, count)
+            else:
+                values = controller.read_input_register(start_register, count)
+
             # Store each value with a unique key
             for i, value in enumerate(values):
                 register_key = f"{start_register + i}"
