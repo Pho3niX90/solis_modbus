@@ -1,0 +1,11 @@
+solis_write_holding_register:
+  description: Writes a value to a holding register
+  fields:
+    address:
+      description: Address to write to
+      default: ''
+      example: 43142
+    value:
+      description: Value to write
+      default: ''
+      example: 500
