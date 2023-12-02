@@ -14,7 +14,6 @@ PLATFORMS = ["sensor"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    _LOGGER.warning('init async_setup')
     """Set up the Modbus integration."""
     # Check if there are any configurations in the YAML file
     #if DOMAIN in config:
@@ -28,7 +27,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Modbus from a config entry."""
-    _LOGGER.warning('init async_setup_entry')
 
     # Store an instance of the ModbusController in hass.data for access by other components
     if DOMAIN not in hass.data:
@@ -41,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN][CONTROLLER] = ModbusController(host, port)
 
-    _LOGGER.warning(f'config entry host = {host}, post = {port}')
+    _LOGGER.debug(f'config entry host = {host}, post = {port}')
     # Set up the platforms associated with this integration
     for component in PLATFORMS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, component))

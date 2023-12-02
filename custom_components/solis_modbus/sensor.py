@@ -7,7 +7,7 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfFrequency, UnitOfTemperature, \
     UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, \
-    UnitOfApparentPower, PERCENTAGE
+    UnitOfApparentPower, PERCENTAGE, UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -20,7 +20,6 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
-    _LOGGER.warning(f"setup entries - data: {config_entry.data}, options: {config_entry.options}")
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
     sensorEntities: List[SensorEntity] = []
     hass.data[DOMAIN]['values'] = {}
@@ -144,7 +143,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 {"type": "SS", "name": "Solis Inverter Active Power",
                  "unique": "solis_modbus_inverter_active_power",
                  "register": ['33079', '33080'], "device_class": SensorDeviceClass.POWER,
-                 "decimal_places": 0,
+                 "decimal_places": 3,
                  "unit_of_measurement": UnitOfPower.WATT,
                  "state_class": SensorStateClass.MEASUREMENT},
 
@@ -263,11 +262,28 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                  "state_class": SensorStateClass.MEASUREMENT},
-            ]
-        },
-        {
-            "register_start": 33147,
-            "entities": [
+                {"type": "SS", "name": "Solis Inverter Battery Charge Current Limitation (BMS)",
+                 "unique": "solis_modbus_inverter_battery_charge_current_limitation_bms",
+                 "register": ['33143'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Battery Discharge Current Limitation (BMS)",
+                 "unique": "solis_modbus_inverter_battery_discharge_current_limitation_bms",
+                 "register": ['33144'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Battery Fault Status 1 (BMS)",
+                 "unique": "solis_modbus_inverter_battery_fault_status_1_bms",
+                 "register": ['33145'],
+                 "decimal_places": 1,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Battery Fault Status 2 (BMS)",
+                 "unique": "solis_modbus_inverter_battery_fault_status_2_bms",
+                 "register": ['33146'],
+                 "decimal_places": 1,
+                 "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Inverter Household load power",
                  "unique": "solis_modbus_inverter_household_load_power",
                  "register": ['33147'], "device_class": SensorDeviceClass.POWER,
@@ -280,6 +296,177 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "decimal_places": 0,
                  "unit_of_measurement": UnitOfPower.WATT,
                  "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Battery Power",
+                 "unique": "solis_modbus_inverter_battery_power",
+                 "register": ['33149', '33150'], "device_class": SensorDeviceClass.POWER,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfPower.WATT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter AC Grid Port Power",
+                 "unique": "solis_modbus_inverter_ac_grid_port_power",
+                 "register": ['33151', '33152'], "device_class": SensorDeviceClass.POWER,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfPower.WATT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+            ]
+        },
+        {
+            "register_start": 33163,
+            "entities": [
+                {"type": "SS", "name": "Solis Inverter Today Battery Charge Energy",
+                 "unique": "solis_modbus_inverter_today_battery_charge_energy",
+                 "register": ['33163'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Yesterday Battery Charge Energy",
+                 "unique": "solis_modbus_inverter_yesterday_battery_charge_energy",
+                 "register": ['33164'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Total Battery Discharge Energy",
+                 "unique": "solis_modbus_inverter_total_battery_discharge_energy",
+                 "register": ['33165', '33166'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "SS", "name": "Solis Inverter Today Battery Discharge Energy",
+                 "unique": "solis_modbus_inverter_today_battery_discharge_energy",
+                 "register": ['33167'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Yesterday Battery Discharge Energy",
+                 "unique": "solis_modbus_inverter_yesterday_battery_discharge_energy",
+                 "register": ['33168'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "SS", "name": "Solis Inverter Total Energy Imported From Grid",
+                 "unique": "solis_modbus_inverter_total_energy_imported_from_grid",
+                 "register": ['33169', '33170'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Today Energy Imported From Grid",
+                 "unique": "solis_modbus_inverter_today_energy_imported_from_grid",
+                 "register": ['33171'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Yesterday Energy Imported From Grid",
+                 "unique": "solis_modbus_inverter_yesterday_energy_imported_from_grid",
+                 "register": ['33172'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "SS", "name": "Solis Inverter Total Energy Fed Into Grid",
+                 "unique": "solis_modbus_inverter_total_energy_fed_into_grid",
+                 "register": ['33173', '33174'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Today Energy Fed Into Grid",
+                 "unique": "solis_modbus_inverter_today_energy_fed_into_grid",
+                 "register": ['33175'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Yesterday Energy Fed Into Grid",
+                 "unique": "solis_modbus_inverter_yesterday_energy_fed_into_grid",
+                 "register": ['33176'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "SS", "name": "Solis Inverter Total Energy Consumption",
+                 "unique": "solis_modbus_inverter_total_energy_consumption",
+                 "register": ['33177', '33178'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Today Energy Consumption",
+                 "unique": "solis_modbus_inverter_today_energy_consumption",
+                 "register": ['33179'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Yesterday Energy Consumption",
+                 "unique": "solis_modbus_inverter_yesterday_energy_consumption",
+                 "register": ['33180'], "device_class": SensorDeviceClass.ENERGY,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                 "state_class": SensorStateClass.MEASUREMENT},
+            ]
+        },
+        {
+            "register_start": 33251,
+            "entities": [
+                {"type": "SS", "name": "Solis Inverter Meter AC Voltage A",
+                 "unique": "solis_modbus_inverter_meter_ac_voltage_a",
+                 "register": ['33251'], "device_class": SensorDeviceClass.VOLTAGE,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter AC Current A",
+                 "unique": "solis_modbus_inverter_meter_ac_current_a",
+                 "register": ['33252'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 2,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter AC Voltage B",
+                 "unique": "solis_modbus_inverter_meter_ac_voltage_b",
+                 "register": ['33253'], "device_class": SensorDeviceClass.VOLTAGE,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter AC Current B",
+                 "unique": "solis_modbus_inverter_meter_ac_current_b",
+                 "register": ['33254'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 2,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter AC Voltage C",
+                 "unique": "solis_modbus_inverter_meter_ac_voltage_c",
+                 "register": ['33255'], "device_class": SensorDeviceClass.VOLTAGE,
+                 "decimal_places": 1,
+                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter AC Current C",
+                 "unique": "solis_modbus_inverter_meter_ac_current_c",
+                 "register": ['33256'], "device_class": SensorDeviceClass.CURRENT,
+                 "decimal_places": 2,
+                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "SS", "name": "Solis Inverter Meter Active Power A",
+                 "unique": "solis_modbus_inverter_meter_active_power_a",
+                 "register": ['33257', '33258'], "device_class": SensorDeviceClass.POWER,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfPower.WATT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter Active Power B",
+                 "unique": "solis_modbus_inverter_meter_active_power_b",
+                 "register": ['33259', '33260'], "device_class": SensorDeviceClass.POWER,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfPower.WATT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter Active Power C",
+                 "unique": "solis_modbus_inverter_meter_active_power_c",
+                 "register": ['33261', '33262'], "device_class": SensorDeviceClass.POWER,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfPower.WATT,
+                 "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Inverter Meter Total Active Power",
+                 "unique": "solis_modbus_inverter_meter_total_active_power",
+                 "register": ['33263', '33264'], "device_class": SensorDeviceClass.POWER,
+                 "decimal_places": 0,
+                 "unit_of_measurement": UnitOfPower.WATT,
+                 "state_class": SensorStateClass.MEASUREMENT}
             ]
         }
     ]
@@ -290,7 +477,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 hass.data[DOMAIN]['values'][register] = 0
             type = entity_definition["type"]
             if type == 'SS':
-                _LOGGER.warning(f'setup entry for sensor = {entity_definition["name"]}')
                 sensorEntities.append(SolisSensor(hass, modbus_controller, entity_definition))
 
     hass.data[DOMAIN]['sensor_entities'] = sensorEntities
@@ -302,7 +488,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         controller = hass.data[DOMAIN][CONTROLLER]
         for sensor_group in sensors:
             start_register = sensor_group['register_start']
-            count = len(sensor_group['entities'])
+            count = sum(len(entity.get('register', [])) for entity in sensor_group.get('entities', []))
             values = controller.read_register(start_register, count)
             # Store each value with a unique key
             for i, value in enumerate(values):
@@ -364,9 +550,14 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 self._modbus_controller.connect()
 
             if len(self._register) > 1:
-                # Treat it as an array of registers (S32)
-                values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
-                n_value = sum(values) / (10 ** self._decimal_places)
+                s32_values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
+                # These are two 16-bit values representing a 32-bit signed integer (S32)
+                high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
+                low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
+
+                # Combine the high and low words to form a 32-bit signed integer
+                combined_value = (high_word << 16) | (low_word & 0xFFFF)
+                n_value = combined_value / (10 ** self._decimal_places)
             else:
                 # Treat it as a single register (U16)
                 n_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)

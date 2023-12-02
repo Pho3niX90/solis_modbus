@@ -13,7 +13,7 @@ class ModbusController:
         self.client = ModbusTcpClient(self.host, port=self.port)
 
     def connect(self):
-        _LOGGER.warning('connecting')
+        _LOGGER.debug('connecting')
         try:
             if not self.client.connect():
                 raise ConnectionError("Failed to connect to Modbus device.")
@@ -23,7 +23,7 @@ class ModbusController:
     def read_register(self, register, count=1):
         try:
             result = self.client.read_input_registers(register, count, slave=1)
-            _LOGGER.warning(f'register value, register = {register}, result = {result.registers}')
+            _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
             if result.isError():
                 raise ValueError(f"Failed to read Modbus register ({register}): {result}")
             if count > 1:
