@@ -1,3 +1,4 @@
 {
-  "name": "Solis Modbus Integration"
+  "name": "Solis Modbus Integration",
+  "render_readme": true
 }
