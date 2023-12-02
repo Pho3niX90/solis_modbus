@@ -19,6 +19,16 @@ To install the Solis Modbus Integration, follow these steps:
 ![img_2.png](img_2.png)
 7. Click on Download
 
+
+## Manual Installtion
+1. Copy the "solis_modbus" folder into your "custom_components" folder
+
+## Setup
+1. Navigate to Settings -> Devices & Services
+2. Click on "+ Add Integration"
+3. Search for "Solis Modbus"
+4. Add in the IP of your inverter in the first box, and port in the second.
+
 ## Tested
 **Inverters Tested**
 - Solis S6 Pro 6kW Advanced Hybrid Inverter
