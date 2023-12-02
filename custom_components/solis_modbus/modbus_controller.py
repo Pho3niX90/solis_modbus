@@ -23,9 +23,9 @@ class ModbusController:
     def read_register(self, register, count=1):
         try:
             result = self.client.read_input_registers(register, count, slave=1)
-            _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
             if result.isError():
                 raise ValueError(f"Failed to read Modbus register ({register}): {result}")
+            _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
             if count > 1:
                 return result.registers
             return result.registers[0]

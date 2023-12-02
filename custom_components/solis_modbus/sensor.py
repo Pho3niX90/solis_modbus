@@ -7,13 +7,14 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfFrequency, UnitOfTemperature, \
     UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, \
-    UnitOfApparentPower, PERCENTAGE, UnitOfEnergy
+    UnitOfApparentPower, PERCENTAGE, UnitOfEnergy, POWER_VOLT_AMPERE_REACTIVE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus import DOMAIN, CONTROLLER
 from custom_components.solis_modbus.const import VERSION, POLL_INTERVAL_SECONDS
+from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     """Set up Modbus sensors from a config entry."""
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
     sensorEntities: List[SensorEntity] = []
+    sensorDerivedEntities: List[SensorEntity] = []
     hass.data[DOMAIN]['values'] = {}
 
     sensors = [
@@ -151,7 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unique": "solis_modbus_inverter_reactive_power",
                  "register": ['33081', '33082'], "device_class": SensorDeviceClass.APPARENT_POWER,
                  "decimal_places": 0,
-                 "unit_of_measurement": UnitOfApparentPower.VOLT_AMPERE,
+                 "unit_of_measurement": POWER_VOLT_AMPERE_REACTIVE,
                  "state_class": SensorStateClass.MEASUREMENT},
 
                 {"type": "SS", "name": "Solis Inverter Apparent Power",
@@ -318,89 +320,89 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "register": ['33163'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Yesterday Battery Charge Energy",
                  "unique": "solis_modbus_inverter_yesterday_battery_charge_energy",
                  "register": ['33164'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Total Battery Discharge Energy",
                  "unique": "solis_modbus_inverter_total_battery_discharge_energy",
                  "register": ['33165', '33166'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
 
                 {"type": "SS", "name": "Solis Inverter Today Battery Discharge Energy",
                  "unique": "solis_modbus_inverter_today_battery_discharge_energy",
                  "register": ['33167'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Yesterday Battery Discharge Energy",
                  "unique": "solis_modbus_inverter_yesterday_battery_discharge_energy",
                  "register": ['33168'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
 
                 {"type": "SS", "name": "Solis Inverter Total Energy Imported From Grid",
                  "unique": "solis_modbus_inverter_total_energy_imported_from_grid",
                  "register": ['33169', '33170'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 0,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Today Energy Imported From Grid",
                  "unique": "solis_modbus_inverter_today_energy_imported_from_grid",
                  "register": ['33171'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Yesterday Energy Imported From Grid",
                  "unique": "solis_modbus_inverter_yesterday_energy_imported_from_grid",
                  "register": ['33172'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
 
                 {"type": "SS", "name": "Solis Inverter Total Energy Fed Into Grid",
                  "unique": "solis_modbus_inverter_total_energy_fed_into_grid",
                  "register": ['33173', '33174'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 0,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Today Energy Fed Into Grid",
                  "unique": "solis_modbus_inverter_today_energy_fed_into_grid",
                  "register": ['33175'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Yesterday Energy Fed Into Grid",
                  "unique": "solis_modbus_inverter_yesterday_energy_fed_into_grid",
                  "register": ['33176'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
 
                 {"type": "SS", "name": "Solis Inverter Total Energy Consumption",
                  "unique": "solis_modbus_inverter_total_energy_consumption",
                  "register": ['33177', '33178'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 0,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Today Energy Consumption",
                  "unique": "solis_modbus_inverter_today_energy_consumption",
                  "register": ['33179'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Inverter Yesterday Energy Consumption",
                  "unique": "solis_modbus_inverter_yesterday_energy_consumption",
                  "register": ['33180'], "device_class": SensorDeviceClass.ENERGY,
                  "decimal_places": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-                 "state_class": SensorStateClass.MEASUREMENT},
+                 "state_class": SensorStateClass.TOTAL_INCREASING},
             ]
         },
         {
@@ -470,6 +472,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         }
     ]
+    sensorsDerived = [{"type": "SDS", "name": "Solis Inverter Current Status String",
+                       "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
+                       "register": ['33095']}]
 
     for sensor_group in sensors:
         for entity_definition in sensor_group['entities']:
@@ -479,8 +484,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             if type == 'SS':
                 sensorEntities.append(SolisSensor(hass, modbus_controller, entity_definition))
 
+    for sensor_group in sensorsDerived:
+        type = sensor_group["type"]
+        if type == 'SDS':
+            sensorDerivedEntities.append(SolisDerivedSensor(hass, sensor_group))
+
     hass.data[DOMAIN]['sensor_entities'] = sensorEntities
+    hass.data[DOMAIN]['sensor_derived_entities'] = sensorDerivedEntities
     async_add_entities(sensorEntities, True)
+    async_add_entities(sensorDerivedEntities, True)
 
     @callback
     def async_update(now):
@@ -498,6 +510,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
         for entity in hass.data[DOMAIN]["sensor_entities"]:
             entity.update()
+        for entity in hass.data[DOMAIN]["sensor_derived_entities"]:
+            entity.update()
 
     # Schedule the update function to run every X seconds
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS))
@@ -505,8 +519,92 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     return True
 
 
+def get_value(self):
+    if len(self._register) > 1:
+        s32_values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
+        # These are two 16-bit values representing a 32-bit signed integer (S32)
+        high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
+        low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
+
+        # Combine the high and low words to form a 32-bit signed integer
+        combined_value = (high_word << 16) | (low_word & 0xFFFF)
+        n_value = combined_value / (10 ** self._decimal_places)
+    else:
+        # Treat it as a single register (U16)
+        n_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)
+
+    return n_value
+
+
+class SolisDerivedSensor(RestoreSensor, SensorEntity):
+    """Representation of a Modbus derived/calculated sensor."""
+
+    def __init__(self, hass, entity_definition):
+        self._hass = hass
+        self._attr_name = entity_definition["name"]
+        self._attr_unique_id = "{}_{}".format(DOMAIN, entity_definition["unique"])
+
+        self._register: List[int] = entity_definition["register"]
+        self._state = None
+        self._unit_of_measurement = entity_definition.get("unit_of_measurement", None)
+        self._device_class = entity_definition.get("device_class", None)
+
+        # Visible Instance Attributes Outside Class
+        self.is_added_to_hass = False
+
+        # Hidden Inherited Instance Attributes
+        self._attr_available = False
+        self._attr_device_class = entity_definition.get("device_class", None)
+        self._attr_state_class = entity_definition.get("state_class", None)
+        self._attr_native_unit_of_measurement = entity_definition.get("unit_of_measurement", None)
+        self._attr_should_poll = False
+
+        # Hidden Class Extended Instance Attributes
+        self._device_attribute = entity_definition.get("attribute", None)
+        self._decimal_places = entity_definition.get("decimal_places", 1)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        state = await self.async_get_last_sensor_data()
+        if state:
+            self._attr_native_value = state.native_value
+        self.is_added_to_hass = True
+
+    def update(self):
+        """Update the sensor value."""
+        try:
+            if not self.is_added_to_hass:
+                return
+
+            n_value = round(get_value(self))
+            if '33095' in self._register:
+                n_value = STATUS_MAPPING.get(n_value, "Unknown")
+
+            self._attr_available = True
+            self._attr_native_value = n_value
+            self._state = n_value
+            self.async_write_ha_state()
+
+        except ValueError as e:
+            _LOGGER.error(e)
+            # Handle communication or reading errors
+            self._state = None
+            self._attr_available = False
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            manufacturer="Solis",
+            model="Solis S6",
+            name="Solis S6",
+            sw_version=VERSION,
+        )
+
+
 class SolisSensor(RestoreSensor, SensorEntity):
-    """Representation of a Modbus temperature sensor."""
+    """Representation of a Modbus sensor."""
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
@@ -549,18 +647,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
             if not self._modbus_controller.connected():
                 self._modbus_controller.connect()
 
-            if len(self._register) > 1:
-                s32_values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
-                # These are two 16-bit values representing a 32-bit signed integer (S32)
-                high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
-                low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
-
-                # Combine the high and low words to form a 32-bit signed integer
-                combined_value = (high_word << 16) | (low_word & 0xFFFF)
-                n_value = combined_value / (10 ** self._decimal_places)
-            else:
-                # Treat it as a single register (U16)
-                n_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)
+            n_value = get_value(self)
 
             self._attr_available = True
             self._attr_native_value = n_value
