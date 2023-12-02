@@ -44,6 +44,5 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required("host", default="", description="your solis ip"): str,
                 vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
-                # Add other configuration options as needed
             }
         )

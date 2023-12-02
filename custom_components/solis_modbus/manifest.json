@@ -9,6 +9,7 @@
   "integration_type": "device",
   "requirements": ["pymodbus==3.5.4"],
   "quality_scale": "silver",
+  "issue_tracker": "https://github.com/Pho3niX90/solis_modbus/issues",
   "dhcp": [
     {
       "hostname": "D_7*"

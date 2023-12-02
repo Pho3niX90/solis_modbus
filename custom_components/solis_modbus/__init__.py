@@ -17,12 +17,12 @@ async def async_setup(hass: HomeAssistant, config: dict):
     _LOGGER.warning('init async_setup')
     """Set up the Modbus integration."""
     # Check if there are any configurations in the YAML file
-    if DOMAIN in config:
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN, data=config[DOMAIN], context={"source": "import"}
-            )
-        )
+    #if DOMAIN in config:
+    #    hass.async_create_task(
+    #        hass.config_entries.flow.async_init(
+    #            DOMAIN, data=config[DOMAIN], context={"source": "import"}
+    #        )
+    #    )
     return True
 
 
@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""
-    _LOGGER.warning('init async_unload_entry')
+    _LOGGER.debug('init async_unload_entry')
     # Unload platforms associated with this integration
     unload_ok = await hass.config_entries.async_forward_entry_unload(entry, DOMAIN)
 
