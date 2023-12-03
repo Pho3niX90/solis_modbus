@@ -151,7 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
                 {"type": "SS", "name": "Solis Inverter Reactive Power",
                  "unique": "solis_modbus_inverter_reactive_power",
-                 "register": ['33081', '33082'], "device_class": SensorDeviceClass.APPARENT_POWER,
+                 "register": ['33081', '33082'], "device_class": SensorDeviceClass.REACTIVE_POWER,
                  "decimal_places": 0,
                  "unit_of_measurement": POWER_VOLT_AMPERE_REACTIVE,
                  "state_class": SensorStateClass.MEASUREMENT},
