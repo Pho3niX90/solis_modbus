@@ -26,9 +26,7 @@ class ModbusController:
             if result.isError():
                 raise ValueError(f"Failed to read Modbus register ({register}): {result}")
             _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
-            if count > 1:
-                return result.registers
-            return result.registers[0]
+            return result.registers
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus register: {str(e)}")
 
@@ -38,9 +36,7 @@ class ModbusController:
             if result.isError():
                 raise ValueError(f"Failed to read Modbus register ({register}): {result}")
             _LOGGER.debug(f'holding register value, register = {register}, result = {result.registers}')
-            if count > 1:
-                return result.registers
-            return result.registers[0]
+            return result.registers
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus holding register: {str(e)}")
 

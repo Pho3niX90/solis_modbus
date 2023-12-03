@@ -13,7 +13,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfElectricCurrent,
+    UnitOfElectricCurrent, PERCENTAGE,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -61,6 +61,10 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
          "default": 50.0, "multiplier": 10,
          "min_val": 0, "max_val": 100, "step": 0.1, "device_class": SensorDeviceClass.CURRENT,
          "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "enabled": True},
+        {"type": "SNE", "name": "Solis Inverter Backup SOC", "register": 43024,
+         "default": 80.0, "multiplier": 1,
+         "min_val": 0, "max_val": 100, "step": 1,
+         "unit_of_measurement": PERCENTAGE, "enabled": True},
     ]
 
     for entity_definition in numbers:
@@ -125,7 +129,7 @@ class SolisNumberEntity(NumberEntity):
 
         if value == 0:
             _LOGGER.debug(f'got 0 for register {self._register}, forcing update')
-            value = controller.read_holding_register(self._register)
+            value = controller.read_holding_register(self._register)[0]
 
         _LOGGER.debug(f'Update number entity with value = {value  / self._multiplier}')
 

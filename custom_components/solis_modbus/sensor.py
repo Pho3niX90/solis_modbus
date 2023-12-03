@@ -472,6 +472,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         },
         {
+            "register_start": 43024,
+            "entities": [
+                {"type": "SS", "name": "Solis Inverter Backup SOC",
+                 "unique": "solis_modbus_inverter_backup_soc",
+                 "register": ['43024'],
+                 "decimal_places": 0,
+                 "unit_of_measurement": PERCENTAGE,
+                 "state_class": SensorStateClass.MEASUREMENT}
+            ]
+        },
+        {
             "register_start": 43141,
             "entities": [
                 {"type": "SS", "name": "Solis Inverter Time-Charging Charge Current",
@@ -515,6 +526,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     def async_update(now):
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
+
+        if not controller.connected():
+            controller.connect()
+
         for sensor_group in sensors:
             start_register = sensor_group['register_start']
             count = sum(len(entity.get('register', [])) for entity in sensor_group.get('entities', []))
@@ -666,8 +681,6 @@ class SolisSensor(RestoreSensor, SensorEntity):
         try:
             if not self.is_added_to_hass:
                 return
-            if not self._modbus_controller.connected():
-                self._modbus_controller.connect()
 
             n_value = get_value(self)
 

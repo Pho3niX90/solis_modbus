@@ -2,7 +2,7 @@
   "domain": "solis_modbus",
   "name": "Solis Modbus",
   "version": "1.0.3",
-  "documentation": "https://link-to-your-docs",
+  "documentation": "https://github.com/Pho3niX90",
   "dependencies": [],
   "codeowners": ["@pho3nix90"],
   "iot_class": "local_polling",
