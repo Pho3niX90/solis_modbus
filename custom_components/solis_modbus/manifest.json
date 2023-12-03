@@ -1,7 +1,7 @@
 {
   "domain": "solis_modbus",
   "name": "Solis Modbus",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "documentation": "https://link-to-your-docs",
   "dependencies": [],
   "codeowners": ["@pho3nix90"],

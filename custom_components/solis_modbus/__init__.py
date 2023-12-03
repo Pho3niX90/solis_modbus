@@ -11,7 +11,7 @@ from .modbus_controller import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "number"]
 
 SCHEME_HOLDING_REGISTER = vol.Schema(
     {
@@ -61,10 +61,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][CONTROLLER] = ModbusController(host, port)
 
     _LOGGER.debug(f'config entry host = {host}, post = {port}')
+
     # Set up the platforms associated with this integration
     for component in PLATFORMS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, component))
         _LOGGER.debug(f"async_setup_entry: loading: {component}")
+        await asyncio.sleep(1)
     await asyncio.sleep(20)
     return True
 
