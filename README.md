@@ -84,6 +84,7 @@ entities:
   day_load_energy_84: sensor.solis_inverter_today_energy_consumption
   day_grid_import_76: sensor.solis_inverter_today_energy_imported_from_grid
   day_grid_export_77: sensor.solis_inverter_today_energy_fed_into_grid
+  day_pv_energy_108: sensor.solis_inverter_pv_today_energy_generation
   inverter_voltage_154: sensor.solis_inverter_a_phase_voltage
   load_frequency_192: sensor.solis_inverter_grid_frequency
   inverter_current_164: sensor.solis_inverter_a_phase_current
