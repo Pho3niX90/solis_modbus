@@ -514,6 +514,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         {"type": "SDS", "name": "Solis Inverter Current Status String",
          "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
          "register": ['33095']},
+
+        {"type": "SDS", "name": "Solis Inverter DC Power 1",
+         "unique": "solis_modbus_inverter_dc_power_1", "device_class": SensorDeviceClass.POWER,
+         "decimal_places": 1,
+         "unit_of_measurement": UnitOfPower.WATT,
+         "state_class": SensorStateClass.MEASUREMENT,
+         "register": ['33049', '33050']},
+
+        {"type": "SDS", "name": "Solis Inverter DC Power 2",
+         "unique": "solis_modbus_inverter_dc_power_2", "device_class": SensorDeviceClass.POWER,
+         "decimal_places": 1,
+         "unit_of_measurement": UnitOfPower.WATT,
+         "state_class": SensorStateClass.MEASUREMENT,
+         "register": ['33051', '33052']},
         # {
         #  "type": "SDS", "name": "Solis Inverter Current Status String",
         #  "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
@@ -632,9 +646,14 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             if not self.is_added_to_hass:
                 return
 
-            n_value = round(get_value(self))
+            n_value = None
             if '33095' in self._register:
+                n_value = round(get_value(self))
                 n_value = STATUS_MAPPING.get(n_value, "Unknown")
+            if '33049' in self._register or '33051' in self._register:
+                r1_value = round(self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places))
+                r2_value = round(self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places))
+                n_value = round(r1_value * r2_value)
 
             self._attr_available = True
             self._attr_native_value = n_value
