@@ -4,6 +4,7 @@ from typing import List
 
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.components.switch import SwitchDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfFrequency, UnitOfTemperature, \
     UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, \
@@ -203,7 +204,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "register": ['33132'],
                  "decimal_places": 0,
                  "state_class": SensorStateClass.MEASUREMENT},
-
                 {"type": "SS", "name": "Solis Inverter Battery Voltage",
                  "unique": "solis_modbus_inverter_battery_voltage",
                  "register": ['33133'], "device_class": SensorDeviceClass.VOLTAGE,
@@ -482,6 +482,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "state_class": SensorStateClass.MEASUREMENT}
             ]
         },
+        # {
+        #     "register_start": 43110,
+        #     "entities": [
+        #         {"type": "SS", "name": "Solis Inverter Storage Control Switch Value",
+        #          "unique": "solis_modbus_inverter_storage_control_switch_value",
+        #          "register": ['43110'],
+        #          "decimal_places": 0,
+        #          "state_class": SensorStateClass.MEASUREMENT}
+        #     ]
+        # },
         {
             "register_start": 43141,
             "entities": [
@@ -500,9 +510,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         }
     ]
-    sensorsDerived = [{"type": "SDS", "name": "Solis Inverter Current Status String",
-                       "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
-                       "register": ['33095']}]
+    sensorsDerived = [
+        {"type": "SDS", "name": "Solis Inverter Current Status String",
+         "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
+         "register": ['33095']},
+        # {
+        #  "type": "SDS", "name": "Solis Inverter Current Status String",
+        #  "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
+        #  "register": ['43110']
+        #  }
+    ]
 
     for sensor_group in sensors:
         for entity_definition in sensor_group['entities']:
@@ -580,6 +597,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         self._hass = hass
         self._attr_name = entity_definition["name"]
         self._attr_unique_id = "{}_{}".format(DOMAIN, entity_definition["unique"])
+
+        self._device_class = SwitchDeviceClass.SWITCH
 
         self._register: List[int] = entity_definition["register"]
         self._state = None

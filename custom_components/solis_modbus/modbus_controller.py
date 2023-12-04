@@ -30,7 +30,7 @@ class ModbusController:
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus register: {str(e)}")
 
-    def read_holding_register(self, register, count=1):
+    def read_holding_register(self, register: int, count=1):
         try:
             result = self.client.read_holding_registers(register, count, slave=1)
             if result.isError():
@@ -40,7 +40,7 @@ class ModbusController:
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus holding register: {str(e)}")
 
-    def write_holding_register(self, register, value):
+    def write_holding_register(self, register: int, value):
         try:
             result = self.client.write_register(register, value, slave=1)
             if result.isError():
