@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solis",
+        "description": "Integration configuration for Solis Inverters",
+        "data": {
+          "host": "IP address of Solis Inverter",
+          "port": "TCP Port of Inverter"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Write holding register",
+      "description": "Writes a value to a holding register",
+      "fields": {
+        "address": {
+          "name": "Address",
+          "description": "Address to write to"
+        },
+        "value": {
+          "name": "Value",
+          "description": "Value to write"
+        }
+      }
+    }
+  }
+}
