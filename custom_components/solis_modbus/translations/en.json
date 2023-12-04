@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solis",
+        "description": "Integration configuration for Solis Inverters",
+        "data": {
+          "host": "IP address of Solis Inverter",
+          "port": "TCP Port of Inverter"
+        }
+      }
+    }
+  }
+}
