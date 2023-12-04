@@ -4,6 +4,7 @@ import logging
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, CONTROLLER
@@ -11,7 +12,7 @@ from .modbus_controller import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor", "number"]
+PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH]
 
 SCHEME_HOLDING_REGISTER = vol.Schema(
     {
@@ -23,6 +24,7 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Modbus integration."""
+
     # Check if there are any configurations in the YAML file
     # if DOMAIN in config:
     #    hass.async_create_task(

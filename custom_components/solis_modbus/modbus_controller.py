@@ -26,25 +26,21 @@ class ModbusController:
             if result.isError():
                 raise ValueError(f"Failed to read Modbus register ({register}): {result}")
             _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
-            if count > 1:
-                return result.registers
-            return result.registers[0]
+            return result.registers
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus register: {str(e)}")
 
-    def read_holding_register(self, register, count=1):
+    def read_holding_register(self, register: int, count=1):
         try:
             result = self.client.read_holding_registers(register, count, slave=1)
             if result.isError():
                 raise ValueError(f"Failed to read Modbus register ({register}): {result}")
             _LOGGER.debug(f'holding register value, register = {register}, result = {result.registers}')
-            if count > 1:
-                return result.registers
-            return result.registers[0]
+            return result.registers
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus holding register: {str(e)}")
 
-    def write_holding_register(self, register, value):
+    def write_holding_register(self, register: int, value):
         try:
             result = self.client.write_register(register, value, slave=1)
             if result.isError():

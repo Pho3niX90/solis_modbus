@@ -13,7 +13,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfElectricCurrent,
+    UnitOfElectricCurrent, PERCENTAGE,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -26,21 +26,12 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-hyphen = ""
-nameID_midfix = ""
-entityID_midfix = ""
-
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
     # We only want this platform to be set up via discovery.
-    _LOGGER.info("Loading the Lux number platform")
     _LOGGER.info("Options %s", len(config_entry.options))
-
-    global hyphen
-    global nameID_midfix
-    global entityID_midfix
 
     platform_config = config_entry.data or {}
     if len(config_entry.options) > 0:
@@ -61,6 +52,14 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
          "default": 50.0, "multiplier": 10,
          "min_val": 0, "max_val": 100, "step": 0.1, "device_class": SensorDeviceClass.CURRENT,
          "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "enabled": True},
+        {"type": "SNE", "name": "Solis Inverter Backup SOC", "register": 43024,
+         "default": 80.0, "multiplier": 1,
+         "min_val": 0, "max_val": 100, "step": 1,
+         "unit_of_measurement": PERCENTAGE, "enabled": True},
+        # {"type": "SNE", "name": "Solis Inverter Storage Control Switch Value", "register": 43110,
+        #  "default": 80.0, "multiplier": 1,
+        #  "min_val": 0, "max_val": 100, "step": 1,
+        #  "unit_of_measurement": PERCENTAGE, "enabled": True},
     ]
 
     for entity_definition in numbers:
@@ -125,7 +124,7 @@ class SolisNumberEntity(NumberEntity):
 
         if value == 0:
             _LOGGER.debug(f'got 0 for register {self._register}, forcing update')
-            value = controller.read_holding_register(self._register)
+            value = controller.read_holding_register(self._register)[0]
 
         _LOGGER.debug(f'Update number entity with value = {value  / self._multiplier}')
 
@@ -147,7 +146,7 @@ class SolisNumberEntity(NumberEntity):
         if self._attr_native_value == value:
             return
 
-        _LOGGER.debug(
+        _LOGGER.warning(
             f'Writing value to holding register = {self._register}, value = {value}, value modified = {value * self._multiplier}')
         self._modbus_controller.write_holding_register(self._register, round(value * self._multiplier))
         self._attr_native_value = value
