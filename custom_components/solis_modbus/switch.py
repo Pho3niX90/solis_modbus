@@ -19,13 +19,13 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {
             "read_register": 33132, 'write_register': 43110,
             "entities": [
-                {"type": "SBS", "bit_position": 0, "name": "Solis Inverter Self-Use Mode"},
-                {"type": "SBS", "bit_position": 1, "name": "Solis Inverter Time Of Use Mode"},
-                {"type": "SBS", "bit_position": 2, "name": "Solis Inverter OFF-Grid Mode"},
-                {"type": "SBS", "bit_position": 3, "name": "Solis Inverter Battery Wakeup Switch"},
-                {"type": "SBS", "bit_position": 4, "name": "Solis Inverter Reserve Battery Mode"},
-                {"type": "SBS", "bit_position": 5, "name": "Solis Inverter Allow Grid To Charge The Battery"},
-                {"type": "SBS", "bit_position": 6, "name": "Solis Inverter Feed In Priority Mode"},
+                {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis Time Of Use Mode"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis OFF-Grid Mode"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis Battery Wakeup Switch"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Reserve Battery Mode"},
+                {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
+                {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode"},
             ]
         }
     ]
