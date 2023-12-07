@@ -20,6 +20,8 @@ To install the Solis Modbus Integration, follow these steps:
 ![img_2.png](img_2.png)
 7. Click on Download
 
+## Total Sensors
+Whilst the solis inverters do provide total sensors for today, yesterday, month and year. I highly suggest to create a utility meter in HA, as a time difference between HA and Solis might have the values reset before midnight, causing issues in charts.
 
 ## Manual Installtion
 1. Copy the "solis_modbus" folder into your "custom_components" folder
