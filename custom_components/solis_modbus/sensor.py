@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from datetime import datetime
 from typing import List
 
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
@@ -29,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     sensors = [
         {
-            "register_start": 33049,
+            "register_start": 33029,
             "entities": [
                 {"type": "SS", "name": "Solis PV Total Energy Generation",
                  "unique": "solis_modbus_inverter_pv_total_generation",
@@ -680,8 +681,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 n_value = round(get_value(self))
                 n_value = STATUS_MAPPING.get(n_value, "Unknown")
             if '33049' in self._register or '33051' in self._register:
-                r1_value = round(self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places))
-                r2_value = round(self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places))
+                r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)
+                r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places)
                 n_value = round(r1_value * r2_value)
 
             self._attr_available = True
@@ -691,7 +692,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
         except ValueError as e:
             _LOGGER.error(e)
-            # Handle communication or reading errors
             self._state = None
             self._attr_available = False
 
