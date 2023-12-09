@@ -19,10 +19,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from .const import (
-    DOMAIN,
-    VERSION, CONTROLLER, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL,
-)
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL
 
 _LOGGER = logging.getLogger(__name__)
 
