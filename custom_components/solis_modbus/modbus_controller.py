@@ -11,14 +11,18 @@ class ModbusController:
         self.host = host
         self.port = port
         self.client = ModbusTcpClient(self.host, port=self.port)
+        self.connect_failures = 0
 
     def connect(self):
         _LOGGER.debug('connecting')
         try:
             if not self.client.connect():
-                raise ConnectionError("Failed to connect to Modbus device.")
+                self.connect_failures += 1
+                raise _LOGGER.warning(f"Failed to connect to Modbus device. Will retry, failures = {self.connect_failures}")
+            else:
+                self.connect_failures = 0
         except Exception as e:
-            raise ConnectionError(f"Failed to connect to Modbus device: {str(e)}")
+            raise _LOGGER.error(f"Failed to connect to Modbus device. Will retry")
 
     def read_input_register(self, register, count=1):
         try:

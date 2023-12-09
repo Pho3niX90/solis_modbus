@@ -13,8 +13,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus import DOMAIN, CONTROLLER
-from custom_components.solis_modbus.const import VERSION, POLL_INTERVAL_SECONDS
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     sensors = [
         {
-            "register_start": 33049,
+            "register_start": 33029,
             "entities": [
                 {"type": "SS", "name": "Solis PV Total Energy Generation",
                  "unique": "solis_modbus_inverter_pv_total_generation",
@@ -680,8 +679,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 n_value = round(get_value(self))
                 n_value = STATUS_MAPPING.get(n_value, "Unknown")
             if '33049' in self._register or '33051' in self._register:
-                r1_value = round(self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places))
-                r2_value = round(self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places))
+                r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)
+                r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places)
                 n_value = round(r1_value * r2_value)
 
             self._attr_available = True
@@ -691,7 +690,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
         except ValueError as e:
             _LOGGER.error(e)
-            # Handle communication or reading errors
             self._state = None
             self._attr_available = False
 
@@ -700,9 +698,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         """Return device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
-            manufacturer="Solis",
-            model="Solis S6",
-            name="Solis S6",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            name=f"{MANUFACTURER} {MODEL}",
             sw_version=VERSION,
         )
 
@@ -766,8 +764,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Return device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._modbus_controller.host)},
-            manufacturer="Solis",
-            model="Solis S6",
-            name="Solis S6",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            name=f"{MANUFACTURER} {MODEL}",
             sw_version=VERSION,
         )
