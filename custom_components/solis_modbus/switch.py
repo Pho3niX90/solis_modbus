@@ -8,9 +8,10 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import POLL_INTERVAL_SECONDS, DOMAIN, CONTROLLER, VERSION
+from custom_components.solis_modbus.const import POLL_INTERVAL_SECONDS, DOMAIN, CONTROLLER, VERSION, MANUFACTURER, MODEL
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
@@ -122,9 +123,9 @@ class SolisBinaryEntity(SwitchEntity):
         """Return device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
-            manufacturer="Solis",
-            model="Solis S6",
-            name="Solis S6",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            name=f"{MANUFACTURER} {MODEL}",
             sw_version=VERSION,
         )
 

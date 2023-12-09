@@ -1,6 +1,5 @@
 import logging
 from datetime import timedelta
-from datetime import datetime
 from typing import List
 
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
@@ -15,7 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus import DOMAIN, CONTROLLER
-from custom_components.solis_modbus.const import VERSION, POLL_INTERVAL_SECONDS
+from custom_components.solis_modbus.const import VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
@@ -700,9 +699,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         """Return device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
-            manufacturer="Solis",
-            model="Solis S6",
-            name="Solis S6",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            name=f"{MANUFACTURER} {MODEL}",
             sw_version=VERSION,
         )
 
@@ -766,8 +765,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Return device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._modbus_controller.host)},
-            manufacturer="Solis",
-            model="Solis S6",
-            name="Solis S6",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            name=f"{MANUFACTURER} {MODEL}",
             sw_version=VERSION,
         )

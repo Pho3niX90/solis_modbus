@@ -21,7 +21,7 @@ from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
     DOMAIN,
-    VERSION, CONTROLLER, POLL_INTERVAL_SECONDS,
+    VERSION, CONTROLLER, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ class SolisNumberEntity(NumberEntity):
             _LOGGER.debug(f'got 0 for register {self._register}, forcing update')
             value = controller.read_holding_register(self._register)[0]
 
-        _LOGGER.debug(f'Update number entity with value = {value  / self._multiplier}')
+        _LOGGER.debug(f'Update number entity with value = {value / self._multiplier}')
 
         self._attr_native_value = value / self._multiplier
 
@@ -135,9 +135,9 @@ class SolisNumberEntity(NumberEntity):
         """Return device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
-            manufacturer="Solis",
-            model="Solis S6",
-            name="Solis S6",
+            manufacturer=MANUFACTURER,
+            model=MODEL,
+            name=f"{MANUFACTURER} {MODEL}",
             sw_version=VERSION,
         )
 
