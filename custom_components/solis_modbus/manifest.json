@@ -4,7 +4,7 @@
   "codeowners": ["@pho3nix90"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/Pho3niX90",
+  "documentation": "https://github.com/Pho3niX90/solis_modbus#installation",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Pho3niX90/solis_modbus/issues",
