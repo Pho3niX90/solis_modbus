@@ -53,6 +53,15 @@ class ModbusController:
         except ModbusIOException as e:
             raise ValueError(f"Failed to write Modbus register: {str(e)}")
 
+    def write_holding_registers(self, start_register: int, values: list[int]):
+        try:
+            result = self.client.write_registers(start_register, values, slave=1)
+            if result.isError():
+                raise ValueError(f"Failed to write Modbus holding registers ({start_register}), values = {values}: {result}")
+            return result
+        except ModbusIOException as e:
+            raise ValueError(f"Failed to write Modbus registers: {str(e)}")
+
     def close_connection(self):
         self.client.close()
 

@@ -13,8 +13,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower,
-)
+    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower, )
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -69,7 +68,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {"type": "SNE", "name": "Solis Force Charge SOC", "register": 43018,
          "default": 10, "multiplier": 1,
          "min_val": 0, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True}
+         "unit_of_measurement": PERCENTAGE, "enabled": True},
     ]
 
     for entity_definition in numbers:
