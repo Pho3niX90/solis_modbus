@@ -57,10 +57,19 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
          "default": 3000.0, "multiplier": 0.1,
          "min_val": 0, "max_val": 6000, "step": 1,
          "unit_of_measurement": UnitOfPower.WATT, "enabled": True},
-        # {"type": "SNE", "name": "Solis Inverter Storage Control Switch Value", "register": 43110,
-        #  "default": 80.0, "multiplier": 1,
-        #  "min_val": 0, "max_val": 100, "step": 1,
-        #  "unit_of_measurement": PERCENTAGE, "enabled": True},
+
+        {"type": "SNE", "name": "Solis Overcharge SOC", "register": 43010,
+         "default": 90, "multiplier": 1,
+         "min_val": 70, "max_val": 100, "step": 1,
+         "unit_of_measurement": PERCENTAGE, "enabled": True},
+        {"type": "SNE", "name": "Solis Overdischarge SOC", "register": 43011,
+         "default": 20, "multiplier": 1,
+         "min_val": 5, "max_val": 40, "step": 1,
+         "unit_of_measurement": PERCENTAGE, "enabled": True},
+        {"type": "SNE", "name": "Solis Force Charge SOC", "register": 43018,
+         "default": 10, "multiplier": 1,
+         "min_val": 0, "max_val": 100, "step": 1,
+         "unit_of_measurement": PERCENTAGE, "enabled": True}
     ]
 
     for entity_definition in numbers:

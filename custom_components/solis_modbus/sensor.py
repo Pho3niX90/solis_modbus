@@ -607,9 +607,35 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         },
         {
-            "register_start": 43024,
+            "register_start": 43011,
             "scan_interval": 10,
             "entities": [
+
+                {"type": "SS", "name": "Solis Overcharge SOC",
+                 "unique": "solis_modbus_inverter_overcharge_soc",
+                 "register": ['43010'],
+                 "decimal_places": 0,
+                 "unit_of_measurement": PERCENTAGE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "SS", "name": "Solis Overdischarge SOC",
+                 "unique": "solis_modbus_inverter_overdischarge_soc",
+                 "register": ['43011'],
+                 "decimal_places": 0,
+                 "unit_of_measurement": PERCENTAGE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "reserve", "register": ['43012', '43013', '43014', '43015', '43016', '43017']},
+
+                {"type": "SS", "name": "Solis Force Charge SOC",
+                 "unique": "solis_modbus_inverter_force_charge_soc",
+                 "register": ['43018'],
+                 "decimal_places": 0,
+                 "unit_of_measurement": PERCENTAGE,
+                 "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "reserve", "register": ['43019', '43020', '43021', '43022', '43023']},
+
                 {"type": "SS", "name": "Solis Backup SOC",
                  "unique": "solis_modbus_inverter_backup_soc",
                  "register": ['43024'],
