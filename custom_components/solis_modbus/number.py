@@ -13,7 +13,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfElectricCurrent, PERCENTAGE,
+    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -53,6 +53,10 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
          "default": 80.0, "multiplier": 1,
          "min_val": 0, "max_val": 100, "step": 1,
          "unit_of_measurement": PERCENTAGE, "enabled": True},
+        {"type": "SNE", "name": "Solis Battery Force-charge Power Limitation", "register": 43027,
+         "default": 3000.0, "multiplier": 0.1,
+         "min_val": 0, "max_val": 6000, "step": 1,
+         "unit_of_measurement": UnitOfPower.WATT, "enabled": True},
         # {"type": "SNE", "name": "Solis Inverter Storage Control Switch Value", "register": 43110,
         #  "default": 80.0, "multiplier": 1,
         #  "min_val": 0, "max_val": 100, "step": 1,
@@ -125,7 +129,7 @@ class SolisNumberEntity(NumberEntity):
 
         _LOGGER.debug(f'Update number entity with value = {value / self._multiplier}')
 
-        self._attr_native_value = value / self._multiplier
+        self._attr_native_value = round(value / self._multiplier)
 
     @property
     def device_info(self):
@@ -143,8 +147,6 @@ class SolisNumberEntity(NumberEntity):
         if self._attr_native_value == value:
             return
 
-        _LOGGER.warning(
-            f'Writing value to holding register = {self._register}, value = {value}, value modified = {value * self._multiplier}')
         self._modbus_controller.write_holding_register(self._register, round(value * self._multiplier))
         self._attr_native_value = value
         self.schedule_update_ha_state()
