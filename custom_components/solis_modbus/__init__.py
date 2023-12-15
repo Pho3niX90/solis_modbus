@@ -12,7 +12,7 @@ from .modbus_controller import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH]
+PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.TIME]
 
 SCHEME_HOLDING_REGISTER = vol.Schema(
     {
