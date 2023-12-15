@@ -692,12 +692,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
          "decimal_places": 1,
          "unit_of_measurement": UnitOfPower.WATT,
          "state_class": SensorStateClass.MEASUREMENT,
-         "register": ['33051', '33052']},
-        # {
-        #  "type": "SDS", "name": "Current Status String",
-        #  "unique": "solis_modbus_inverter_current_status_string", "decimal_places": 0,
-        #  "register": ['43110']
-        #  }
+         "register": ['33051', '33052']}
     ]
 
     for sensor_group in sensors:
@@ -847,9 +842,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 n_value = round(get_value(self))
                 n_value = STATUS_MAPPING.get(n_value, "Unknown")
             if '33049' in self._register or '33051' in self._register:
-                r1_value = self._hass.data[DOMAIN]['values'][self._register[0]]
-                r2_value = self._hass.data[DOMAIN]['values'][self._register[1]]
-                n_value = round((r1_value * r2_value) / (10 ** self._decimal_places))
+                r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)
+                r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places)
+                n_value = round(r1_value * r2_value)
 
             self._attr_available = True
             self._attr_native_value = n_value
