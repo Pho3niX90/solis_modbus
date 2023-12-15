@@ -846,7 +846,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
          "decimal_places": 1,
          "unit_of_measurement": UnitOfPower.WATT,
          "state_class": SensorStateClass.MEASUREMENT,
-         "register": ['33051', '33052']}
+         "register": ['33051', '33052']},
+
+        {"type": "SDS", "name": "Solis Battery Charge Power",
+         "unique": "solis_modbus_inverter_battery_charge_power", "device_class": SensorDeviceClass.POWER,
+         "decimal_places": 1,
+         "unit_of_measurement": UnitOfPower.WATT,
+         "state_class": SensorStateClass.MEASUREMENT,
+         "register": ['33149', '33150', '33135', '0']},
+        {"type": "SDS", "name": "Solis Battery Discharge Power",
+         "unique": "solis_modbus_inverter_battery_discharge_power", "device_class": SensorDeviceClass.POWER,
+         "decimal_places": 1,
+         "unit_of_measurement": UnitOfPower.WATT,
+         "state_class": SensorStateClass.MEASUREMENT,
+         "register": ['33149', '33150', '33135', '1']}
     ]
 
     for sensor_group in sensors:
@@ -999,6 +1012,21 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] / (10 ** self._decimal_places)
                 r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] / (10 ** self._decimal_places)
                 n_value = round(r1_value * r2_value)
+            if '33135' in self._register and len(self._register) == 4:
+                registers = self._register.copy()
+                self._register = registers[:2]
+
+                p_value = get_value(self)
+                d_w_value = registers[3]
+                d_value = self._hass.data[DOMAIN]['values'][registers[2]]
+
+                self._register = registers
+
+                if str(d_value) == str(d_w_value):
+                    n_value = round(p_value * 10)
+                else:
+                    n_value = 0
+
 
             self._attr_available = True
             self._attr_native_value = n_value
