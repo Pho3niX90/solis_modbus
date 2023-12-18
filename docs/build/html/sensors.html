@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Input Control Sensors &mdash; Solis Modbus  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Solis Modbus Integration for Home Assistant" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Solis Modbus
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Sensors</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Input Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#switch-control-sensors">Switch Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#time-control-sensors">Time Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#sensors">Sensors</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Solis Modbus</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Input Control Sensors</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/sensors.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>The following sensors are provided in the integration.</p>
+<section id="input-control-sensors">
+<h1>Input Control Sensors<a class="headerlink" href="#input-control-sensors" title="Link to this heading"></a></h1>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Device Class</p></th>
+<th class="head"><p>Unit Of Measurement</p></th>
+<th class="head"><p>State Class</p></th>
+<th class="head"><p>Registers</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Solis Time-Charging Charge Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p></p></td>
+<td><p>43141</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p></p></td>
+<td><p>43142</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Backup SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p></p></td>
+<td><p>43024</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Force-charge Power Limitation</p></td>
+<td><p></p></td>
+<td><p>WATT</p></td>
+<td><p></p></td>
+<td><p>43027</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Overcharge SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p></p></td>
+<td><p>43010</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Overdischarge SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p></p></td>
+<td><p>43011</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Force Charge SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p></p></td>
+<td><p>43018</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="switch-control-sensors">
+<h1>Switch Control Sensors<a class="headerlink" href="#switch-control-sensors" title="Link to this heading"></a></h1>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Register</p></th>
+<th class="head"><p>Bit Position</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Solis Self-Use Mode</p></td>
+<td><p>33132</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time Of Use Mode</p></td>
+<td><p>33132</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis OFF-Grid Mode</p></td>
+<td><p>33132</p></td>
+<td><p>2</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Wakeup Switch</p></td>
+<td><p>33132</p></td>
+<td><p>3</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Reserve Battery Mode</p></td>
+<td><p>33132</p></td>
+<td><p>4</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Allow Grid To Charge The Battery</p></td>
+<td><p>33132</p></td>
+<td><p>5</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Feed In Priority Mode</p></td>
+<td><p>33132</p></td>
+<td><p>6</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="time-control-sensors">
+<h1>Time Control Sensors<a class="headerlink" href="#time-control-sensors" title="Link to this heading"></a></h1>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Register</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Solis Time-Charging Charge Start (Slot 1)</p></td>
+<td><p>43143</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge End (Slot 1)</p></td>
+<td><p>43145</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge Start (Slot 1)</p></td>
+<td><p>43147</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge End (Slot 1)</p></td>
+<td><p>43149</p></td>
+</tr>
+<tr class="row-even"><td><p></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge Start (Slot 2)</p></td>
+<td><p>43153</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge End (Slot 2)</p></td>
+<td><p>43155</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge Start (Slot 2)</p></td>
+<td><p>43157</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge End (Slot 2)</p></td>
+<td><p>43159</p></td>
+</tr>
+<tr class="row-odd"><td><p></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge Start (Slot 3)</p></td>
+<td><p>43163</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge End (Slot 3)</p></td>
+<td><p>43165</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge Start (Slot 3)</p></td>
+<td><p>43167</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge End (Slot 3)</p></td>
+<td><p>43169</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sensors">
+<h1>Sensors<a class="headerlink" href="#sensors" title="Link to this heading"></a></h1>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Device Class</p></th>
+<th class="head"><p>Unit Of Measurement</p></th>
+<th class="head"><p>State Class</p></th>
+<th class="head"><p>Registers</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Solis Model No</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>33000</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis DSP Version</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>33001</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis HMI Version</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>33002</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Protocol Version</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>33003</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Serial Number</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>33004 - 33019</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Total Energy Generation</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33029, 33030</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Current Month Energy Generation</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33031, 33032</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Last Month Energy Generation</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33033, 33034</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Today Energy Generation</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33035</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Voltage 1</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33049</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Current 1</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33050</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Voltage 2</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33051</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Current 2</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33052</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Voltage 3</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33053</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Current 3</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33054</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Voltage 4</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33055</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Current 4</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33056</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Total PV Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33057, 33058</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Bus Half Voltage</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33072</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis A Phase Voltage</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33073</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis B Phase Voltage</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33074</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis C Phase Voltage</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33075</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis A Phase Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33076</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis B Phase Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33077</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis C Phase Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33078</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Active Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33079, 33080</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Reactive Power</p></td>
+<td><p>REACTIVE_POWER</p></td>
+<td><p>POWER_VOLT_AMPERE_REACTIVE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33081, 33082</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Apparent Power</p></td>
+<td><p>APPARENT_POWER</p></td>
+<td><p>VOLT_AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33083, 33084</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Temperature</p></td>
+<td><p>TEMPERATURE</p></td>
+<td><p>CELSIUS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33093</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Grid Frequency</p></td>
+<td><p>FREQUENCY</p></td>
+<td><p>HERTZ</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33094</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Status</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33095</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Lead-acid Battery Temperature</p></td>
+<td><p>TEMPERATURE</p></td>
+<td><p>CELSIUS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33096</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Storage Control Switching Value</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33132</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Voltage</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33133</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33134</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Current Direction</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33135</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis LLC Bus Voltage</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33136</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Backup AC Voltage Phase A</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33137</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Backup AC Current Phase A</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33138</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery SOC</p></td>
+<td><p>BATTERY</p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33139</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery SOH</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33140</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Voltage (BMS)</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33141</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery Current (BMS)</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33142</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Charge Current Limitation (BMS)</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33143</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery Discharge Current Limitation (BMS)</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33144</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Fault Status 1 (BMS)</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33145</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery Fault Status 2 (BMS)</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33146</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Household load power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33147</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Backup Load power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33148</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33149, 33150</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis AC Grid Port Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33151, 33152</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Today Battery Charge Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33163</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Yesterday Battery Charge Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33164</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Total Battery Discharge Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33165, 33166</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Today Battery Discharge Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33167</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Yesterday Battery Discharge Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33168</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Total Energy Imported From Grid</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33169, 33170</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Today Energy Imported From Grid</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33171</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Yesterday Energy Imported From Grid</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33172</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Total Energy Fed Into Grid</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33173, 33174</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Today Energy Fed Into Grid</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33175</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Yesterday Energy Fed Into Grid</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33176</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Total Energy Consumption</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33177, 33178</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Today Energy Consumption</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33179</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Yesterday Energy Consumption</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33180</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Meter AC Voltage A</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33251</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Meter AC Current A</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33252</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Meter AC Voltage B</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33253</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Meter AC Current B</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33254</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Meter AC Voltage C</p></td>
+<td><p>VOLTAGE</p></td>
+<td><p>VOLT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33255</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Meter AC Current C</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33256</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Meter Active Power A</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33257, 33258</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Meter Active Power B</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33259, 33260</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Meter Active Power C</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33261, 33262</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Meter Total Active Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33263, 33264</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Household Load Total Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33580, 33581</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Household Load Year Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33582, 33583</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Household Load Month Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33584, 33585</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Household Load Today Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33586</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Backup Load Total Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33590, 33591</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Backup Load Year Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33592, 33593</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Backup Load Month Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33594, 33595</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Backup Load Today Energy</p></td>
+<td><p>ENERGY</p></td>
+<td><p>KILO_WATT_HOUR</p></td>
+<td><p>TOTAL_INCREASING</p></td>
+<td><p>33596</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Overcharge SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43010</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Overdischarge SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43011</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Force Charge SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43018</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Backup SOC</p></td>
+<td><p></p></td>
+<td><p>PERCENTAGE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43024</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Force-charge Power Limitation</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43027</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery Force Charge Source</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43028</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43141</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge Current</p></td>
+<td><p>CURRENT</p></td>
+<td><p>AMPERE</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43142</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge Start Hour (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43143</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge Start Minute (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43144</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge End Hour (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43145</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge End Minute (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43146</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge Start Hour (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43147</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge Start Minute (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43148</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge End Hour (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43149</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge End Minute (Slot 1)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43150</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge Start Hour (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43153</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge Start Minute (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43154</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge End Hour (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43155</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge End Minute (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43156</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge Start Hour (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43157</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge Start Minute (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43158</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge End Hour (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43159</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge End Minute (Slot 2)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43160</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge Start Hour (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43163</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge Start Minute (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43164</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Charge End Hour (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43165</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Charge End Minute (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43166</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge Start Hour (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43167</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge Start Minute (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43168</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Time-Charging Discharge End Hour (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>HOURS</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43169</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Time-Charging Discharge End Minute (Slot 3)</p></td>
+<td><p></p></td>
+<td><p>MINUTES</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>43170</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Status String</p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+<td><p>33095</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis PV Power 1</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33049, 33050</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis PV Power 2</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33051, 33052</p></td>
+</tr>
+<tr class="row-even"><td><p>Solis Battery Charge Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33149 * 33150, 33135 == 0</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solis Battery Discharge Power</p></td>
+<td><p>POWER</p></td>
+<td><p>WATT</p></td>
+<td><p>MEASUREMENT</p></td>
+<td><p>33149 * 33150, 33135 == 1</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Solis Modbus Integration for Home Assistant" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Pho3niX90.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>  
+
+<style>
+    .wy-nav-content {
+        max-width: 1000px !important;
+    }
+
+
+    /* and fix wrap bug per https://rackerlabs.github.io/docs-rackspace/tools/rtd-tables.html */
+    .wy-table-responsive table td {
+        /* !important prevents the common CSS stylesheets from overriding
+        this as on RTD they are loaded after this stylesheet */
+        white-space: normal !important;
+    }
+
+    .wy-table-responsive {
+        overflow: visible !important;
+    }
+</style>
+
+
+
+</body>
+</html>

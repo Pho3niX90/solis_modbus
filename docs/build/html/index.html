@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solis Modbus Integration for Home Assistant &mdash; Solis Modbus  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Input Control Sensors" href="sensors.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Solis Modbus
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Sensors</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html">Input Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html#switch-control-sensors">Switch Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html#time-control-sensors">Time Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html#sensors">Sensors</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Solis Modbus</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Solis Modbus Integration for Home Assistant</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="solis-modbus-integration-for-home-assistant">
+<h1>Solis Modbus Integration for Home Assistant<a class="headerlink" href="#solis-modbus-integration-for-home-assistant" title="Link to this heading"></a></h1>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Link to this heading"></a></h2>
+<p>The Solis S6 Modbus Integration for Home Assistant is a streamlined solution to connect your Solis S6 inverter with Home Assistant. This integration was inspired by <a class="reference external" href="https://github.com/fboundy/ha_solis_modbus/tree/main">fboundy’s ha_solis_modbus</a>. However, it enhances the native Modbus integration in Home Assistant by consolidating multiple register queries into single calls, eliminating unnecessary overhead.</p>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p><a class="reference external" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Pho3niX90&amp;amp;repository=solis_modbus&amp;amp;category=integration"><img alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." src="https://my.home-assistant.io/badges/hacs_repository.svg" /></a></p>
+<p>To install the Solis Modbus Integration, follow these steps:</p>
+<ol class="arabic simple">
+<li><p>Open your Home Assistant instance.</p></li>
+<li><p>Navigate to the “HACS”.</p></li>
+<li><p>Click the 3 dots menu
+<img alt="img.png" src="img.png" /></p></li>
+<li><p>Click on “Custom Repositories”
+<img alt="img_1.png" src="img_1.png" /></p></li>
+<li><p>Fill in the repository “https://github.com/Pho3niX90/solis_modbus”, and category “Integration”</p></li>
+<li><p>Now search for “Solis Modbus”
+<img alt="img_2.png" src="img_2.png" /></p></li>
+<li><p>Click on Download</p></li>
+</ol>
+</section>
+<section id="total-sensors">
+<h2>Total Sensors<a class="headerlink" href="#total-sensors" title="Link to this heading"></a></h2>
+<p>Whilst the solis inverters do provide total sensors for today, yesterday, month and year. I highly suggest to create a utility meter in HA, as a time difference between HA and Solis might have the values reset before midnight, causing issues in charts.</p>
+</section>
+<section id="manual-installation">
+<h2>Manual Installation<a class="headerlink" href="#manual-installation" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Copy the “solis_modbus” folder into your “custom_components” folder</p></li>
+</ol>
+</section>
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Navigate to Settings -&gt; Devices &amp; Services</p></li>
+<li><p>Click on “+ Add Integration”</p></li>
+<li><p>Search for “Solis Modbus”</p></li>
+<li><p>Add in the IP of your inverter in the first box, and port in the second.</p></li>
+</ol>
+</section>
+</section>
+<section id="sunsynk-solar-card-setup">
+<h1><a class="reference external" href="https://github.com/slipx06/sunsynk-power-flow-card">sunsynk solar card setup</a>:<a class="headerlink" href="#sunsynk-solar-card-setup" title="Link to this heading"></a></h1>
+<p><img alt="img_3.png" src="img_3.png" /></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:sunsynk-power-flow-card</span>
+<span class="nt">view_layout</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">grid-area</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">flow</span>
+<span class="nt">cardstyle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lite</span>
+<span class="nt">large_font</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">show_solar</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">panel_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">card_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">415px</span>
+<span class="nt">inverter</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solis</span>
+<span class="w">  </span><span class="nt">modern</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">colour</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;#959595&#39;</span>
+<span class="w">  </span><span class="nt">autarky</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;no&#39;</span>
+<span class="nt">solar</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mppts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">show_daily</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">colour</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;#F4C430&#39;</span>
+<span class="w">  </span><span class="nt">animation_speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
+<span class="w">  </span><span class="nt">max_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9600</span>
+<span class="w">  </span><span class="nt">pv1_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">West</span>
+<span class="w">  </span><span class="nt">pv2_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">North</span>
+<span class="nt">battery</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">energy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14280</span>
+<span class="w">  </span><span class="nt">shutdown_soc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">  </span><span class="nt">show_daily</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">colour</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pink</span>
+<span class="w">  </span><span class="nt">animation_speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6</span>
+<span class="w">  </span><span class="nt">max_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6000</span>
+<span class="nt">load</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">show_aux</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">show_daily</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">animation_speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">  </span><span class="nt">max_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6000</span>
+<span class="w">  </span><span class="nt">additional_loads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">load2_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Geyser</span>
+<span class="w">  </span><span class="nt">load2_icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:heating-coil</span>
+<span class="w">  </span><span class="nt">load1_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pool</span>
+<span class="w">  </span><span class="nt">load1_icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:pool</span>
+<span class="nt">grid</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">show_daily_buy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">no_grid_colour</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">red</span>
+<span class="w">  </span><span class="nt">animation_speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">  </span><span class="nt">max_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6000</span>
+<span class="w">  </span><span class="nt">invert_grid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">entities</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">dc_transformer_temp_90</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_temperature</span>
+<span class="w">  </span><span class="nt">day_battery_charge_70</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_today_battery_charge_energy</span>
+<span class="w">  </span><span class="nt">day_battery_discharge_71</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_today_battery_discharge_energy</span>
+<span class="w">  </span><span class="nt">day_load_energy_84</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_today_energy_consumption</span>
+<span class="w">  </span><span class="nt">day_grid_import_76</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_today_energy_imported_from_grid</span>
+<span class="w">  </span><span class="nt">day_grid_export_77</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_today_energy_fed_into_grid</span>
+<span class="w">  </span><span class="nt">day_pv_energy_108</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_pv_today_energy_generation</span>
+<span class="w">  </span><span class="nt">inverter_voltage_154</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_a_phase_voltage</span>
+<span class="w">  </span><span class="nt">load_frequency_192</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_grid_frequency</span>
+<span class="w">  </span><span class="nt">inverter_current_164</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_a_phase_current</span>
+<span class="w">  </span><span class="nt">inverter_power_175</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_backup_load_power</span>
+<span class="w">  </span><span class="nt">grid_power_169</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_ac_grid_port_power</span>
+<span class="w">  </span><span class="nt">battery_voltage_183</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_battery_voltage</span>
+<span class="w">  </span><span class="nt">battery_soc_184</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_battery_soc</span>
+<span class="w">  </span><span class="nt">battery_power_190</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_battery_power</span>
+<span class="w">  </span><span class="nt">battery_current_191</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_battery_current</span>
+<span class="w">  </span><span class="nt">essential_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_backup_load_power</span>
+<span class="w">  </span><span class="nt">grid_ct_power_172</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_meter_total_active_power</span>
+<span class="w">  </span><span class="nt">pv1_voltage_109</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_dc_voltage_1</span>
+<span class="w">  </span><span class="nt">pv1_current_110</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_dc_current_1</span>
+<span class="w">  </span><span class="nt">pv1_power_186</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_dc_power_1</span>
+<span class="w">  </span><span class="nt">pv2_power_187</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_dc_power_2</span>
+<span class="w">  </span><span class="nt">pv_total</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_total_dc_output</span>
+<span class="w">  </span><span class="nt">pv2_voltage_111</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_dc_voltage_2</span>
+<span class="w">  </span><span class="nt">pv2_current_112</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_dc_voltage_2</span>
+<span class="w">  </span><span class="nt">grid_voltage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_a_phase_voltage</span>
+<span class="w">  </span><span class="nt">battery_current_direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_battery_current_direction</span>
+<span class="w">  </span><span class="nt">inverter_status_59</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solis_current_status</span>
+<span class="w">  </span><span class="nt">remaining_solar</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.solcast_pv_forecast_forecast_remaining_today</span>
+</pre></div>
+</div>
+<section id="settings-card-example">
+<h2>Settings Card Example<a class="headerlink" href="#settings-card-example" title="Link to this heading"></a></h2>
+<p><img alt="img_4.png" src="img_4.png" /></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vertical-stack</span>
+<span class="nt">cards</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">horizontal-stack</span>
+<span class="w">    </span><span class="nt">cards</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">entities</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number.solis_time_charging_charge_current</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge Current</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">horizontal-stack</span>
+<span class="w">    </span><span class="nt">cards</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">entities</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number.solis_time_charging_discharge_current</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Discharge Current</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">entities</span>
+<span class="w">    </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.solis_time_of_use_mode</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:multiple-entity-row</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge Slot 1</span>
+<span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">state_header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TOU</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:timer</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_charge_start_slot_1</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge From</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_charge_end_slot_1</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge To</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.solis_time_of_use_mode</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:multiple-entity-row</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Discharge Slot 1</span>
+<span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">state_header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TOU</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:timer</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_discharge_start_slot_1</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge From</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_discharge_end_slot_1</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge To</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.solis_time_of_use_mode</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:multiple-entity-row</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge Slot 2</span>
+<span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">state_header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TOU</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:timer</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_charge_start_slot_2</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge From</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_charge_end_slot_2</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge To</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.solis_time_of_use_mode</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:multiple-entity-row</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Discharge Slot 2</span>
+<span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">state_header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TOU</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:timer</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_discharge_start_slot_2</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge From</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_discharge_end_slot_2</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge To</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.solis_time_of_use_mode</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:multiple-entity-row</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge Slot 3</span>
+<span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">state_header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TOU</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:timer</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_charge_start_slot_3</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge From</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_charge_end_slot_3</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge To</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch.solis_time_of_use_mode</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom:multiple-entity-row</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Discharge Slot 3</span>
+<span class="w">        </span><span class="nt">toggle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">state_header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TOU</span>
+<span class="w">        </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdi:timer</span>
+<span class="w">        </span><span class="nt">entities</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_discharge_start_slot_3</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge From</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">time.solis_time_charging_discharge_end_slot_3</span>
+<span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Charge To</span>
+<span class="w">    </span><span class="nt">state_color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">view_layout</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">grid-area</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">a</span>
+</pre></div>
+</div>
+<p>Card inspiration from https://github.com/slipx06/Sunsynk-Home-Assistant-Dash</p>
+</section>
+<section id="tested">
+<h2>Tested<a class="headerlink" href="#tested" title="Link to this heading"></a></h2>
+<p><strong>Inverters Tested</strong></p>
+<ul class="simple">
+<li><p>Solis S6 Pro 6kW Advanced Hybrid Inverter</p></li>
+</ul>
+<p><strong>Wifi Dongles Tested</strong></p>
+<ul class="simple">
+<li><p>S2_WL_ST</p></li>
+</ul>
+</section>
+</section>
+<section id="table-of-contents">
+<h1>Table of Contents<a class="headerlink" href="#table-of-contents" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Sensors</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html">Input Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html#switch-control-sensors">Switch Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html#time-control-sensors">Time Control Sensors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sensors.html#sensors">Sensors</a></li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sensors.html" class="btn btn-neutral float-right" title="Input Control Sensors" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Pho3niX90.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>  
+
+<style>
+    .wy-nav-content {
+        max-width: 1000px !important;
+    }
+
+
+    /* and fix wrap bug per https://rackerlabs.github.io/docs-rackspace/tools/rtd-tables.html */
+    .wy-table-responsive table td {
+        /* !important prevents the common CSS stylesheets from overriding
+        this as on RTD they are loaded after this stylesheet */
+        white-space: normal !important;
+    }
+
+    .wy-table-responsive {
+        overflow: visible !important;
+    }
+</style>
+
+
+
+</body>
+</html>
