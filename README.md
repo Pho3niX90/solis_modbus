@@ -3,6 +3,8 @@
 ## Description
 
 The Solis S6 Modbus Integration for Home Assistant is a streamlined solution to connect your Solis S6 inverter with Home Assistant. This integration was inspired by [fboundy's ha_solis_modbus](https://github.com/fboundy/ha_solis_modbus/tree/main). However, it enhances the native Modbus integration in Home Assistant by consolidating multiple register queries into single calls, eliminating unnecessary overhead.
+## Documentation
+https://solis-modbus.readthedocs.io/
 
 ## Installation
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Pho3niX90&repository=solis_modbus&category=integration)
@@ -12,12 +14,12 @@ To install the Solis Modbus Integration, follow these steps:
 1. Open your Home Assistant instance.
 2. Navigate to the "HACS".
 3. Click the 3 dots menu
-![img.png](img.png)
+![img.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img.png)
 4. Click on "Custom Repositories"
-![img_1.png](img_1.png)
+![img_1.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_1.png)
 5. Fill in the repository "https://github.com/Pho3niX90/solis_modbus", and category "Integration"
 6. Now search for "Solis Modbus"
-![img_2.png](img_2.png)
+![img_2.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_2.png)
 7. Click on Download
 
 ## Total Sensors
@@ -33,7 +35,7 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 4. Add in the IP of your inverter in the first box, and port in the second.
 
 # [sunsynk solar card setup](https://github.com/slipx06/sunsynk-power-flow-card):
-![img_3.png](img_3.png)
+![img_3.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_3.png)
 ```yaml
 type: custom:sunsynk-power-flow-card
 view_layout:
@@ -112,7 +114,7 @@ entities:
 ```
 
 ## Settings Card Example
-![img_4.png](img_4.png)
+![img_4.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_4.png)
 ```yaml
 type: vertical-stack
 cards:
