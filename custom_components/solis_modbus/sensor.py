@@ -25,7 +25,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     sensor_entities: List[SensorEntity] = []
     sensor_derived_entities: List[SensorEntity] = []
     hass.data[DOMAIN]['values'] = {}
-    hass.data[DOMAIN]['POLL_COUNTER'] = 0
 
     sensors = [
         {
@@ -579,7 +578,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         },
     ]
 
-
     sensors_derived = [
         {"type": "SDS", "name": "Solis Status String",
          "unique": "solis_modbus_inverter_current_status_string", "multiplier": 0,
@@ -635,7 +633,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
         for sensor_group in sensors:
             start_register = sensor_group['register_start']
-            scan_interval = sensor_group['scan_interval']
 
             count = sum(len(entity.get('register', [])) for entity in sensor_group.get('entities', []))
 
@@ -655,11 +652,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         for entity in hass.data[DOMAIN]["sensor_derived_entities"]:
             entity.update()
 
-    hass.data[DOMAIN]['POLL_COUNTER'] += 1
-
-    # Schedule the update function to run every X seconds
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS))
-
     return True
 
 

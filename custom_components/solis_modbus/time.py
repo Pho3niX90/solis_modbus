@@ -119,6 +119,7 @@ class SolisTimeEntity(TimeEntity):
         _LOGGER.debug(f'Update time entity with hour = {hour}, minute = {minute}')
 
         self._attr_native_value = time(hour=hour, minute=minute)
+        # self.async_write_ha_state()
 
     @property
     def device_info(self):
@@ -136,10 +137,10 @@ class SolisTimeEntity(TimeEntity):
         if self._attr_native_value == value:
             return
         _LOGGER.debug(f'set_native_value : register = {self._register}, value = {value}')
-        self._attr_native_value = value
-        self.schedule_update_ha_state()
 
     async def async_set_value(self, value: time) -> None:
         """Set the time."""
         _LOGGER.debug(f'async_set_value : register = {self._register}, value = {value}')
         self._modbus_controller.write_holding_registers(self._register, [value.hour, value.minute])
+        self._attr_native_value = value
+        self.async_write_ha_state()
