@@ -97,6 +97,7 @@ The following sensors are provided in the integration.
 | Solis Backup Load power                             | POWER          | WATT                       | MEASUREMENT      | 33148                                  |
 | Solis Battery Power                                 | POWER          | WATT                       | MEASUREMENT      | 33149, 33150                           |
 | Solis AC Grid Port Power                            | POWER          | WATT                       | MEASUREMENT      | 33151, 33152                           |
+| Solis Total Battery Charge Energy                   | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33161, 33162                           |
 | Solis Today Battery Charge Energy                   | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33163                                  |
 | Solis Yesterday Battery Charge Energy               | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33164                                  |
 | Solis Total Battery Discharge Energy                | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33165, 33166                           |

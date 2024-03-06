@@ -47,9 +47,25 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         },
         {
-            "register_start": 33029,
+            "register_start": 33025,
             "scan_interval": 60,
             "entities": [
+
+                {"type": "SS", "name": "Solis Clock (Hours)",
+                 "unique": "solis_modbus_inverter_clock_hours",
+                 "register": ['33025'], "multiplier": 0,
+                 "unit_of_measurement": UnitOfTime.HOURS, "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Clock (Minutes)",
+                 "unique": "solis_modbus_inverter_clock_minutes",
+                 "register": ['33026'], "multiplier": 0,
+                 "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
+                {"type": "SS", "name": "Solis Clock (Seconds)",
+                 "unique": "solis_modbus_inverter_clock_seconds",
+                 "register": ['33027'], "multiplier": 0,
+                 "unit_of_measurement": UnitOfTime.SECONDS, "state_class": SensorStateClass.MEASUREMENT},
+
+                {"type": "reserve", "register": ['33028']},
+
                 {"type": "SS", "name": "Solis PV Total Energy Generation",
                  "unique": "solis_modbus_inverter_pv_total_generation",
                  "register": ['33029', '33030'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0,
@@ -276,9 +292,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         },
         {
-            "register_start": 33163,
+            "register_start": 33161,
             "scan_interval": 5,
             "entities": [
+                {"type": "SS", "name": "Solis Total Battery Charge Energy",
+                 "unique": "solis_modbus_inverter_total_battery_charge_energy",
+                 "register": ['33161', '33162'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
+
                 {"type": "SS", "name": "Solis Today Battery Charge Energy",
                  "unique": "solis_modbus_inverter_today_battery_charge_energy",
                  "register": ['33163'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
