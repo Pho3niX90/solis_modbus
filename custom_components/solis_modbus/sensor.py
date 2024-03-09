@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import timedelta
 from typing import List
@@ -657,7 +658,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     async_add_entities(sensor_derived_entities, True)
 
     @callback
-    def async_update(now):
+    async def async_update(now):
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
 
@@ -680,10 +681,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 hass.data[DOMAIN]['values'][register_key] = value
                 _LOGGER.debug(f'register_key = {register_key}, value = {value}')
 
-        for entity in hass.data[DOMAIN]["sensor_entities"]:
-            entity.update()
-        for entity in hass.data[DOMAIN]["sensor_derived_entities"]:
-            entity.update()
+        await asyncio.gather(
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_derived_entities"]]
+        )
 
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS))
     return True
