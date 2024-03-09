@@ -82,6 +82,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unique": "solis_modbus_inverter_pv_today_generation",
                  "register": ['33035'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
+                {"type": "SS", "name": "Solis PV Yesterday Energy Generation",
+                 "unique": "solis_modbus_inverter_pv_yesterday_generation",
+                 "register": ['33036'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
+                {"type": "SS", "name": "Solis PV This Year Energy Generation",
+                 "unique": "solis_modbus_inverter_pv_this_year_generation",
+                 "register": ['33037', '33038'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
+                {"type": "SS", "name": "Solis PV Last Year Energy Generation",
+                 "unique": "solis_modbus_inverter_pv_last_year_generation",
+                 "register": ['33039', '33040'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
             ]
         },
         {

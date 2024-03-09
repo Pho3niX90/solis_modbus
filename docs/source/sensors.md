@@ -55,6 +55,9 @@ The following sensors are provided in the integration.
 | Solis PV Current Month Energy Generation            | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33031, 33032                           |
 | Solis PV Last Month Energy Generation               | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33033, 33034                           |
 | Solis PV Today Energy Generation                    | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33035                                  |
+| Solis PV Yesterday Energy Generation                | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33036                                  |
+| Solis PV This Year Energy Generation                | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33037, 33038                           |
+| Solis PV Last Year Energy Generation                | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 33039, 33040                           |
 | Solis PV Voltage 1                                  | VOLTAGE        | VOLT                       | MEASUREMENT      | 33049                                  |
 | Solis PV Current 1                                  | CURRENT        | AMPERE                     | MEASUREMENT      | 33050                                  |
 | Solis PV Voltage 2                                  | VOLTAGE        | VOLT                       | MEASUREMENT      | 33051                                  |
