@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import List
 
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
@@ -183,7 +184,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
                 {"type": "SS", "name": "Solis Active Power",
                  "unique": "solis_modbus_inverter_active_power",
-                 "register": ['33079', '33080'], "device_class": SensorDeviceClass.POWER, "multiplier": 0.001,
+                 "register": ['33079', '33080'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
                  "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
 
                 {"type": "SS", "name": "Solis Reactive Power",
@@ -212,7 +213,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 {"type": "SS", "name": "Solis Status", "unique": "solis_modbus_inverter_current_status",
                  "register": ['33095'], "multiplier": 0, "state_class": SensorStateClass.MEASUREMENT},
 
-                {"type": "SS", "name": "Solis Lead-acid Battery Temperature", "unique": "solis_modbus_inverter_lead_acid_temp",
+                {"type": "SS", "name": "Solis Lead-acid Battery Temperature",
+                 "unique": "solis_modbus_inverter_lead_acid_temp",
                  "register": ['33096'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
                  "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
             ]
@@ -225,11 +227,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unique": "solis_modbus_inverter_storage_control_switching_value", "register": ['33132'],
                  "multiplier": 0, "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Battery Voltage",
-                 "unique": "solis_modbus_inverter_battery_voltage", "register": ['33133'], "device_class": SensorDeviceClass.VOLTAGE,
-                 "multiplier": 0.1, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
+                 "unique": "solis_modbus_inverter_battery_voltage", "register": ['33133'],
+                 "device_class": SensorDeviceClass.VOLTAGE,
+                 "multiplier": 0.1, "unit_of_measurement": UnitOfElectricPotential.VOLT,
+                 "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Battery Current",
-                 "unique": "solis_modbus_inverter_battery_current", "register": ['33134'], "device_class": SensorDeviceClass.CURRENT,
-                 "multiplier": 0.1, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+                 "unique": "solis_modbus_inverter_battery_current", "register": ['33134'],
+                 "device_class": SensorDeviceClass.CURRENT,
+                 "multiplier": 0.1, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                 "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Battery Current Direction",
                  "unique": "solis_modbus_inverter_battery_current_direction",
                  "register": ['33135'],
@@ -488,7 +494,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 {"type": "reserve", "register": ['43025', '43026']},
                 {"type": "SS", "name": "Solis Battery Force-charge Power Limitation",
                  "unique": "solis_modbus_inverter_battery_force_charge_limit",
-                 "register": ['43027'], "device_class": SensorDeviceClass.POWER, "multiplier": 0, "display_multiplier": 10,
+                 "register": ['43027'], "device_class": SensorDeviceClass.POWER, "multiplier": 0,
+                 "display_multiplier": 10,
                  "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Battery Force Charge Source",
                  "unique": "solis_modbus_inverter_battery_force_charge_source", "register": ['43028'], "multiplier": 0,
@@ -537,7 +544,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "multiplier": 0, "unit_of_measurement": UnitOfTime.HOURS, "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Time-Charging Discharge End Minute (Slot 1)",
                  "unique": "solis_modbus_inverter_time_discharge_end_minute_slot1", "register": ['43150'],
-                 "multiplier": 0, "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
+                 "multiplier": 0, "unit_of_measurement": UnitOfTime.MINUTES,
+                 "state_class": SensorStateClass.MEASUREMENT},
 
                 {"type": "reserve", "register": ['43051', '43052', '43052']},
 
@@ -546,7 +554,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "multiplier": 0, "unit_of_measurement": UnitOfTime.HOURS, "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Time-Charging Charge Start Minute (Slot 2)",
                  "unique": "solis_modbus_inverter_time_charging_start_minute_slot2", "register": ['43154'],
-                 "multiplier": 0, "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
+                 "multiplier": 0, "unit_of_measurement": UnitOfTime.MINUTES,
+                 "state_class": SensorStateClass.MEASUREMENT},
                 {"type": "SS", "name": "Solis Time-Charging Charge End Hour (Slot 2)",
                  "unique": "solis_modbus_inverter_time_charging_end_hour_slot2", "register": ['43155'], "multiplier": 0,
                  "unit_of_measurement": UnitOfTime.HOURS, "state_class": SensorStateClass.MEASUREMENT},
@@ -657,7 +666,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     async_add_entities(sensor_derived_entities, True)
 
     @callback
-    def async_update(now):
+    async def async_update(now):
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
 
@@ -680,10 +689,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 hass.data[DOMAIN]['values'][register_key] = value
                 _LOGGER.debug(f'register_key = {register_key}, value = {value}')
 
-        for entity in hass.data[DOMAIN]["sensor_entities"]:
-            entity.update()
-        for entity in hass.data[DOMAIN]["sensor_derived_entities"]:
-            entity.update()
+        await asyncio.gather(
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_derived_entities"]]
+        )
 
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS))
     return True
@@ -733,6 +742,31 @@ def extract_serial_number(values):
     return ''.join([hex_to_ascii(hex_value) for hex_value in values])
 
 
+def clock_drift_test(hours, minutes, seconds):
+    # Get the current time
+    current_time = datetime.now()
+
+    # Extract hours, minutes, and seconds
+    r_hours = current_time.hour
+    r_minutes = current_time.minute
+    r_seconds = current_time.second
+    d_hours = r_hours - hours
+    d_minutes = r_minutes - minutes
+    d_seconds = r_seconds - seconds
+    total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
+
+    if abs(total_drift) > 60:
+        _LOGGER.critical(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
+
+    elif abs(total_drift) > 30:
+        _LOGGER.warning(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
+
+    elif abs(total_drift) > 10:
+        _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
+    else:
+        _LOGGER.debug(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
+
+
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
 
@@ -777,13 +811,16 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 return
 
             n_value = None
+
             if '33095' in self._register:
                 n_value = round(get_value(self))
                 n_value = STATUS_MAPPING.get(n_value, "Unknown")
+
             if '33049' in self._register or '33051' in self._register:
                 r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] * self._multiplier
                 r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] * self._multiplier
                 n_value = round(r1_value * r2_value)
+
             if '33135' in self._register and len(self._register) == 4:
                 registers = self._register.copy()
                 self._register = registers[:2]
@@ -854,7 +891,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
-        if state:
+        if state and state.native_value is not None:
             self._attr_native_value = state.native_value * self._display_multiplier
         self.is_added_to_hass = True
 
@@ -863,6 +900,12 @@ class SolisSensor(RestoreSensor, SensorEntity):
         try:
             if not self.is_added_to_hass:
                 return
+
+            if '33027' in self._register:
+                hours = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 2)]
+                minutes = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 1)]
+                seconds = self._hass.data[DOMAIN]['values'][self._register[0]]
+                clock_drift_test(hours, minutes, seconds)
 
             if len(self._register) == 1 and self._register[0] in ('33001', '33002', '33003'):
                 n_value = hex(round(get_value(self)))[2:]
