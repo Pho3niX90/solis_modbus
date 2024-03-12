@@ -753,14 +753,15 @@ def clock_drift_test(hours, minutes, seconds):
     d_hours = r_hours - hours
     d_minutes = r_minutes - minutes
     d_seconds = r_seconds - seconds
+    total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
 
-    if abs(d_seconds) > 60:
+    if abs(total_drift) > 60:
         _LOGGER.critical(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
 
-    elif abs(d_seconds) > 30:
+    elif abs(total_drift) > 30:
         _LOGGER.warning(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
 
-    elif abs(d_seconds) > 10:
+    elif abs(total_drift) > 10:
         _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
     else:
         _LOGGER.debug(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
