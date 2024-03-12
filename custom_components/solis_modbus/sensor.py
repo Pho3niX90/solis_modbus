@@ -757,11 +757,13 @@ def clock_drift_test(hours, minutes, seconds):
     if abs(d_seconds) > 60:
         _LOGGER.critical(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
 
-    if abs(d_seconds) > 30:
+    elif abs(d_seconds) > 30:
         _LOGGER.warning(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
 
-    if abs(d_seconds) > 10:
+    elif abs(d_seconds) > 10:
         _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
+    else:
+        _LOGGER.debug(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
 
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
