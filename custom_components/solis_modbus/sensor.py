@@ -757,7 +757,7 @@ def clock_drift_test(controller, hours, minutes, seconds):
 
     if abs(total_drift) > 5:
         _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}, adjusting")
-        controller.write_holding_register(43005, current_time.second)
+        controller.write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
     else:
         _LOGGER.debug(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
 
