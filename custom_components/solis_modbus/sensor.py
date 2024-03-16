@@ -742,7 +742,7 @@ def extract_serial_number(values):
     return ''.join([hex_to_ascii(hex_value) for hex_value in values])
 
 
-def clock_drift_test(hours, minutes, seconds):
+def clock_drift_test(controller, hours, minutes, seconds):
     # Get the current time
     current_time = datetime.now()
 
@@ -755,16 +755,9 @@ def clock_drift_test(hours, minutes, seconds):
     d_seconds = r_seconds - seconds
     total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
 
-    if abs(total_drift) > 60:
-        _LOGGER.critical(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
-
-    elif abs(total_drift) > 30:
-        _LOGGER.warning(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
-
-    elif abs(total_drift) > 10:
-        _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
-    else:
-        _LOGGER.debug(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}")
+    if abs(total_drift) > 5:
+        _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}, adjusting")
+        controller.write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
 
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
@@ -905,7 +898,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 hours = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 2)]
                 minutes = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 1)]
                 seconds = self._hass.data[DOMAIN]['values'][self._register[0]]
-                clock_drift_test(hours, minutes, seconds)
+                clock_drift_test(self._modbus_controller, hours, minutes, seconds)
 
             if len(self._register) == 1 and self._register[0] in ('33001', '33002', '33003'):
                 n_value = hex(round(get_value(self)))[2:]
