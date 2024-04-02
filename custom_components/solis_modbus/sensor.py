@@ -315,7 +315,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             "entities": [
                 {"type": "SS", "name": "Solis Total Battery Charge Energy",
                  "unique": "solis_modbus_inverter_total_battery_charge_energy",
-                 "register": ['33161', '33162'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "register": ['33161', '33162'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
 
                 {"type": "SS", "name": "Solis Today Battery Charge Energy",
@@ -328,7 +328,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Total Battery Discharge Energy",
                  "unique": "solis_modbus_inverter_total_battery_discharge_energy",
-                 "register": ['33165', '33166'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "register": ['33165', '33166'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
 
                 {"type": "SS", "name": "Solis Today Battery Discharge Energy",
