@@ -5,6 +5,7 @@ This is a docstring placeholder.
 This is where we will describe what this module does
 
 """
+import asyncio
 import logging
 from datetime import timedelta
 from typing import List
@@ -81,8 +82,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     @callback
     def async_update(now):
         """Update Modbus data periodically."""
-        for entity in hass.data[DOMAIN]["number_entities"]:
-            entity.update()
+        asyncio.gather(
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["number_entities"]]
+        )
         # Schedule the update function to run every X seconds
 
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
