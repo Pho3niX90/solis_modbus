@@ -136,7 +136,7 @@ class SolisNumberEntity(NumberEntity):
 
         if value == 0:
             _LOGGER.debug(f'got 0 for register {self._register}, forcing update')
-            value = controller.async_read_holding_register(self._register)[0]
+            value = controller.read_holding_register(self._register)[0]
 
         _LOGGER.debug(f'Update number entity with value = {value / self._multiplier}')
 
