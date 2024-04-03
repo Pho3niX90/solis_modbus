@@ -30,8 +30,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the configuration by trying to connect to the Modbus device."""
         modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502))
         try:
-            modbus_controller.connect()
-            modbus_controller.read_input_register(33093)
+            await modbus_controller.connect()
+            await modbus_controller.read_input_register(33093)
             return True
         except ConnectionError:
             return False

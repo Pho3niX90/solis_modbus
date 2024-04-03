@@ -112,7 +112,7 @@ class SolisTimeEntity(TimeEntity):
         minute = self._hass.data[DOMAIN]['values'][str(self._register + 1)]
 
         if hour == 0 or minute == 0:
-            new_vals = controller.read_holding_register(self._register, count=2)
+            new_vals = controller.async_read_holding_register(self._register, count=2)
             hour = new_vals[0]
             minute = new_vals[1]
 

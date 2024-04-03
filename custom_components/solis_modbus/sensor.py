@@ -19,6 +19,7 @@ from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
@@ -618,7 +619,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             ]
         },
     ]
-
     sensors_derived = [
         {"type": "SDS", "name": "Solis Status String",
          "unique": "solis_modbus_inverter_current_status_string", "multiplier": 0,
@@ -668,17 +668,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     def update(now):
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
+        _LOGGER.info(f"update called {datetime}")
 
-        hass.async_create_task(get_modbus_updates(controller))
+        asyncio.create_task(get_modbus_updates(hass, controller))
 
         asyncio.gather(
             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_derived_entities"]]
         )
 
-    async def get_modbus_updates(controller):
+    async def get_modbus_updates(hass, controller):
         if not controller.connected():
-            controller.connect()
+            await controller.connect()
 
         for sensor_group in sensors:
             start_register = sensor_group['register_start']
@@ -686,9 +687,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             count = sum(len(entity.get('register', [])) for entity in sensor_group.get('entities', []))
 
             if start_register >= 40000:
-                values = controller.read_holding_register(start_register, count)
+                values = await controller.async_read_holding_register(start_register, count)
             else:
-                values = controller.read_input_register(start_register, count)
+                values = await controller.async_read_input_register(start_register, count)
 
             # Store each value with a unique key
             for i, value in enumerate(values):
