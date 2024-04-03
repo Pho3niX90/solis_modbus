@@ -5,6 +5,7 @@ This is a docstring placeholder.
 This is where we will describe what this module does
 
 """
+import asyncio
 import logging
 from datetime import timedelta
 from typing import List
@@ -79,13 +80,15 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     async_add_devices(numberEntities, True)
 
     @callback
-    def async_update(now):
+    def update(now):
         """Update Modbus data periodically."""
-        for entity in hass.data[DOMAIN]["number_entities"]:
-            entity.update()
+        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN]['number_entities'])} groups")
+        asyncio.gather(
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["number_entities"]]
+        )
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
+    async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS * 3))
 
     return True
 
@@ -133,7 +136,7 @@ class SolisNumberEntity(NumberEntity):
 
         if value == 0:
             _LOGGER.debug(f'got 0 for register {self._register}, forcing update')
-            value = controller.read_holding_register(self._register)[0]
+            value = controller.async_read_holding_register(self._register)[0]
 
         _LOGGER.debug(f'Update number entity with value = {value / self._multiplier}')
 
@@ -155,6 +158,6 @@ class SolisNumberEntity(NumberEntity):
         if self._attr_native_value == value:
             return
 
-        self._modbus_controller.write_holding_register(self._register, round(value * self._multiplier))
+        self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier))
         self._attr_native_value = value
         self.schedule_update_ha_state()

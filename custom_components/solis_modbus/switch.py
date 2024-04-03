@@ -51,7 +51,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         #    entity.update()
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
+    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 2))
 
     return True
 
@@ -69,10 +69,6 @@ class SolisBinaryEntity(SwitchEntity):
         self._attr_name = entity_definition["name"]
         self._attr_available = False
         self._attr_is_on = None
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        _LOGGER.debug(f"async_added_to_hass {self._attr_name}")
 
     def update(self):
         """Update Modbus data periodically."""
@@ -111,7 +107,7 @@ class SolisBinaryEntity(SwitchEntity):
             f"Attempting bit {self._bit_position} to {value} in register {self._read_register}. New value for register {new_register_value}")
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value:
-            controller.write_holding_register(self._write_register, new_register_value)
+            controller.async_write_holding_register(self._write_register, new_register_value)
             self._hass.data[DOMAIN]['values'][str(self._read_register)] = new_register_value
 
         self._attr_is_on = value

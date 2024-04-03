@@ -112,7 +112,7 @@ class SolisTimeEntity(TimeEntity):
         minute = self._hass.data[DOMAIN]['values'][str(self._register + 1)]
 
         if hour == 0 or minute == 0:
-            new_vals = controller.read_holding_register(self._register, count=2)
+            new_vals = controller.async_read_holding_register(self._register, count=2)
             hour = new_vals[0]
             minute = new_vals[1]
 
@@ -141,6 +141,6 @@ class SolisTimeEntity(TimeEntity):
     async def async_set_value(self, value: time) -> None:
         """Set the time."""
         _LOGGER.debug(f'async_set_value : register = {self._register}, value = {value}')
-        self._modbus_controller.write_holding_registers(self._register, [value.hour, value.minute])
+        await self._modbus_controller.async_write_holding_registers(self._register, [value.hour, value.minute])
         self._attr_native_value = value
         self.async_write_ha_state()

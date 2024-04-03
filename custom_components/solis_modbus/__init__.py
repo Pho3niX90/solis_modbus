@@ -33,7 +33,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     #        )
     #    )
 
-    def write_holding_register(call: ServiceCall):
+    def service_write_holding_register(call: ServiceCall):
         address = call.data.get('address')
         value = call.data.get('value')
         controller = hass.data[DOMAIN][CONTROLLER]
@@ -42,7 +42,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
         controller.write_holding_register(address, value)
 
     hass.services.async_register(
-        DOMAIN, "solis_write_holding_register", write_holding_register, schema=SCHEME_HOLDING_REGISTER
+        DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER
     )
 
     return True
