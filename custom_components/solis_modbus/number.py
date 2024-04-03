@@ -80,14 +80,15 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     async_add_devices(numberEntities, True)
 
     @callback
-    def async_update(now):
+    def update(now):
         """Update Modbus data periodically."""
+        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN]['number_entities'])} groups")
         asyncio.gather(
             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["number_entities"]]
         )
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
+    async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS * 3))
 
     return True
 

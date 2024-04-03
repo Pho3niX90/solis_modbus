@@ -51,7 +51,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         #    entity.update()
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
+    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 2))
 
     return True
 
@@ -69,10 +69,6 @@ class SolisBinaryEntity(SwitchEntity):
         self._attr_name = entity_definition["name"]
         self._attr_available = False
         self._attr_is_on = None
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        _LOGGER.debug(f"async_added_to_hass {self._attr_name}")
 
     def update(self):
         """Update Modbus data periodically."""
