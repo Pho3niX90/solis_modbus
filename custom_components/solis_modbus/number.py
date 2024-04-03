@@ -158,6 +158,6 @@ class SolisNumberEntity(NumberEntity):
         if self._attr_native_value == value:
             return
 
-        self._modbus_controller.write_holding_register(self._register, round(value * self._multiplier))
+        self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier))
         self._attr_native_value = value
         self.schedule_update_ha_state()

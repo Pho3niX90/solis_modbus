@@ -46,16 +46,18 @@ class ModbusController:
         except ModbusIOException as e:
             raise ValueError(f"Failed to read Modbus holding register: {str(e)}")
 
-    def write_holding_register(self, register: int, value):
+    async def async_write_holding_register(self, register: int, value):
         try:
-            result = self.client.write_register(register, value, slave=1)
+            async with self._lock:
+                result = await self.client.write_register(register, value, slave=1)
             return result
         except ModbusIOException as e:
             raise ValueError(f"Failed to write Modbus holding register ({register}): {str(e)}")
 
-    def write_holding_registers(self, start_register: int, values: list[int]):
+    async def write_holding_registers(self, start_register: int, values: list[int]):
         try:
-            result = self.client.write_registers(start_register, values, slave=1)
+            async with self._lock:
+                result = await self.client.write_registers(start_register, values, slave=1)
             return result
         except ModbusIOException as e:
             raise ValueError(f"Failed to write Modbus holding registers ({start_register}), values = {values}: {str(e)}")

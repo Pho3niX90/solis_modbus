@@ -141,6 +141,6 @@ class SolisTimeEntity(TimeEntity):
     async def async_set_value(self, value: time) -> None:
         """Set the time."""
         _LOGGER.debug(f'async_set_value : register = {self._register}, value = {value}')
-        self._modbus_controller.write_holding_registers(self._register, [value.hour, value.minute])
+        await self._modbus_controller.async_write_holding_registers(self._register, [value.hour, value.minute])
         self._attr_native_value = value
         self.async_write_ha_state()

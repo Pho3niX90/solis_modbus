@@ -668,7 +668,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     def update(now):
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
-        _LOGGER.info(f"update called {datetime}")
 
         asyncio.create_task(get_modbus_updates(hass, controller))
 
@@ -759,8 +758,7 @@ def clock_drift_test(controller, hours, minutes, seconds):
     total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
 
     if abs(total_drift) > 5:
-        _LOGGER.info(f"inverter time {hours}:{minutes}:{seconds}. drift = {d_hours}:{d_minutes}:{d_seconds}, adjusting")
-        controller.write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
+        controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
 
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
