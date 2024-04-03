@@ -19,7 +19,6 @@ from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
@@ -670,6 +669,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
 
+        hass.async_create_task(get_modbus_updates(controller))
+
+        asyncio.gather(
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_derived_entities"]]
+        )
+
+    async def get_modbus_updates(controller):
         if not controller.connected():
             controller.connect()
 
@@ -688,11 +695,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 register_key = f"{start_register + i}"
                 hass.data[DOMAIN]['values'][register_key] = value
                 _LOGGER.debug(f'register_key = {register_key}, value = {value}')
-
-        asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_derived_entities"]]
-        )
 
     async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS))
     return True
