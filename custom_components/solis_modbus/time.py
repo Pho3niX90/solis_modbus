@@ -5,6 +5,7 @@ This is a docstring placeholder.
 This is where we will describe what this module does
 
 """
+import asyncio
 import logging
 from datetime import time
 from datetime import timedelta
@@ -63,10 +64,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     async_add_devices(timeEntities, True)
 
     @callback
-    def async_update(now):
+    async def async_update(now):
         """Update Modbus data periodically."""
-        for entity in hass.data[DOMAIN]["time_entities"]:
-            entity.update()
+        await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN]["time_entities"]])
         # Schedule the update function to run every X seconds
 
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
@@ -103,7 +103,7 @@ class SolisTimeEntity(TimeEntity):
         await super().async_added_to_hass()
         _LOGGER.debug(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
 
-    def update(self):
+    async def async_update(self):
         """Update Modbus data periodically."""
         controller = self._hass.data[DOMAIN][CONTROLLER]
         self._attr_available = True
@@ -111,15 +111,13 @@ class SolisTimeEntity(TimeEntity):
         hour = self._hass.data[DOMAIN]['values'][str(self._register)]
         minute = self._hass.data[DOMAIN]['values'][str(self._register + 1)]
 
-        if hour == 0 or minute == 0:
-            new_vals = controller.async_read_holding_register(self._register, count=2)
-            hour = new_vals[0]
-            minute = new_vals[1]
+        if (hour == 0 or minute == 0) and controller.connected():
+            new_vals = await controller.async_read_holding_register(self._register, count=2)
+            hour = new_vals[0] if new_vals else None
+            minute = new_vals[1] if new_vals else None
 
-        _LOGGER.debug(f'Update time entity with hour = {hour}, minute = {minute}')
-
-        self._attr_native_value = time(hour=hour, minute=minute)
-        # self.async_write_ha_state()
+        if hour is not None:
+            self._attr_native_value = time(hour=hour, minute=minute)
 
     @property
     def device_info(self):
