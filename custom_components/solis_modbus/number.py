@@ -127,18 +127,16 @@ class SolisNumberEntity(NumberEntity):
         await super().async_added_to_hass()
         _LOGGER.debug(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
 
-    def update(self):
+    async def async_update(self):
         """Update Modbus data periodically."""
         controller = self._hass.data[DOMAIN][CONTROLLER]
         self._attr_available = True
 
         value: float = self._hass.data[DOMAIN]['values'][str(self._register)]
 
-        if value == 0:
-            _LOGGER.debug(f'got 0 for register {self._register}, forcing update')
-            value = controller.read_holding_register(self._register)[0]
-
-        _LOGGER.debug(f'Update number entity with value = {value / self._multiplier}')
+        if value == 0 and controller.connected():
+            register_value = await controller.async_read_holding_register(self._register)
+            value = register_value[0] if register_value else value
 
         self._attr_native_value = round(value / self._multiplier)
 
@@ -158,6 +156,6 @@ class SolisNumberEntity(NumberEntity):
         if self._attr_native_value == value:
             return
 
-        self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier))
+        asyncio.create_task(self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier)))
         self._attr_native_value = value
         self.schedule_update_ha_state()

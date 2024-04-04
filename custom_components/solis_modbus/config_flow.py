@@ -31,7 +31,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502))
         try:
             await modbus_controller.connect()
-            await modbus_controller.read_input_register(33093)
+            await modbus_controller.async_read_input_register(33093)
             return True
         except ConnectionError:
             return False

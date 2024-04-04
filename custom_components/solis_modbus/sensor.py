@@ -744,7 +744,7 @@ def extract_serial_number(values):
     return ''.join([hex_to_ascii(hex_value) for hex_value in values])
 
 
-def clock_drift_test(controller, hours, minutes, seconds):
+async def clock_drift_test(hass, controller, hours, minutes, seconds):
     # Get the current time
     current_time = datetime.now()
 
@@ -757,8 +757,16 @@ def clock_drift_test(controller, hours, minutes, seconds):
     d_seconds = r_seconds - seconds
     total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
 
+    drift_counter = hass.data[DOMAIN].get('drift_counter', 0)
+
     if abs(total_drift) > 5:
-        controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
+        """this is to make sure that we do not accidentally roll back the time, resetting all stats"""
+        if drift_counter > 5:
+            await controller.write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
+        else:
+            hass.data[DOMAIN]['drift_counter'] = drift_counter + 1
+    else:
+        hass.data[DOMAIN]['drift_counter'] = 0
 
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
@@ -899,7 +907,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 hours = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 2)]
                 minutes = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 1)]
                 seconds = self._hass.data[DOMAIN]['values'][self._register[0]]
-                clock_drift_test(self._modbus_controller, hours, minutes, seconds)
+                self.hass.create_task(clock_drift_test(self._hass, self._modbus_controller, hours, minutes, seconds))
 
             if len(self._register) == 1 and self._register[0] in ('33001', '33002', '33003'):
                 n_value = hex(round(get_value(self)))[2:]

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import timedelta
 from typing import List, Any
@@ -106,8 +107,8 @@ class SolisBinaryEntity(SwitchEntity):
         _LOGGER.debug(
             f"Attempting bit {self._bit_position} to {value} in register {self._read_register}. New value for register {new_register_value}")
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
-        if current_register_value != new_register_value:
-            controller.async_write_holding_register(self._write_register, new_register_value)
+        if current_register_value != new_register_value and controller.connected():
+            self._hass.create_task(controller.async_write_holding_register(self._write_register, new_register_value))
             self._hass.data[DOMAIN]['values'][str(self._read_register)] = new_register_value
 
         self._attr_is_on = value
