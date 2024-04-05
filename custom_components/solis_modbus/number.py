@@ -83,10 +83,16 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     def update(now):
         """Update Modbus data periodically."""
         _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN]['number_entities'])} groups")
-        asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["number_entities"]]
-        )
-        # Schedule the update function to run every X seconds
+        hass.create_task(get_modbus_updates(hass))
+
+    async def get_modbus_updates(hass):
+        controller = hass.data[DOMAIN][CONTROLLER]
+        if not controller.connected():
+            await controller.connect()
+        await asyncio.gather(
+             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["number_entities"]]
+         )
+
 
     async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS * 3))
 
@@ -127,18 +133,20 @@ class SolisNumberEntity(NumberEntity):
         await super().async_added_to_hass()
         _LOGGER.debug(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
 
-    async def async_update(self):
+    def update(self):
         """Update Modbus data periodically."""
-        controller = self._hass.data[DOMAIN][CONTROLLER]
         self._attr_available = True
 
         value: float = self._hass.data[DOMAIN]['values'][str(self._register)]
+        self._hass.create_task(self.update_values(value))
 
-        if value == 0 and controller.connected():
-            register_value = await controller.async_read_holding_register(self._register)
+    async def update_values(self, value):
+        if value == 0 and self._modbus_controller.connected():
+            register_value = await self._modbus_controller.async_read_holding_register(self._register)
             value = register_value[0] if register_value else value
 
         self._attr_native_value = round(value / self._multiplier)
+
 
     @property
     def device_info(self):
@@ -156,6 +164,6 @@ class SolisNumberEntity(NumberEntity):
         if self._attr_native_value == value:
             return
 
-        asyncio.create_task(self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier)))
+        self.hass.create_task(self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier)))
         self._attr_native_value = value
         self.schedule_update_ha_state()
