@@ -39,7 +39,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
         controller = hass.data[DOMAIN][CONTROLLER]
         # Perform the logic to write to the holding register using register_address and value_to_write
         # ...
-        asyncio.create_task(controller.write_holding_register(address, value))
+        hass.create_task(controller.write_holding_register(address, value))
 
     hass.services.async_register(
         DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER

@@ -669,7 +669,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
 
-        asyncio.create_task(get_modbus_updates(hass, controller))
+        hass.create_task(get_modbus_updates(hass, controller))
 
         asyncio.gather(
             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
@@ -762,7 +762,8 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
     if abs(total_drift) > 5:
         """this is to make sure that we do not accidentally roll back the time, resetting all stats"""
         if drift_counter > 5:
-            await controller.write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
+            if controller.connected():
+                await controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
         else:
             hass.data[DOMAIN]['drift_counter'] = drift_counter + 1
     else:
