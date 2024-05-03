@@ -90,6 +90,7 @@ class SolisTimeEntity(TimeEntity):
         # Hidden Inherited Instance Attributes
         self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._register)
         self._attr_name = entity_definition["name"]
+        self._attr_has_entity_name = True
         self._attr_native_value = entity_definition.get("default", None)
         self._attr_assumed_state = entity_definition.get("assumed", False)
         self._attr_available = False

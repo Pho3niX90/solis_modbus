@@ -776,6 +776,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
     def __init__(self, hass, entity_definition):
         self._hass = hass
         self._attr_name = entity_definition["name"]
+        self._attr_has_entity_name = True
         self._attr_unique_id = "{}_{}".format(DOMAIN, entity_definition["unique"])
 
         self._device_class = SwitchDeviceClass.SWITCH
@@ -842,7 +843,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             self._attr_available = True
             self._attr_native_value = n_value * self._display_multiplier
             self._state = n_value * self._display_multiplier
-            self.async_write_ha_state()
+            self.schedule_update_ha_state()
 
         except ValueError as e:
             _LOGGER.error(e)
@@ -869,6 +870,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._modbus_controller = modbus_controller
 
         self._attr_name = entity_definition["name"]
+        self._attr_has_entity_name = True
         self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, entity_definition["unique"])
 
         self._register: List[int] = entity_definition["register"]
@@ -918,7 +920,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
             self._attr_available = True
             self._attr_native_value = n_value * self._display_multiplier
             self._state = n_value * self._display_multiplier
-            self.async_write_ha_state()
+            self.schedule_update_ha_state()
         except ValueError as e:
             _LOGGER.error(e)
             # Handle communication or reading errors

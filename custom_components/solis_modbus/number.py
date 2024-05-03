@@ -115,6 +115,7 @@ class SolisNumberEntity(NumberEntity):
 
         # Hidden Inherited Instance Attributes
         self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._register)
+        self._attr_has_entity_name = True
         self._attr_name = entity_definition["name"]
         self._attr_native_value = entity_definition.get("default", None)
         self._attr_assumed_state = entity_definition.get("assumed", False)
@@ -131,7 +132,7 @@ class SolisNumberEntity(NumberEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        _LOGGER.debug(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
+        _LOGGER.info(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
 
     def update(self):
         """Update Modbus data periodically."""

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import timedelta
 from typing import List, Any
@@ -68,6 +67,7 @@ class SolisBinaryEntity(SwitchEntity):
         self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._read_register,
                                                     self._bit_position)
         self._attr_name = entity_definition["name"]
+        self._attr_has_entity_name = True
         self._attr_available = False
         self._attr_is_on = None
 
