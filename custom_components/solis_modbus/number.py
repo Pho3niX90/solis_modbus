@@ -82,11 +82,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN]['number_entities'])} groups")
-        hass.create_task(get_modbus_updates(hass))
-
-    async def get_modbus_updates(hass):
         controller = hass.data[DOMAIN][CONTROLLER]
+
+        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN]['number_entities'])} groups")
+        hass.create_task(get_modbus_updates(hass, controller))
+
+    async def get_modbus_updates(hass, controller):
         if not controller.connected():
             await controller.connect()
         await asyncio.gather(
@@ -140,6 +141,7 @@ class SolisNumberEntity(NumberEntity):
 
         value: float = self._hass.data[DOMAIN]['values'][str(self._register)]
         self._hass.create_task(self.update_values(value))
+        self.schedule_update_ha_state()
 
     async def update_values(self, value):
         if value == 0 and self._modbus_controller.connected():
