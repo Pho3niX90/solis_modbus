@@ -1,7 +1,6 @@
 """The Modbus Integration."""
 import asyncio
 import logging
-
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform

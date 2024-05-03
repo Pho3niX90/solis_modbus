@@ -2,7 +2,6 @@ import asyncio
 import logging
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +22,8 @@ class ModbusController:
 
             if not await self.client.connect():
                 self.connect_failures += 1
-                raise _LOGGER.warning(f"Failed to connect to Modbus device. Will retry, failures = {self.connect_failures}")
+                raise _LOGGER.warning(
+                    f"Failed to connect to Modbus device. Will retry, failures = {self.connect_failures}")
             else:
                 self.connect_failures = 0
             return True
@@ -67,7 +67,8 @@ class ModbusController:
                 result = await self.client.write_registers(start_register, values, slave=1)
             return result
         except Exception as e:
-            raise _LOGGER.error(f"Failed to write Modbus holding registers ({start_register}), values = {values}: {str(e)}")
+            raise _LOGGER.error(
+                f"Failed to write Modbus holding registers ({start_register}), values = {values}: {str(e)}")
 
     def close_connection(self):
         self.client.close()
