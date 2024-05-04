@@ -840,10 +840,11 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 else:
                     n_value = 0
 
-            self._attr_available = True
-            self._attr_native_value = n_value * self._display_multiplier
-            self._state = n_value * self._display_multiplier
-            self.schedule_update_ha_state()
+            if n_value is not None:
+                self._attr_available = True
+                self._attr_native_value = n_value * self._display_multiplier
+                self._state = n_value * self._display_multiplier
+                self.schedule_update_ha_state()
 
         except ValueError as e:
             _LOGGER.error(e)
@@ -902,9 +903,12 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
     def update(self):
         """Update the sensor value."""
+
         try:
             if not self.is_added_to_hass:
                 return
+
+            n_value = None
 
             if '33027' in self._register:
                 hours = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 2)]
@@ -917,10 +921,12 @@ class SolisSensor(RestoreSensor, SensorEntity):
             else:
                 n_value = get_value(self)
 
-            self._attr_available = True
-            self._attr_native_value = n_value * self._display_multiplier
-            self._state = n_value * self._display_multiplier
-            self.schedule_update_ha_state()
+            if n_value is not None:
+                self._attr_available = True
+                self._attr_native_value = n_value * self._display_multiplier
+                self._state = n_value * self._display_multiplier
+                self.schedule_update_ha_state()
+
         except ValueError as e:
             _LOGGER.error(e)
             # Handle communication or reading errors
