@@ -908,8 +908,6 @@ class SolisSensor(RestoreSensor, SensorEntity):
             if not self.is_added_to_hass:
                 return
 
-            n_value = None
-
             if '33027' in self._register:
                 hours = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 2)]
                 minutes = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 1)]
@@ -920,6 +918,9 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 n_value = hex(round(get_value(self)))[2:]
             else:
                 n_value = get_value(self)
+
+            if n_value == 0:
+                n_value = self.async_get_last_sensor_data()
 
             if n_value is not None:
                 self._attr_available = True
