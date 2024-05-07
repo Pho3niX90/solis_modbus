@@ -73,11 +73,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis PV Current Month Energy Generation",
                  "unique": "solis_modbus_inverter_pv_current_month_generation",
-                 "register": ['33031', '33032'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0,
+                 "register": ['33031', '33032'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis PV Last Month Energy Generation",
                  "unique": "solis_modbus_inverter_pv_last_month_generation",
-                 "register": ['33033', '33034'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0,
+                 "register": ['33033', '33034'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis PV Today Energy Generation",
                  "unique": "solis_modbus_inverter_pv_today_generation",
@@ -89,11 +89,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis PV This Year Energy Generation",
                  "unique": "solis_modbus_inverter_pv_this_year_generation",
-                 "register": ['33037', '33038'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "register": ['33037', '33038'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis PV Last Year Energy Generation",
                  "unique": "solis_modbus_inverter_pv_last_year_generation",
-                 "register": ['33039', '33040'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+                 "register": ['33039', '33040'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
             ]
         },
@@ -441,7 +441,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Household Load Month Energy",
                  "unique": "solis_modbus_inverter_household_month_energy",
-                 "register": ['33584', '33585'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0,
+                 "register": ['33584', '33585'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Household Load Today Energy",
                  "unique": "solis_modbus_inverter_household_today_energy",
@@ -459,7 +459,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Backup Load Month Energy",
                  "unique": "solis_modbus_inverter_backup_month_energy",
-                 "register": ['33594', '33595'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0,
+                 "register": ['33594', '33595'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
                  "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
                 {"type": "SS", "name": "Solis Backup Load Today Energy",
                  "unique": "solis_modbus_inverter_backup_today_energy",
@@ -840,10 +840,11 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 else:
                     n_value = 0
 
-            self._attr_available = True
-            self._attr_native_value = n_value * self._display_multiplier
-            self._state = n_value * self._display_multiplier
-            self.schedule_update_ha_state()
+            if n_value is not None:
+                self._attr_available = True
+                self._attr_native_value = n_value * self._display_multiplier
+                self._state = n_value * self._display_multiplier
+                self.schedule_update_ha_state()
 
         except ValueError as e:
             _LOGGER.error(e)
@@ -902,6 +903,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
     def update(self):
         """Update the sensor value."""
+
         try:
             if not self.is_added_to_hass:
                 return
@@ -917,10 +919,15 @@ class SolisSensor(RestoreSensor, SensorEntity):
             else:
                 n_value = get_value(self)
 
-            self._attr_available = True
-            self._attr_native_value = n_value * self._display_multiplier
-            self._state = n_value * self._display_multiplier
-            self.schedule_update_ha_state()
+            if n_value == 0:
+                n_value = self.async_get_last_sensor_data()
+
+            if n_value is not None:
+                self._attr_available = True
+                self._attr_native_value = n_value * self._display_multiplier
+                self._state = n_value * self._display_multiplier
+                self.schedule_update_ha_state()
+
         except ValueError as e:
             _LOGGER.error(e)
             # Handle communication or reading errors

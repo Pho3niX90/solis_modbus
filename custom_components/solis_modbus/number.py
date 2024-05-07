@@ -11,7 +11,7 @@ from datetime import timedelta
 from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, RestoreSensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfElectricCurrent, PERCENTAGE, UnitOfPower, )
@@ -102,7 +102,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     # fmt: on
 
 
-class SolisNumberEntity(NumberEntity):
+class SolisNumberEntity(RestoreSensor, NumberEntity):
     """Representation of a Number entity."""
 
     def __init__(self, hass, modbus_controller, entity_definition):
@@ -121,6 +121,7 @@ class SolisNumberEntity(NumberEntity):
         self._attr_native_value = entity_definition.get("default", None)
         self._attr_assumed_state = entity_definition.get("assumed", False)
         self._attr_available = False
+        self.is_added_to_hass = False
         self._attr_device_class = entity_definition.get("device_class", None)
         self._attr_icon = entity_definition.get("icon", None)
         self._attr_mode = entity_definition.get("mode", NumberMode.AUTO)
@@ -133,7 +134,10 @@ class SolisNumberEntity(NumberEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        _LOGGER.info(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
+        state = await self.async_get_last_sensor_data()
+        if state:
+            self._attr_native_value = state.native_value
+        self.is_added_to_hass = True
 
     def update(self):
         """Update Modbus data periodically."""
