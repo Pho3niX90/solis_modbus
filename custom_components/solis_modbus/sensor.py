@@ -14,7 +14,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, \
+    MODEL, DATA_RECEIVED, VALUES, SENSOR_DERIVED_ENTITIES, SENSOR_ENTITIES, DRIFT_COUNTER
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,7 +26,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
     sensor_entities: List[SensorEntity] = []
     sensor_derived_entities: List[SensorEntity] = []
-    hass.data[DOMAIN]['values'] = {}
+    hass.data[DOMAIN][VALUES] = {}
+    hass.data[DOMAIN][DATA_RECEIVED] = False
 
     sensors = [
         {
@@ -649,7 +651,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     for sensor_group in sensors:
         for entity_definition in sensor_group['entities']:
             for register in entity_definition['register']:
-                hass.data[DOMAIN]['values'][register] = 0
+                hass.data[DOMAIN][VALUES][register] = 0
             type = entity_definition["type"]
             if type == 'SS':
                 sensor_entities.append(SolisSensor(hass, modbus_controller, entity_definition))
@@ -659,8 +661,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         if type == 'SDS':
             sensor_derived_entities.append(SolisDerivedSensor(hass, sensor_group))
 
-    hass.data[DOMAIN]['sensor_entities'] = sensor_entities
-    hass.data[DOMAIN]['sensor_derived_entities'] = sensor_derived_entities
+    hass.data[DOMAIN][SENSOR_ENTITIES] = sensor_entities
+    hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES] = sensor_derived_entities
     async_add_entities(sensor_entities, True)
     async_add_entities(sensor_derived_entities, True)
 
@@ -672,8 +674,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         hass.create_task(get_modbus_updates(hass, controller))
 
         asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_entities"]],
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["sensor_derived_entities"]]
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_ENTITIES]],
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES]]
         )
 
     async def get_modbus_updates(hass, controller):
@@ -695,6 +697,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 register_key = f"{start_register + i}"
                 hass.data[DOMAIN]['values'][register_key] = value
                 _LOGGER.debug(f'register_key = {register_key}, value = {value}')
+
+            hass.data[DOMAIN][DATA_RECEIVED] = True
 
     async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS))
     return True
@@ -757,7 +761,7 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
     d_seconds = r_seconds - seconds
     total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
 
-    drift_counter = hass.data[DOMAIN].get('drift_counter', 0)
+    drift_counter = hass.data[DOMAIN].get(DRIFT_COUNTER, 0)
 
     if abs(total_drift) > 5:
         """this is to make sure that we do not accidentally roll back the time, resetting all stats"""
@@ -765,9 +769,9 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
             if controller.connected():
                 await controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second])
         else:
-            hass.data[DOMAIN]['drift_counter'] = drift_counter + 1
+            hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
     else:
-        hass.data[DOMAIN]['drift_counter'] = 0
+        hass.data[DOMAIN][DRIFT_COUNTER] = 0
 
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
@@ -909,9 +913,9 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 return
 
             if '33027' in self._register:
-                hours = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 2)]
-                minutes = self._hass.data[DOMAIN]['values'][str(int(self._register[0]) - 1)]
-                seconds = self._hass.data[DOMAIN]['values'][self._register[0]]
+                hours = self._hass.data[DOMAIN][VALUES][str(int(self._register[0]) - 2)]
+                minutes = self._hass.data[DOMAIN][VALUES][str(int(self._register[0]) - 1)]
+                seconds = self._hass.data[DOMAIN][VALUES][self._register[0]]
                 self.hass.create_task(clock_drift_test(self._hass, self._modbus_controller, hours, minutes, seconds))
 
             if len(self._register) == 1 and self._register[0] in ('33001', '33002', '33003'):
@@ -919,7 +923,9 @@ class SolisSensor(RestoreSensor, SensorEntity):
             else:
                 n_value = get_value(self)
 
-            if n_value == 0:
+            if (n_value == 0
+                    and self.state_class != SensorStateClass.MEASUREMENT
+                    and self._hass.data[DOMAIN][DATA_RECEIVED] is not True):
                 n_value = self.async_get_last_sensor_data()
 
             if n_value is not None:
