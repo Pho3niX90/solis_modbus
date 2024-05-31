@@ -18,7 +18,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, \
+    MODEL, TIME_ENTITIES, VALUES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,13 +61,13 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         type = entity_definition["type"]
         if type == "STE":
             timeEntities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
-    hass.data[DOMAIN]['time_entities'] = timeEntities
+    hass.data[DOMAIN][TIME_ENTITIES] = timeEntities
     async_add_devices(timeEntities, True)
 
     @callback
     async def async_update(now):
         """Update Modbus data periodically."""
-        await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN]["time_entities"]])
+        await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN][TIME_ENTITIES]])
         # Schedule the update function to run every X seconds
 
     async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
@@ -109,8 +110,8 @@ class SolisTimeEntity(TimeEntity):
         controller = self._hass.data[DOMAIN][CONTROLLER]
         self._attr_available = True
 
-        hour = self._hass.data[DOMAIN]['values'][str(self._register)]
-        minute = self._hass.data[DOMAIN]['values'][str(self._register + 1)]
+        hour = self._hass.data[DOMAIN][VALUES][str(self._register)]
+        minute = self._hass.data[DOMAIN][VALUES][str(self._register + 1)]
 
         if (hour == 0 or minute == 0) and controller.connected():
             new_vals = await controller.async_read_holding_register(self._register, count=2)
