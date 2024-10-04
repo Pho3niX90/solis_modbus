@@ -19,7 +19,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, MODEL
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, \
+    MODEL, VALUES, NUMBER_ENTITIES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         type = entity_definition["type"]
         if type == "SNE":
             numberEntities.append(SolisNumberEntity(hass, modbus_controller, entity_definition))
-    hass.data[DOMAIN]['number_entities'] = numberEntities
+    hass.data[DOMAIN][NUMBER_ENTITIES] = numberEntities
     async_add_devices(numberEntities, True)
 
     @callback
@@ -84,14 +85,14 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         """Update Modbus data periodically."""
         controller = hass.data[DOMAIN][CONTROLLER]
 
-        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN]['number_entities'])} groups")
+        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
         hass.create_task(get_modbus_updates(hass, controller))
 
     async def get_modbus_updates(hass, controller):
         if not controller.connected():
             await controller.connect()
         await asyncio.gather(
-             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN]["number_entities"]]
+             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][NUMBER_ENTITIES]]
          )
 
 
@@ -143,7 +144,7 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         """Update Modbus data periodically."""
         self._attr_available = True
 
-        value: float = self._hass.data[DOMAIN]['values'][str(self._register)]
+        value: float = self._hass.data[DOMAIN][VALUES][str(self._register)]
         self._hass.create_task(self.update_values(value))
         self.schedule_update_ha_state()
 

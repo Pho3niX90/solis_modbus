@@ -8,7 +8,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import POLL_INTERVAL_SECONDS, DOMAIN, CONTROLLER, VERSION, MANUFACTURER, MODEL
+from custom_components.solis_modbus.const import POLL_INTERVAL_SECONDS, DOMAIN, CONTROLLER, VERSION, MANUFACTURER, \
+    MODEL, VALUES, ENTITIES, SWITCH_ENTITIES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,14 +35,14 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     switchEntities: List[SolisBinaryEntity] = []
 
     for main_entity in switch_sensors:
-        for child_entity in main_entity['entities']:
+        for child_entity in main_entity[ENTITIES]:
             type = child_entity["type"]
             if type == "SBS":
                 child_entity['read_register'] = main_entity['read_register']
                 child_entity['write_register'] = main_entity['write_register']
                 switchEntities.append(SolisBinaryEntity(hass, modbus_controller, child_entity))
 
-    hass.data[DOMAIN]['switch_entities'] = switchEntities
+    hass.data[DOMAIN][SWITCH_ENTITIES] = switchEntities
     async_add_devices(switchEntities, True)
 
     @callback
@@ -73,7 +74,7 @@ class SolisBinaryEntity(SwitchEntity):
 
     def update(self):
         """Update Modbus data periodically."""
-        value: int = self._hass.data[DOMAIN]['values'][str(self._read_register)]
+        value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
 
         initial_state = self._attr_is_on
         if not self._attr_available:
@@ -101,7 +102,7 @@ class SolisBinaryEntity(SwitchEntity):
     def set_register_bit(self, value):
         """Set or clear a specific bit in the Modbus register."""
         controller = self._hass.data[DOMAIN][CONTROLLER]
-        current_register_value: int = self._hass.data[DOMAIN]['values'][str(self._read_register)]
+        current_register_value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
         new_register_value: int = set_bit(current_register_value, self._bit_position, value)
 
         _LOGGER.debug(
@@ -109,7 +110,7 @@ class SolisBinaryEntity(SwitchEntity):
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
             self._hass.create_task(controller.async_write_holding_register(self._write_register, new_register_value))
-            self._hass.data[DOMAIN]['values'][str(self._read_register)] = new_register_value
+            self._hass.data[DOMAIN][VALUES][str(self._read_register)] = new_register_value
 
         self._attr_is_on = value
 
