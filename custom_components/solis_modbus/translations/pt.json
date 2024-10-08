@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solis",
+        "description": "Configuração da integração para Inversores Solis",
+        "data": {
+          "host": "Endereço IP do Inversor Solis",
+          "port": "Porta TCP do Inversor"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Escrever no registo de manutenção",
+      "description": "Escreve um valor num registo de manutenção",
+      "fields": {
+        "address": {
+          "name": "Endereço",
+          "description": "Endereço para onde escrever"
+        },
+        "value": {
+          "name": "Valor",
+          "description": "Valor a escrever"
+        }
+      }
+    }
+  }
+}
