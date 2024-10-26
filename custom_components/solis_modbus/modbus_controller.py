@@ -22,14 +22,17 @@ class ModbusController:
 
             if not await self.client.connect():
                 self.connect_failures += 1
-                raise _LOGGER.warning(
+                _LOGGER.warning(
                     f"Failed to connect to Modbus device. Will retry, failures = {self.connect_failures}")
+                return False  # Return False if connection fails
             else:
                 self.connect_failures = 0
-            return True
+                return True
 
         except Exception as e:
-            raise _LOGGER.error(f"Failed to connect to Modbus device. Will retry")
+            _LOGGER.error(f"Failed to connect to Modbus device. Will retry. Exception: {e}")
+            return False  # Return False if an exception occurs
+
 
     async def async_read_input_register(self, register, count=1):
         try:
