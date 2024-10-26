@@ -9,7 +9,7 @@ from homeassistant.components.switch import SwitchDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfFrequency, UnitOfTemperature, \
     UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, \
-    UnitOfApparentPower, PERCENTAGE, UnitOfEnergy, POWER_VOLT_AMPERE_REACTIVE, UnitOfTime
+    UnitOfApparentPower, UnitOfReactivePower, PERCENTAGE, UnitOfEnergy, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -192,7 +192,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 {"type": "SS", "name": "Solis Reactive Power",
                  "unique": "solis_modbus_inverter_reactive_power",
                  "register": ['33081', '33082'], "device_class": SensorDeviceClass.REACTIVE_POWER, "multiplier": 0,
-                 "unit_of_measurement": POWER_VOLT_AMPERE_REACTIVE, "state_class": SensorStateClass.MEASUREMENT},
+                 "unit_of_measurement": UnitOfReactivePower.VOLT_AMPERE_REACTIVE, "state_class": SensorStateClass.MEASUREMENT},
 
                 {"type": "SS", "name": "Solis Apparent Power",
                  "unique": "solis_modbus_inverter_apparent_power",
@@ -636,6 +636,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
          "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
          "register": ['33051', '33052']},
 
+        {"type": "SDS", "name": "Solis PV Power 3",
+         "unique": "solis_modbus_inverter_dc_power_3", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
+         "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
+         "register": ['33053', '33054']},
+
+        {"type": "SDS", "name": "Solis PV Power 4",
+         "unique": "solis_modbus_inverter_dc_power_4", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
+         "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
+         "register": ['33055', '33056']},
+
         {"type": "SDS", "name": "Solis Battery Charge Power",
          "unique": "solis_modbus_inverter_battery_charge_power", "device_class": SensorDeviceClass.POWER,
          "multiplier": 0.1,
@@ -824,7 +834,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 n_value = round(get_value(self))
                 n_value = STATUS_MAPPING.get(n_value, "Unknown")
 
-            if '33049' in self._register or '33051' in self._register:
+            if '33049' in self._register or '33051' in self._register or '33053' in self._register or '33055' in self._register:
                 r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] * self._multiplier
                 r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] * self._multiplier
                 n_value = round(r1_value * r2_value)
