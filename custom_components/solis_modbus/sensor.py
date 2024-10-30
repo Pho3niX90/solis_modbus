@@ -79,6 +79,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             else:
                 values = await controller.async_read_input_register(start_register, count)
 
+            if values is None:
+                continue
+
             # Store each value with a unique key
             for i, value in enumerate(values):
                 register_key = f"{start_register + i}"

@@ -30,7 +30,7 @@ class ModbusController:
                 return True
 
         except Exception as e:
-            _LOGGER.error(f"Failed to connect to Modbus device. Will retry. Exception: {e}")
+            _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {e}")
             return False  # Return False if an exception occurs
 
 
@@ -42,7 +42,8 @@ class ModbusController:
                 _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
             return result.registers
         except Exception as e:
-            raise _LOGGER.error(f"Failed to read Modbus register: {str(e)}")
+            _LOGGER.debug(f"Failed to read Modbus holding register: {str(e)}")
+            return None
 
     async def async_read_holding_register(self, register: int, count=1):
         try:
@@ -52,7 +53,8 @@ class ModbusController:
                 _LOGGER.debug(f'holding register value, register = {register}, result = {result.registers}')
             return result.registers
         except Exception as e:
-            raise _LOGGER.error(f"Failed to read Modbus holding register: {str(e)}")
+            _LOGGER.debug(f"Failed to read Modbus holding register: {str(e)}")
+            return None
 
     async def async_write_holding_register(self, register: int, value):
         try:
@@ -61,7 +63,8 @@ class ModbusController:
                 result = await self.client.write_register(register, value, slave=1)
             return result
         except Exception as e:
-            raise _LOGGER.error(f"Failed to write Modbus holding register ({register}): {str(e)}")
+            _LOGGER.debug(f"Failed to write Modbus holding register ({register}): {str(e)}")
+            return None
 
     async def async_write_holding_registers(self, start_register: int, values: list[int]):
         try:
@@ -70,8 +73,9 @@ class ModbusController:
                 result = await self.client.write_registers(start_register, values, slave=1)
             return result
         except Exception as e:
-            raise _LOGGER.error(
+            _LOGGER.debug(
                 f"Failed to write Modbus holding registers ({start_register}), values = {values}: {str(e)}")
+            return None
 
     def close_connection(self):
         self.client.close()
