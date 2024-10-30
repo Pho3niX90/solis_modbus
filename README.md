@@ -216,6 +216,7 @@ Card inspiration from https://github.com/slipx06/Sunsynk-Home-Assistant-Dash
 **Inverters Tested**
 - Solis S6 Pro 6kW Advanced Hybrid Inverter
 - Solis RHI-5K @fastsonic
+- Solis S6-EH3P15K-H
 
 **Wifi Dongles Tested**
 - S2_WL_ST
