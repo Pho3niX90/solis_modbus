@@ -4,6 +4,9 @@ on:
     types: [created]
 jobs:
   pr_agent_job:
+    permissions:
+      issues: write
+      pull-requests: write
     runs-on: ubuntu-latest
     name: Run pr agent on every pull request, respond to user comments
     steps:
