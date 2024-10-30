@@ -68,17 +68,17 @@ string_sensors = [
         ]
     },
     {
-        "register_start": 3005,
+        "register_start": 33005,
         "scan_interval": 15,
         "entities": [
             {"type": "SS", "name": "Solis Active Power",
              "unique": "solis_modbus_inverter_active_power",
-             "register": ['3005', '3006'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
+             "register": ['33005', '33006'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
              "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Total DC Output Power",
              "unique": "solis_modbus_inverter_total_dc_output_power",
-             "register": ['3007', '3008'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
+             "register": ['33007', '33008'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
              "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
         ]
     },
