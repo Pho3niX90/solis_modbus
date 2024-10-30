@@ -36,6 +36,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     _LOGGER.info(f"Solis platform_config: {platform_config}")
 
+    inverter_type = config_entry.data.get("type", "hybrid")
+
+    if inverter_type == 'string':
+        return False
+
     # fmt: off
 
     timeEntities: List[SolisTimeEntity] = []

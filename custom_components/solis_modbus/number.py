@@ -31,6 +31,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 
+    inverter_type = config_entry.data.get("type", "hybrid")
+
+    if inverter_type == 'string':
+        return False
+
     platform_config = config_entry.data or {}
     if len(config_entry.options) > 0:
         platform_config = config_entry.options

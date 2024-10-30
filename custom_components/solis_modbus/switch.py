@@ -17,6 +17,11 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     modbus_controller = hass.data[DOMAIN][CONTROLLER]
 
+    inverter_type = config_entry.data.get("type", "hybrid")
+
+    if inverter_type == 'string':
+        return False
+
     switch_sensors = [
         {
             "read_register": 33132, 'write_register': 43110,
