@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import timedelta, datetime
 from typing import List
+from numbers import Number
 
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
 from homeassistant.components.sensor.const import SensorStateClass
@@ -235,7 +236,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 else:
                     n_value = 0
 
-            if n_value is not None:
+            if isinstance(n_value, Number):
                 self._attr_available = True
                 self._attr_native_value = n_value * self._display_multiplier
                 self._state = n_value * self._display_multiplier
