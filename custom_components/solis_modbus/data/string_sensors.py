@@ -68,31 +68,6 @@ string_sensors = [
         ]
     },
     {
-        "register_start": 36050,
-        "scan_interval": 60,
-        "entities": [
-            {"type": "SS", "name": "Solis Total Generation Energy",
-             "unique": "solis_modbus_inverter_total_generation_energy",
-             "register": ['36050', '36051'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.01,
-             "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
-
-            {"type": "SS", "name": "Solis Load Total Consumption Energy",
-             "unique": "solis_modbus_inverter_total_load_power",
-             "register": ['36052', '36053'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.01,
-             "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
-
-            {"type": "SS", "name": "Solis Grid Import Total Active Energy",
-             "unique": "solis_modbus_inverter_grid_import_total_active_energy",
-             "register": ['36054', '36055'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.01,
-             "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
-
-            {"type": "SS", "name": "Solis Grid Export Total Active Energy",
-             "unique": "solis_modbus_inverter_grid_export_total_active_energy",
-             "register": ['36056', '36057'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.01,
-             "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
-        ]
-    },
-    {
         "register_start": 3005,
         "scan_interval": 15,
         "entities": [
