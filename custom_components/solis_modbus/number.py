@@ -88,7 +88,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        for controller in hass.data[DOMAIN][CONTROLLER]:
+        for controller in hass.data[DOMAIN][CONTROLLER].values():
             _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
             hass.create_task(get_modbus_updates(hass, controller))
 

@@ -46,7 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Store an instance of the ModbusController in hass.data for access by other components
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {
-            "values": []
+            "values": [],
+            CONTROLLER: {}
         }
 
     host = entry.data.get("host")
@@ -77,7 +78,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Clean up resources
     if unload_ok:
-        for controller in hass.data[DOMAIN][CONTROLLER]:
+        for controller in hass.data[DOMAIN][CONTROLLER].values():
             controller.close_connection()
 
     return unload_ok

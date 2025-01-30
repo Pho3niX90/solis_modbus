@@ -57,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        for controller in hass.data[DOMAIN][CONTROLLER]:
+        for controller in hass.data[DOMAIN][CONTROLLER].values():
             hass.create_task(get_modbus_updates(hass, controller))
 
             asyncio.gather(
