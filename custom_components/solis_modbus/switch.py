@@ -8,14 +8,15 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import POLL_INTERVAL_SECONDS, DOMAIN, CONTROLLER, VERSION, MANUFACTURER, \
-    MODEL, VALUES, ENTITIES, SWITCH_ENTITIES
+from custom_components.solis_modbus import ModbusController
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
+    VALUES, ENTITIES, SWITCH_ENTITIES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
-    modbus_controller = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
+    modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
@@ -57,7 +58,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         #    entity.update()
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 2))
+    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 2))
 
     return True
 
@@ -66,7 +67,7 @@ class SolisBinaryEntity(SwitchEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
-        self._modbus_controller = modbus_controller
+        self._modbus_controller: ModbusController = modbus_controller
         self._read_register: int = entity_definition["read_register"]
         self._write_register: int = entity_definition["write_register"]
         self._bit_position = entity_definition["bit_position"]
@@ -127,9 +128,9 @@ class SolisBinaryEntity(SwitchEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
-            name=f"{MANUFACTURER} {MODEL}",
-            sw_version=VERSION,
+            model=self._modbus_controller.model,
+            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            sw_version=self._modbus_controller.sw_version,
         )
 
 

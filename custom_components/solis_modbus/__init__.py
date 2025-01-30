@@ -53,7 +53,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     host = entry.data.get("host")
     port = entry.data.get("port", 502)
 
-    controller = ModbusController(host, port)
+    poll_interval = entry.data.get("poll_interval")
+
+    if poll_interval is None or poll_interval < 5:
+        poll_interval = 15
+
+    controller = ModbusController(host, port, poll_interval)
     hass.data[DOMAIN][CONTROLLER][host] = controller
 
     if not controller.connected():

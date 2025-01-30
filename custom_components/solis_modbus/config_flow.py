@@ -32,7 +32,13 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device."""
-        modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502))
+
+        poll_interval = user_input.get("poll_interval")
+        if poll_interval is None or poll_interval < 5:
+            poll_interval = 15
+
+        modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502), poll_interval)
+
         try:
             await modbus_controller.connect()
 
@@ -54,6 +60,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required("host", default="", description="your solis ip"): str,
                 vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
+                vol.Required(
+                    "poll_interval",
+                    default=15,
+                    description="poll interval in seconds"
+                ): vol.All(int, vol.Range(min=5)),
                 vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid"]),
             }
         )

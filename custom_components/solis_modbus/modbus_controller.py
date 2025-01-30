@@ -3,16 +3,22 @@ import logging
 
 from pymodbus.client import AsyncModbusTcpClient
 
+from custom_components.solis_modbus.const import MODEL
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class ModbusController:
-    def __init__(self, host, port=502):
+    def __init__(self, host, port=502, poll_interval=15):
         self.host = host
         self.port = port
         self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(self.host, port=self.port)
         self.connect_failures = 0
         self._lock = asyncio.Lock()
+        self._data_received = False
+        self._poll_interval = poll_interval
+        self._model = MODEL
+        self._sw_version = "N/A"
 
     async def connect(self):
         try:
@@ -83,3 +89,19 @@ class ModbusController:
 
     def connected(self):
         return self.client.connected
+
+    @property
+    def poll_interval(self):
+        return self._poll_interval
+
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def sw_version(self):
+        return self._sw_version
+
+    @property
+    def data_received(self):
+        return self._data_received

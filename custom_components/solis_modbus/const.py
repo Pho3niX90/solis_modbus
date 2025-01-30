@@ -1,11 +1,9 @@
 DOMAIN = "solis_modbus"
 CONTROLLER = "modbus_controller"
 VERSION = "1.5.5"
-POLL_INTERVAL_SECONDS = 15
 MANUFACTURER = "Solis"
 MODEL = "S6"
 
-DATA_RECEIVED = 'data_received'
 VALUES = 'values'
 SENSOR_ENTITIES = 'sensor_entities'
 TIME_ENTITIES = 'time_entities'
