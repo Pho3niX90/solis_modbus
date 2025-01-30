@@ -15,10 +15,11 @@ class ModbusController:
         self._lock = asyncio.Lock()
 
     async def connect(self):
-        _LOGGER.debug('connecting')
         try:
             if self.client.connected:
                 return True
+
+            _LOGGER.debug('connecting')
 
             if not await self.client.connect():
                 self.connect_failures += 1
@@ -29,8 +30,8 @@ class ModbusController:
                 self.connect_failures = 0
                 return True
 
-        except Exception as e:
-            _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {e}")
+        except ConnectionError as e:
+            _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {str(e)}")
             return False  # Return False if an exception occurs
 
 

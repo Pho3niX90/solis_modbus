@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
@@ -106,7 +106,7 @@ class SolisBinaryEntity(SwitchEntity):
 
     def set_register_bit(self, value):
         """Set or clear a specific bit in the Modbus register."""
-        controller = self._hass.data[DOMAIN][CONTROLLER]
+        controller = self._modbus_controller
         current_register_value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
         new_register_value: int = set_bit(current_register_value, self._bit_position, value)
 
@@ -125,7 +125,7 @@ class SolisBinaryEntity(SwitchEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
             model=MODEL,
             name=f"{MANUFACTURER} {MODEL}",

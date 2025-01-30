@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 
@@ -88,10 +88,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        controller = hass.data[DOMAIN][CONTROLLER]
-
-        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
-        hass.create_task(get_modbus_updates(hass, controller))
+        for controller in hass.data[DOMAIN][CONTROLLER]:
+            _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
+            hass.create_task(get_modbus_updates(hass, controller))
 
     async def get_modbus_updates(hass, controller):
         if not controller.connected():
@@ -165,7 +164,7 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
             model=MODEL,
             name=f"{MANUFACTURER} {MODEL}",

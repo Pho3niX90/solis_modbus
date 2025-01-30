@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 
@@ -112,7 +112,7 @@ class SolisTimeEntity(TimeEntity):
 
     async def async_update(self):
         """Update Modbus data periodically."""
-        controller = self._hass.data[DOMAIN][CONTROLLER]
+        controller = self._modbus_controller
         self._attr_available = True
 
         hour = self._hass.data[DOMAIN][VALUES][str(self._register)]
@@ -130,7 +130,7 @@ class SolisTimeEntity(TimeEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
             model=MODEL,
             name=f"{MANUFACTURER} {MODEL}",

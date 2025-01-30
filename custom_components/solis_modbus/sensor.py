@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     sensor_entities: List[SensorEntity] = []
     sensor_derived_entities: List[SensorEntity] = []
     hass.data[DOMAIN][VALUES] = {}
@@ -47,7 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     for sensor_group in sensors_derived:
         type = sensor_group["type"]
         if type == 'SDS':
-            sensor_derived_entities.append(SolisDerivedSensor(hass, sensor_group))
+            sensor_derived_entities.append(SolisDerivedSensor(hass, modbus_controller, sensor_group))
 
     hass.data[DOMAIN][SENSOR_ENTITIES] = sensor_entities
     hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES] = sensor_derived_entities
@@ -57,14 +57,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        controller = hass.data[DOMAIN][CONTROLLER]
+        for controller in hass.data[DOMAIN][CONTROLLER]:
+            hass.create_task(get_modbus_updates(hass, controller))
 
-        hass.create_task(get_modbus_updates(hass, controller))
-
-        asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_ENTITIES]],
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES]]
-        )
+            asyncio.gather(
+                *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_ENTITIES]],
+                *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES]]
+            )
 
     async def get_modbus_updates(hass, controller):
         if not controller.connected():
@@ -169,8 +168,9 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
 
-    def __init__(self, hass, entity_definition):
+    def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
+        self._modbus_controller = modbus_controller
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_unique_id = "{}_{}".format(DOMAIN, entity_definition["unique"])
@@ -250,7 +250,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
             model=MODEL,
             name=f"{MANUFACTURER} {MODEL}",

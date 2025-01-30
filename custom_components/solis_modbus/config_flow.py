@@ -1,9 +1,11 @@
 import voluptuous as vol
+import logging
 from homeassistant import config_entries
 
 from .const import DOMAIN
 from .modbus_controller import ModbusController
 
+_LOGGER = logging.getLogger(__name__)
 
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
@@ -32,14 +34,16 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the configuration by trying to connect to the Modbus device."""
         modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502))
         try:
+            await modbus_controller.connect()
+
             if user_input["type"] == "string":
                 await modbus_controller.async_read_input_register(3262)
             else:
                 await modbus_controller.async_read_input_register(33263)
-
-            await modbus_controller.connect()
             return True
-        except ConnectionError:
+
+        except ConnectionError as e:
+            _LOGGER.error(f"Connection failed: {str(e)}")
             return False
         finally:
             modbus_controller.close_connection()
@@ -50,7 +54,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required("host", default="", description="your solis ip"): str,
                 vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
-                vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["string", "hybrid"]),
+                vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid"]),
             }
         )
 
