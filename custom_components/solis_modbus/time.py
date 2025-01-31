@@ -18,15 +18,16 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, \
-    MODEL, TIME_ENTITIES, VALUES
+from custom_components.solis_modbus import ModbusController
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
+    TIME_ENTITIES, VALUES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 
@@ -35,6 +36,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         platform_config = config_entry.options
 
     _LOGGER.info(f"Solis platform_config: {platform_config}")
+
+    inverter_type = config_entry.data.get("type", "hybrid")
+
+    if inverter_type == 'string':
+        return False
 
     # fmt: off
 
@@ -70,7 +76,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN][TIME_ENTITIES]])
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=POLL_INTERVAL_SECONDS * 5))
+    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 5))
 
     return True
 
@@ -107,7 +113,7 @@ class SolisTimeEntity(TimeEntity):
 
     async def async_update(self):
         """Update Modbus data periodically."""
-        controller = self._hass.data[DOMAIN][CONTROLLER]
+        controller = self._modbus_controller
         self._attr_available = True
 
         hour = self._hass.data[DOMAIN][VALUES][str(self._register)]
@@ -125,11 +131,11 @@ class SolisTimeEntity(TimeEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
-            name=f"{MANUFACTURER} {MODEL}",
-            sw_version=VERSION,
+            model=self._modbus_controller.model,
+            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            sw_version=self._modbus_controller.sw_version,
         )
 
     def set_native_value(self, value):

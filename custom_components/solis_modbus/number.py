@@ -19,17 +19,23 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, \
-    MODEL, VALUES, NUMBER_ENTITIES
+from custom_components.solis_modbus import ModbusController
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
+    VALUES, NUMBER_ENTITIES
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
+
+    inverter_type = config_entry.data.get("type", "hybrid")
+
+    if inverter_type == 'string':
+        return False
 
     platform_config = config_entry.data or {}
     if len(config_entry.options) > 0:
@@ -83,20 +89,19 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        controller = hass.data[DOMAIN][CONTROLLER]
-
-        _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
-        hass.create_task(get_modbus_updates(hass, controller))
+        for controller in hass.data[DOMAIN][CONTROLLER].values():
+            _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
+            hass.create_task(get_modbus_updates(hass, controller))
 
     async def get_modbus_updates(hass, controller):
         if not controller.connected():
             await controller.connect()
+
         await asyncio.gather(
-             *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][NUMBER_ENTITIES]]
-         )
+            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][NUMBER_ENTITIES]]
+        )
 
-
-    async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS * 3))
+    async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval * 3))
 
     return True
 
@@ -111,7 +116,7 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         #
         # Visible Instance Attributes Outside Class
         self._hass = hass
-        self._modbus_controller = modbus_controller
+        self._modbus_controller: ModbusController = modbus_controller
         self._register = entity_definition["register"]
         self._multiplier = entity_definition["multiplier"]
 
@@ -155,16 +160,15 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
         self._attr_native_value = round(value / self._multiplier)
 
-
     @property
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
-            name=f"{MANUFACTURER} {MODEL}",
-            sw_version=VERSION,
+            model=self._modbus_controller.model,
+            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            sw_version=self._modbus_controller.sw_version,
         )
 
     def set_native_value(self, value):
@@ -172,6 +176,7 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         if self._attr_native_value == value:
             return
 
-        self.hass.create_task(self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier)))
+        self.hass.create_task(
+            self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier)))
         self._attr_native_value = value
         self.schedule_update_ha_state()

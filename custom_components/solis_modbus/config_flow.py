@@ -1,9 +1,11 @@
 import voluptuous as vol
+import logging
 from homeassistant import config_entries
 
 from .const import DOMAIN
 from .modbus_controller import ModbusController
 
+_LOGGER = logging.getLogger(__name__)
 
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
@@ -26,14 +28,28 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=self._get_user_schema(), errors=errors
         )
 
+# string inverters => RS485_MODBUS%20Communication%20Protocol_Solis%20Inverters%20(1).pdf
+
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device."""
-        modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502))
+
+        poll_interval = user_input.get("poll_interval")
+        if poll_interval is None or poll_interval < 5:
+            poll_interval = 15
+
+        modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502), poll_interval)
+
         try:
             await modbus_controller.connect()
-            await modbus_controller.async_read_input_register(33093)
+
+            if user_input["type"] == "string":
+                await modbus_controller.async_read_input_register(3262)
+            else:
+                await modbus_controller.async_read_input_register(33263)
             return True
-        except ConnectionError:
+
+        except ConnectionError as e:
+            _LOGGER.error(f"Connection failed: {str(e)}")
             return False
         finally:
             modbus_controller.close_connection()
@@ -44,5 +60,16 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required("host", default="", description="your solis ip"): str,
                 vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
+                vol.Required(
+                    "poll_interval",
+                    default=15,
+                    description="poll interval in seconds"
+                ): vol.All(int, vol.Range(min=5)),
+                vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid"]),
             }
         )
+
+    def _get_config(self, config):
+        """Ensure 'type' defaults to 'hybrid' if not previously set."""
+        config.setdefault("type", "hybrid")
+        return config
