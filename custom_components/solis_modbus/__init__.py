@@ -11,7 +11,7 @@ from .modbus_controller import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.TIME]
+PLATFORMS = [Platform.NUMBER, Platform.SWITCH, Platform.TIME]
 
 SCHEME_HOLDING_REGISTER = vol.Schema(
     {
@@ -21,21 +21,14 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Modbus integration."""
-
-    # Check if there are any configurations in the YAML file
-    # if DOMAIN in config:
-    #    hass.async_create_task(
-    #        hass.config_entries.flow.async_init(
-    #            DOMAIN, data=config[DOMAIN], context={"source": "import"}
-    #        )
-    #    )
 
     def service_write_holding_register(call: ServiceCall):
         address = call.data.get('address')
         value = call.data.get('value')
-        controller = hass.data[DOMAIN][CONTROLLER]
+        host = entry.data.get("host")
+        controller = hass.data[DOMAIN][CONTROLLER][host]
         # Perform the logic to write to the holding register using register_address and value_to_write
         # ...
         hass.create_task(controller.write_holding_register(address, value))
@@ -53,24 +46,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Store an instance of the ModbusController in hass.data for access by other components
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {
-            "values": []
+            "values": [],
+            CONTROLLER: {}
         }
 
     host = entry.data.get("host")
     port = entry.data.get("port", 502)
 
-    hass.data[DOMAIN][CONTROLLER] = ModbusController(host, port)
-    controller = hass.data[DOMAIN][CONTROLLER]
+    poll_interval = entry.data.get("poll_interval")
+
+    if poll_interval is None or poll_interval < 5:
+        poll_interval = 15
+
+    controller = ModbusController(host, port, poll_interval)
+    hass.data[DOMAIN][CONTROLLER][host] = controller
+
     if not controller.connected():
         await controller.connect()
 
     _LOGGER.debug(f'config entry host = {host}, post = {port}')
 
     # Set up the platforms associated with this integration
-    for component in PLATFORMS:
-        hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, component))
-        _LOGGER.debug(f"async_setup_entry: loading: {component}")
-        await asyncio.sleep(1)
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await asyncio.sleep(20)
     return True
 
@@ -83,7 +81,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Clean up resources
     if unload_ok:
-        modbus_controller = hass.data[DOMAIN][CONTROLLER]
-        modbus_controller.close_connection()
+        for controller in hass.data[DOMAIN][CONTROLLER].values():
+            controller.close_connection()
 
     return unload_ok

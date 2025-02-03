@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import timedelta, datetime
+from numbers import Number
 from typing import List
 from numbers import Number
 
@@ -12,8 +13,9 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, VERSION, POLL_INTERVAL_SECONDS, MANUFACTURER, \
-    MODEL, DATA_RECEIVED, VALUES, SENSOR_DERIVED_ENTITIES, SENSOR_ENTITIES, DRIFT_COUNTER
+from custom_components.solis_modbus import ModbusController
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, VALUES, SENSOR_DERIVED_ENTITIES, \
+    SENSOR_ENTITIES, DRIFT_COUNTER
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,11 +23,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
-    modbus_controller = hass.data[DOMAIN][CONTROLLER]
+    modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     sensor_entities: List[SensorEntity] = []
     sensor_derived_entities: List[SensorEntity] = []
     hass.data[DOMAIN][VALUES] = {}
-    hass.data[DOMAIN][DATA_RECEIVED] = False
+    modbus_controller._data_received = False
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
@@ -47,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     for sensor_group in sensors_derived:
         type = sensor_group["type"]
         if type == 'SDS':
-            sensor_derived_entities.append(SolisDerivedSensor(hass, sensor_group))
+            sensor_derived_entities.append(SolisDerivedSensor(hass, modbus_controller, sensor_group))
 
     hass.data[DOMAIN][SENSOR_ENTITIES] = sensor_entities
     hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES] = sensor_derived_entities
@@ -57,16 +59,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     @callback
     def update(now):
         """Update Modbus data periodically."""
-        controller = hass.data[DOMAIN][CONTROLLER]
+        for controller in hass.data[DOMAIN][CONTROLLER].values():
+            hass.create_task(get_modbus_updates(hass, controller))
 
-        hass.create_task(get_modbus_updates(hass, controller))
+            asyncio.gather(
+                *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_ENTITIES]],
+                *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES]]
+            )
 
-        asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_ENTITIES]],
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES]]
-        )
-
-    async def get_modbus_updates(hass, controller):
+    async def get_modbus_updates(hass, controller: ModbusController):
         if not controller.connected():
             await controller.connect()
 
@@ -89,9 +90,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 hass.data[DOMAIN]['values'][register_key] = value
                 _LOGGER.debug(f'register_key = {register_key}, value = {value}')
 
-            hass.data[DOMAIN][DATA_RECEIVED] = True
+            controller._data_received = True
 
-    async_track_time_interval(hass, update, timedelta(seconds=POLL_INTERVAL_SECONDS))
+    async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval))
     return True
 
 
@@ -169,8 +170,9 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
 
-    def __init__(self, hass, entity_definition):
+    def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
+        self._modbus_controller: ModbusController = modbus_controller
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_unique_id = "{}_{}".format(DOMAIN, entity_definition["unique"])
@@ -242,6 +244,12 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self._state = n_value * self._display_multiplier
                 self.schedule_update_ha_state()
 
+            # set after
+            if '36014' in self._register:
+                self._modbus_controller._sw_version = self._state
+            if '36013' in self._register:
+                self._modbus_controller._model = self._state
+
         except ValueError as e:
             self._state = None
             self._attr_available = False
@@ -250,11 +258,11 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._hass.data[DOMAIN][CONTROLLER].host)},
+            identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
-            name=f"{MANUFACTURER} {MODEL}",
-            sw_version=VERSION,
+            model=self._modbus_controller.model,
+            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            sw_version=self._modbus_controller.sw_version,
         )
 
 
@@ -263,7 +271,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
-        self._modbus_controller = modbus_controller
+        self._modbus_controller: ModbusController = modbus_controller
 
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
@@ -316,10 +324,10 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
             if (n_value == 0
                     and self.state_class != SensorStateClass.MEASUREMENT
-                    and self._hass.data[DOMAIN][DATA_RECEIVED] is not True):
+                    and self._modbus_controller.data_received is not True):
                 n_value = self.async_get_last_sensor_data()
 
-            if n_value is not None:
+            if n_value is not None and not asyncio.iscoroutine(n_value):
                 self._attr_available = True
                 self._attr_native_value = n_value * self._display_multiplier
                 self._state = n_value * self._display_multiplier
@@ -335,7 +343,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
-            name=f"{MANUFACTURER} {MODEL}",
-            sw_version=VERSION,
+            model=self._modbus_controller.model,
+            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            sw_version=self._modbus_controller.sw_version,
         )
