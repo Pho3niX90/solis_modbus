@@ -71,6 +71,22 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 5)", "register": 43185, "enabled": True},
         {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 5)", "register": 43187, "enabled": True},
         {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 5)", "register": 43189, "enabled": True},
+
+
+        {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 1)", "register": 43711, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 1)", "register": 43713, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 1)", "register": 43753, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 1)", "register": 43755, "enabled": True},
+
+        {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 2)", "register": 43718, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 2)", "register": 43720, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 2)", "register": 43760, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 2)", "register": 43762, "enabled": True},
+
+        {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 3)", "register": 43725, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 3)", "register": 43727, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 3)", "register": 43767, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 3)", "register": 43769, "enabled": True},
     ]
 
     for entity_definition in timeent:
