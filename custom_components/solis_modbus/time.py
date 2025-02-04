@@ -61,6 +61,16 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 3)", "register": 43165, "enabled": True},
         {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 3)", "register": 43167, "enabled": True},
         {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 3)", "register": 43169, "enabled": True},
+
+        {"type": "STE", "name": "Solis Time-Charging Charge Start (Slot 5)", "register": 43173, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 5)", "register": 43175, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 5)", "register": 43177, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 5)", "register": 43179, "enabled": True},
+
+        {"type": "STE", "name": "Solis Time-Charging Charge Start (Slot 5)", "register": 43183, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 5)", "register": 43185, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 5)", "register": 43187, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 5)", "register": 43189, "enabled": True},
     ]
 
     for entity_definition in timeent:
