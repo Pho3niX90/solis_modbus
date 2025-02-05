@@ -165,8 +165,7 @@ hybrid_sensors = [
             {"type": "SS", "name": "Solis Reactive Power",
              "unique": "solis_modbus_inverter_reactive_power",
              "register": ['33081', '33082'], "device_class": SensorDeviceClass.REACTIVE_POWER, "multiplier": 0,
-             "unit_of_measurement": UnitOfReactivePower.VOLT_AMPERE_REACTIVE,
-             "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfReactivePower.VOLT_AMPERE_REACTIVE, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Apparent Power",
              "unique": "solis_modbus_inverter_apparent_power",
@@ -480,6 +479,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43141,
+        "scan_interval": 10,
         "entities": [
             {"type": "SS", "name": "Solis Time-Charging Charge Current",
              "unique": "solis_modbus_inverter_time_charging_charge_current",
@@ -950,7 +950,7 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_tou_discharge_end_minute_6", "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
         ]
-    }
+    },
 ]
 
 hybrid_sensors_derived = [

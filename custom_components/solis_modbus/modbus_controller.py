@@ -4,6 +4,8 @@ import logging
 from pymodbus.client import AsyncModbusTcpClient
 from custom_components.solis_modbus.const import MODEL
 
+from custom_components.solis_modbus.const import MODEL
+
 _LOGGER = logging.getLogger(__name__)
 
 class ModbusController:
@@ -35,7 +37,7 @@ class ModbusController:
                 return True
 
         except ConnectionError as e:
-            _LOGGER.info(f"Failed to connect to Modbus device. Will retry. Exception: {str(e)}")
+            _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {str(e)}")
             return False  # Return False if an exception occurs
 
     async def async_read_input_register(self, register, count=1):
@@ -46,7 +48,7 @@ class ModbusController:
                 _LOGGER.debug(f'register value, register = {register}, result = {result.registers}')
             return result.registers
         except Exception as e:
-            _LOGGER.debug(f"Failed to read Modbus input register: {str(e)}")
+            _LOGGER.debug(f"Failed to read Modbus holding register: {str(e)}")
             return None
 
     async def async_read_holding_register(self, register: int, count=1):
