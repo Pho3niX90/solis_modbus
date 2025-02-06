@@ -11,7 +11,7 @@ CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required("host", default="", description="your solis ip"): str,
         vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
-        vol.Required(
+        vol.Optional(
             "poll_interval",
             default=15,
             description="poll interval in seconds"
