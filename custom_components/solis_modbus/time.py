@@ -62,10 +62,10 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 3)", "register": 43167, "enabled": True},
         {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 3)", "register": 43169, "enabled": True},
 
-        {"type": "STE", "name": "Solis Time-Charging Charge Start (Slot 5)", "register": 43173, "enabled": True},
-        {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 5)", "register": 43175, "enabled": True},
-        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 5)", "register": 43177, "enabled": True},
-        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 5)", "register": 43179, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Charge Start (Slot 4)", "register": 43173, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 4)", "register": 43175, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge Start (Slot 4)", "register": 43177, "enabled": True},
+        {"type": "STE", "name": "Solis Time-Charging Discharge End (Slot 4)", "register": 43179, "enabled": True},
 
         {"type": "STE", "name": "Solis Time-Charging Charge Start (Slot 5)", "register": 43183, "enabled": True},
         {"type": "STE", "name": "Solis Time-Charging Charge End (Slot 5)", "register": 43185, "enabled": True},
@@ -98,10 +98,10 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge Start (Slot 5)", "register": 43781, "enabled": True},
         {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge End (Slot 5)", "register": 43783, "enabled": True},
 
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 5)", "register": 43746, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 5)", "register": 43748, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge Start (Slot 5)", "register": 43788, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge End (Slot 5)", "register": 43790, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 6)", "register": 43746, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 6)", "register": 43748, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge Start (Slot 6)", "register": 43788, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge End (Slot 6)", "register": 43790, "enabled": True},
     ]
 
     for entity_definition in timeent:
