@@ -7,6 +7,19 @@ from .modbus_controller import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
+CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required("host", default="", description="your solis ip"): str,
+        vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
+        vol.Required(
+            "poll_interval",
+            default=15,
+            description="poll interval in seconds"
+        ): vol.All(int, vol.Range(min=5)),
+        vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid", "hybrid-waveshare", "string", "grid"]),
+    }
+)
+
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
@@ -56,18 +69,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _get_user_schema(self):
         """Return the schema for the user configuration form."""
-        return vol.Schema(
-            {
-                vol.Required("host", default="", description="your solis ip"): str,
-                vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
-                vol.Required(
-                    "poll_interval",
-                    default=15,
-                    description="poll interval in seconds"
-                ): vol.All(int, vol.Range(min=5)),
-                vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid", "hybrid-waveshare", "string", "grid"]),
-            }
-        )
+        return CONFIG_SCHEMA
 
     def _get_config(self, config):
         """Ensure 'type' defaults to 'hybrid' if not previously set."""
