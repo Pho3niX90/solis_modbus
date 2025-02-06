@@ -30,9 +30,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
-    if inverter_type == "string":
+    if inverter_type in ["string", "grid"]:
         from .data.string_sensors import string_sensors as sensors
         from .data.string_sensors import string_sensors_derived as sensors_derived
+    elif inverter_type == "hybrid-waveshare":
+        from .data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
+        from .data.hybrid_waveshare_sensors import hybrid_wavesahre_sensors_derived as sensors_derived
     else:
         from .data.hybrid_sensors import hybrid_sensors as sensors
         from .data.hybrid_sensors import hybrid_sensors_derived as sensors_derived
@@ -166,6 +169,51 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
         hass.data[DOMAIN][DRIFT_COUNTER] = 0
 
 
+def decode_inverter_model(hex_value):
+    """
+    Decodes an inverter model code into its protocol version and description.
+
+    :param hex_value: The hexadecimal or decimal inverter model code.
+    :return: A tuple (protocol_version, model_description)
+    """
+    # Convert hexadecimal string to integer if necessary
+    if isinstance(hex_value, str):
+        hex_value = int(hex_value, 16)
+
+    # Extract high byte (protocol version) and low byte (inverter model)
+    protocol_version = (hex_value >> 8) & 0xFF
+    inverter_model = hex_value & 0xFF
+
+    # Inverter model mapping based on provided table
+    inverter_models = {
+        0x00: "No definition",
+        0x10: "1-Phase Grid-Tied Inverter (0.7-8K1P / 7-10K1P)",
+        0x20: "3-Phase Grid-Tied Inverter (3-20K 3P)",
+        0x21: "3-Phase Grid-Tied Inverter (25-50K / 50-70K / 80-110K / 90-136K / 125K / 250K)",
+        0x70: "External EPM Device",
+        0x30: "1-Phase LV Hybrid Inverter",
+        0x31: "1-Phase LV AC Coupled Energy Storage Inverter",
+        0x32: "5-15kWh All-in-One Hybrid",
+        0x40: "1-Phase HV Hybrid Inverter",
+        0x50: "3-Phase LV Hybrid Inverter",
+        0x60: "3-Phase HV Hybrid Inverter (5G)",
+        0x70: "S6 3-Phase HV Hybrid (5-10kW)",
+        0x71: "S6 3-Phase HV Hybrid (12-20kW)",
+        0x72: "S6 3-Phase LV Hybrid (10-15kW)",
+        0x73: "S6 3-Phase HV Hybrid (50kW)",
+        0x80: "1-Phase HV Hybrid Inverter (S6)",
+        0x90: "1-Phase LV Hybrid Inverter (S6)",
+        0x91: "S6 1-Phase LV AC Coupled Hybrid",
+        0xA0: "OGI Off-Grid Inverter",
+        0xA1: "S6 1-Phase LV Off-Grid Hybrid",
+    }
+
+    # Get model description or default to "Unknown Model"
+    model_description = inverter_models.get(inverter_model, "Unknown Model")
+
+    return protocol_version, model_description
+
+
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
 
@@ -237,17 +285,23 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 else:
                     n_value = 0
 
+            # set after
+            if '35000' in self._register:
+                protocol_version, model_description = decode_inverter_model(n_value)
+                self._modbus_controller._sw_version = protocol_version
+                self._modbus_controller._model = model_description
+                n_value = model_description + f"(Protocol {protocol_version})"
+
             if isinstance(n_value, Number):
                 self._attr_available = True
                 self._attr_native_value = n_value * self._display_multiplier
                 self._state = n_value * self._display_multiplier
                 self.schedule_update_ha_state()
-
-            # set after
-            if '36014' in self._register:
-                self._modbus_controller._sw_version = self._state
-            if '36013' in self._register:
-                self._modbus_controller._model = self._state
+            if isinstance(n_value, str):
+                self._attr_available = True
+                self._attr_native_value = n_value
+                self._state = n_value
+                self.schedule_update_ha_state()
 
         except ValueError as e:
             self._state = None
