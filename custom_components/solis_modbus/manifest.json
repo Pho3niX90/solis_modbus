@@ -3,7 +3,7 @@
   "name": "Solis Modbus",
   "codeowners": ["@pho3nix90"],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["modbus"],
   "documentation": "https://solis-modbus.readthedocs.io",
   "integration_type": "device",
   "iot_class": "local_polling",

@@ -4,7 +4,6 @@ from datetime import timedelta, datetime
 from numbers import Number
 from typing import List
 
-from homeassistant.components.modbus import nan_validator
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
 from homeassistant.components.sensor.const import SensorStateClass
 from homeassistant.components.switch import SwitchDeviceClass
