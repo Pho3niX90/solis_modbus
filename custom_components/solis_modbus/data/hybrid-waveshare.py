@@ -2,7 +2,7 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.const import UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, UnitOfTime, UnitOfEnergy, \
     UnitOfReactivePower, UnitOfFrequency, UnitOfTemperature, UnitOfApparentPower, PERCENTAGE
 
-hybrid_sensors = [
+hybrid_waveshare = [
     {
         "register_start": 33000,
         "scan_interval": 0,
