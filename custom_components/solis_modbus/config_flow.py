@@ -65,7 +65,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     default=15,
                     description="poll interval in seconds"
                 ): vol.All(int, vol.Range(min=5)),
-                vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid"]),
+                vol.Optional("type", default="hybrid", description="type of your modbus connection"): vol.In(["hybrid", "hybrid-waveshare", "string", "grid"]),
             }
         )
 

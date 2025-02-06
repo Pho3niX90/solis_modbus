@@ -1,7 +1,7 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, UnitOfTime, UnitOfEnergy, \
-    UnitOfReactivePower, UnitOfFrequency, UnitOfTemperature, UnitOfApparentPower, PERCENTAGE
+from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy
 
+# base on RS485_MODBUS Communication Protocol Ver18
 string_sensors = [
     {
         "register_start": 36013,

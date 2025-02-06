@@ -30,9 +30,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
-    if inverter_type == "string":
+    if inverter_type in ["string", "grid"]:
         from .data.string_sensors import string_sensors as sensors
         from .data.string_sensors import string_sensors_derived as sensors_derived
+    elif inverter_type == "hybrid-waveshare":
+        from .data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
+        from .data.hybrid_waveshare_sensors import hybrid_wavesahre_sensors_derived as sensors_derived
     else:
         from .data.hybrid_sensors import hybrid_sensors as sensors
         from .data.hybrid_sensors import hybrid_sensors_derived as sensors_derived
@@ -94,6 +97,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval))
     return True
 
+
 def get_value(self):
     if len(self._register) >= 15:
         values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
@@ -119,6 +123,7 @@ def get_value(self):
 
     return n_value
 
+
 def hex_to_ascii(hex_value):
     # Convert hexadecimal to decimal
     decimal_value = hex_value
@@ -132,8 +137,10 @@ def hex_to_ascii(hex_value):
 
     return ascii_chars
 
+
 def extract_serial_number(values):
     return ''.join([hex_to_ascii(hex_value) for hex_value in values])
+
 
 async def clock_drift_test(hass, controller, hours, minutes, seconds):
     # Get the current time
@@ -160,6 +167,7 @@ async def clock_drift_test(hass, controller, hours, minutes, seconds):
             hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
     else:
         hass.data[DOMAIN][DRIFT_COUNTER] = 0
+
 
 def decode_inverter_model(hex_value):
     """
@@ -204,6 +212,7 @@ def decode_inverter_model(hex_value):
     model_description = inverter_models.get(inverter_model, "Unknown Model")
 
     return protocol_version, model_description
+
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
