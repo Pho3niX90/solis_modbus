@@ -1,5 +1,4 @@
 """The Modbus Integration."""
-import asyncio
 import logging
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
@@ -61,17 +60,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     controller = ModbusController(host, port, poll_interval)
     hass.data[DOMAIN][CONTROLLER][host] = controller
 
-    if not controller.connected():
-        await controller.connect()
-
     _LOGGER.debug(f'config entry host = {host}, post = {port}')
 
     # Set up the platforms associated with this integration
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    await asyncio.sleep(20)
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""

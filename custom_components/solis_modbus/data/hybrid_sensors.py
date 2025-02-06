@@ -23,6 +23,14 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 35000,
+        "scan_interval": 0,
+        "entities": [
+            {"type": "SS", "name": "Solis Inverter Type Definition", "unique": "solis_modbus_inverter_type_definition",
+             "register": ['35000'], "multiplier": 0},
+        ]
+    },
+    {
         "register_start": 33025,
         "scan_interval": 60,
         "entities": [
@@ -817,10 +825,10 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 1)", "register": ['43751'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_1", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off voltage (Slot 1)", "register": ['43752'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_1", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.VOLTAGE, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge Start Hour (Slot 1)", "register": ['43753'],
              "unique": "solis_modbus_inverter_tou_discharge_start_hour_1", "multiplier": 0,
@@ -840,10 +848,10 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 2)", "register": ['43758'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_2", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off voltage (Slot 2)", "register": ['43759'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_2", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.VOLTAGE, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge Start Hour (Slot 2)", "register": ['43760'],
              "unique": "solis_modbus_inverter_tou_discharge_start_hour_2", "multiplier": 0,
@@ -863,10 +871,10 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 3)", "register": ['43765'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_3", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off voltage (Slot 3)", "register": ['43766'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_3", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.VOLTAGE, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge Start Hour (Slot 3)", "register": ['43767'],
              "unique": "solis_modbus_inverter_tou_discharge_start_hour_3", "multiplier": 0,
@@ -886,10 +894,10 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 4)", "register": ['43772'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_4", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off voltage (Slot 4)", "register": ['43773'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_4", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.VOLTAGE, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge Start Hour (Slot 4)", "register": ['43774'],
              "unique": "solis_modbus_inverter_tou_discharge_start_hour_4", "multiplier": 0,
@@ -909,10 +917,10 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 5)", "register": ['43779'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_5", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off voltage (Slot 5)", "register": ['43780'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_5", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.VOLTAGE, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge Start Hour (Slot 5)", "register": ['43781'],
              "unique": "solis_modbus_inverter_tou_discharge_start_hour_5", "multiplier": 0,
@@ -932,10 +940,10 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 6)", "register": ['43786'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_6", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off voltage (Slot 6)", "register": ['43787'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_6", "multiplier": 0.01,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT},
+             "device_class": SensorDeviceClass.VOLTAGE, "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge Start Hour (Slot 6)", "register": ['43788'],
              "unique": "solis_modbus_inverter_tou_discharge_start_hour_6", "multiplier": 0,
