@@ -92,11 +92,17 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             entity_register = int(entity_definition['register'][0])
             if entity_definition.get('editable', False) and entity_definition['register'][0].startswith('4'):
                 entity_multiplier = float(entity_definition['multiplier'])
-                numberEntities.append(SolisNumberEntity(hass, modbus_controller, {"name": entity_definition['name'], "register": entity_register,
-                                "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
-                                "min_val": 0, "max_val": 100, "step": 1 if (entity_definition['multiplier'] == 1 or entity_definition['multiplier'] == 0) else entity_multiplier,
-                                "unit_of_measurement": entity_definition['unit_of_measurement'], "enabled": True}))
-
+                numberEntities.append(SolisNumberEntity(hass, modbus_controller,
+                                                        {"name": entity_definition['name'], "register": entity_register,
+                                                         "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
+                                                         "min_val": entity_definition.get("min"),
+                                                         "max_val": entity_definition.get("max"),
+                                                         "default": entity_definition.get("default"),
+                                                         "step": 1 if (entity_definition['multiplier'] == 1 or
+                                                                       entity_definition[
+                                                                           'multiplier'] == 0) else entity_multiplier,
+                                                         "unit_of_measurement": entity_definition[
+                                                             'unit_of_measurement'], "enabled": True}))
 
     for entity_definition in numbers:
         type = entity_definition["type"]

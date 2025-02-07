@@ -296,7 +296,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33161,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis Total Battery Charge Energy",
              "unique": "solis_modbus_inverter_total_battery_charge_energy",
@@ -366,8 +365,37 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 34328,
+        "entities": [
+            {"type": "SS", "name": "Solis SmartPort A Phase Voltage",
+             "unique": "solis_modbus_inverter_smartport_a_phase_voltage",
+             "register": ['34328'], "device_class": SensorDeviceClass.VOLTAGE, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis SmartPort B Phase Voltage",
+             "unique": "solis_modbus_inverter_smartport_b_phase_voltage",
+             "register": ['34329'], "device_class": SensorDeviceClass.VOLTAGE, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis SmartPort C Phase Voltage",
+             "unique": "solis_modbus_inverter_smartport_c_phase_voltage",
+             "register": ['34330'], "device_class": SensorDeviceClass.VOLTAGE, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
+
+            {"type": "SS", "name": "Solis SmartPort A Phase Current",
+             "unique": "solis_modbus_inverter_smartport_a_phase_current",
+             "register": ['34331'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis SmartPort B Phase Current",
+             "unique": "solis_modbus_inverter_smartport_b_phase_current",
+             "register": ['34332'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis SmartPort C Phase Current",
+             "unique": "solis_modbus_inverter_smartport_c_phase_current",
+             "register": ['34333'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+        ]
+    },
+    {
         "register_start": 33251,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis Meter AC Voltage A",
              "unique": "solis_modbus_inverter_meter_ac_voltage_a",
@@ -413,8 +441,32 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 33530,
+        "entities": [
+            {"type": "SS", "name": "Solis Generator Phase A Active Power",
+             "unique": "solis_modbus_inverter_generator_phase_a_active_power",
+             "register": ['33530'], "device_class": SensorDeviceClass.POWER, "multiplier": 10,
+             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis Generator Today Energy",
+             "unique": "solis_modbus_inverter_generator_today_energy",
+             "register": ['33531'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
+            {"type": "SS", "name": "Solis Generator Total Energy",
+             "unique": "solis_modbus_inverter_generator_total_energy",
+             "register": ['33532', '33533'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
+             "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
+            {"type": "SS", "name": "Solis Generator Phase B Active Power",
+             "unique": "solis_modbus_inverter_generator_phase_b_active_power",
+             "register": ['33534'], "device_class": SensorDeviceClass.POWER, "multiplier": 10,
+             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis Generator Phase C Active Power",
+             "unique": "solis_modbus_inverter_generator_phase_c_active_power",
+             "register": ['33535'], "device_class": SensorDeviceClass.POWER, "multiplier": 10,
+             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+        ]
+    },
+    {
         "register_start": 33580,
-        "scan_interval": 60,
         "entities": [
             {"type": "SS", "name": "Solis Household Load Total Energy",
              "unique": "solis_modbus_inverter_household_total_energy",
@@ -673,6 +725,35 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_time_discharge_end_minute_slot5",
              "register": ['43190'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
+        ]
+    },{
+        "register_start": 43363,
+        "entities": [
+            {"type": "SS", "name": "Solis Forced Start of Generator",
+             "unique": "solis_modbus_inverter_generator_forced_start", "register": ['43363'], "multiplier": 1,
+             "state_class": SensorStateClass.MEASUREMENT, "switch": True},
+            {"type": "SS", "name": "Solis Rated Input Power of Generator",
+             "unique": "solis_modbus_inverter_generator_rated_input_power", "register": ['43364'], "multiplier": 0.1,
+             "device_class": SensorDeviceClass.POWER, "unit_of_measurement": UnitOfPower.KILO_WATT,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True },
+            {"type": "SS", "name": "Solis Generator Setting Switch",
+             "unique": "solis_modbus_inverter_generator_setting_switch", "register": ['43365'], "multiplier": 1,
+             "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis Generator Forced Stop of Generator",
+             "unique": "solis_modbus_inverter_generator_forced_stop", "register": ['43366'], "multiplier": 1,
+             "state_class": SensorStateClass.MEASUREMENT, "switch": True},
+            {"type": "SS", "name": "Solis Maximum Allowable Percentage of Generator",
+             "unique": "solis_modbus_inverter_generator_allowed_percentage", "register": ['43367'], "multiplier": 1,
+             "unit_of_measurement": PERCENTAGE, "min": 0.01, "max": 100, "default": 100,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True},
+            {"type": "SS", "name": "Solis Generator Target Power",
+             "unique": "solis_modbus_inverter_generator_target_power", "register": ['43368'], "multiplier": 0.1,
+             "unit_of_measurement": UnitOfPower.KILO_WATT,"device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True},
+            {"type": "SS", "name": "Solis Generator Charging Power",
+             "unique": "solis_modbus_inverter_generator_charging_power", "register": ['43369'], "multiplier": 0.1,
+             "unit_of_measurement": UnitOfPower.KILO_WATT,"device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True},
         ]
     },
     {

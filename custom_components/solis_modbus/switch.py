@@ -35,6 +35,31 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
                 {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode"},
             ]
+        },{
+            "read_register": 43365, "write_register": 43365,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Generator connection position"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis With Generator"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis Generator enable signal"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis AC Coupling Position (off = GEN port, on = Backup port)"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Generator access location"},
+            ]
+        },{
+            "read_register": 43815, "write_register": 43815,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Generator charging period 1 switch"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis Generator charging period 2 switch"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis Generator charging period 3 switch"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis Generator charging period 4 switch"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Generator charging period 5 switch"},
+                {"type": "SBS", "bit_position": 5, "name": "Solis Generator charging period 6 switch"},
+            ]
+        },{
+            "read_register": 43340, "write_register": 43340,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Generator Input Mode (off = Manual, on = Auto)"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis Generator Charge Enable"},
+            ]
         }
     ]
 
