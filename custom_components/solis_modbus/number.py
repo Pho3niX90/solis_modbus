@@ -15,7 +15,7 @@ from homeassistant.components.sensor import SensorDeviceClass, RestoreSensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfElectricCurrent, PERCENTAGE, UnitOfPower)
-from homeassistant.core import callback
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
@@ -118,12 +118,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
             hass.create_task(get_modbus_updates(hass, controller))
 
-    async def get_modbus_updates(hass, controller):
+    async def get_modbus_updates(thass: HomeAssistant, controller: ModbusController):
         if not controller.connected():
             await controller.connect()
 
         await asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][NUMBER_ENTITIES]]
+            *[asyncio.to_thread(entity.update) for entity in thass.data[DOMAIN][NUMBER_ENTITIES]]
         )
 
     async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval * 3))
@@ -172,11 +172,18 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
     def update(self):
         """Update Modbus data periodically."""
+        if not self.hass:  # Ensure hass is assigned
+            return
         self._attr_available = True
 
         value: float = self._hass.data[DOMAIN][VALUES][str(self._register)]
         self._hass.create_task(self.update_values(value))
-        self.schedule_update_ha_state()
+
+        try:
+            self.schedule_update_ha_state()
+        except Exception as e:
+            _LOGGER.debug(f"Failed to schedule update: {e}")
+
 
     async def update_values(self, value):
         if value == 0 and self._modbus_controller.connected():
