@@ -14,7 +14,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass, RestoreSensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower, )
+    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower)
 from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -47,6 +47,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     numberEntities: List[SolisNumberEntity] = []
 
+    # TODO use hybrid sensors x4 registrars, invert multiplier
     numbers = [
         {"type": "SNE", "name": "Solis Time-Charging Charge Current", "register": 43141,
          "default": 50.0, "multiplier": 10,
@@ -78,6 +79,24 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
          "min_val": 0, "max_val": 100, "step": 1,
          "unit_of_measurement": PERCENTAGE, "enabled": True},
     ]
+
+    if inverter_type in ["string", "grid"]:
+        from .data.string_sensors import string_sensors as sensors
+    elif inverter_type == "hybrid-waveshare":
+        from .data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
+    else:
+        from .data.hybrid_sensors import hybrid_sensors as sensors
+
+    for sensor_group in sensors:
+        for entity_definition in sensor_group['entities']:
+            entity_register = int(entity_definition['register'][0])
+            entity_multiplier = float(entity_definition['multiplier'])
+            if entity_definition.get('editable', False) and entity_definition['register'][0].startswith('4'):
+                numberEntities.append(SolisNumberEntity(hass, modbus_controller, {"name": entity_definition['name'], "register": entity_register,
+                                "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
+                                "min_val": 0, "max_val": 100, "step": 1 if (entity_definition['multiplier'] == 1 or entity_definition['multiplier'] == 0) else entity_multiplier,
+                                "unit_of_measurement": entity_definition['unit_of_measurement'], "enabled": True}))
+
 
     for entity_definition in numbers:
         type = entity_definition["type"]
