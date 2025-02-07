@@ -110,7 +110,7 @@ def get_value(self):
 
         # Combine the high and low words to form a 32-bit signed integer
         combined_value = (high_word << 16) | (low_word & 0xFFFF)
-        if self._multiplier == 0:
+        if self._multiplier == 0 or self._multiplier == 1:
             n_value = round(combined_value)
         else:
             n_value = combined_value * self._multiplier
