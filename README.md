@@ -218,6 +218,7 @@ Card inspiration from https://github.com/slipx06/Sunsynk-Home-Assistant-Dash
 - Solis S6-EH1P6K-L-PRO
 - Solis RHI-5K @fastsonic
 - Solis S6-EH3P15K-H
+- Solis S6-EH3P(12-20)K-H / Axitec AXIhycon 15H @hbpv
 
 **Wifi Dongles Tested**
 - S2_WL_ST
