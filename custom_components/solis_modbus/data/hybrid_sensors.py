@@ -1066,6 +1066,18 @@ hybrid_sensors = [
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
         ]
     },
+    {
+        "register_start": 43815,
+        "entities": [{"type": "SS", "name": "Solis Generator charging switch",
+                      "unique": "solis_modbus_inverter_generator_setting_switch", "register": ['43815'], "multiplier": 1,
+                      "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    {
+        "register_start": 43340,
+        "entities": [{"type": "SS", "name": "Solis Generator Set Enable Switch",
+                      "unique": "solis_modbus_inverter_generator_setting_switch", "register": ['43340'], "multiplier": 1,
+                      "state_class": SensorStateClass.MEASUREMENT}]
+    }
 ]
 
 hybrid_sensors_derived = [

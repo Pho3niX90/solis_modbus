@@ -105,16 +105,17 @@ class SolisBinaryEntity(SwitchEntity):
 
     def update(self):
         """Update Modbus data periodically."""
-        value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
+        value: int = self._hass.data[DOMAIN][VALUES].get(str(self._read_register), None)
 
-        initial_state = self._attr_is_on
-        if not self._attr_available:
-            self._attr_available = True
-        self._attr_is_on = get_bool(value, self._bit_position)
+        if value is not None:
+            initial_state = self._attr_is_on
+            if not self._attr_available:
+                self._attr_available = True
+            self._attr_is_on = get_bool(value, self._bit_position)
 
-        if initial_state != self._attr_is_on:
-            _LOGGER.debug(
-                f'state change for {self._read_register}-{self._bit_position} from {initial_state} to {self._attr_is_on}')
+            if initial_state != self._attr_is_on:
+                _LOGGER.debug(
+                    f'state change for {self._read_register}-{self._bit_position} from {initial_state} to {self._attr_is_on}')
         return self._attr_is_on
 
     @property
