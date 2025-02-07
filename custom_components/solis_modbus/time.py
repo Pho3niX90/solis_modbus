@@ -90,18 +90,18 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
         {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 4)", "register": 43732, "enabled": True},
         {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 4)", "register": 43734, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge Start (Slot 4)", "register": 43774, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge End (Slot 4)", "register": 43776, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Discharge Start (Slot 4)", "register": 43774, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Discharge End (Slot 4)", "register": 43776, "enabled": True},
 
         {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 5)", "register": 43739, "enabled": True},
         {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 5)", "register": 43741, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge Start (Slot 5)", "register": 43781, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge End (Slot 5)", "register": 43783, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Discharge Start (Slot 5)", "register": 43781, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Discharge End (Slot 5)", "register": 43783, "enabled": True},
 
         {"type": "STE", "name": "Solis Grid Time of Use Charge Start (Slot 6)", "register": 43746, "enabled": True},
         {"type": "STE", "name": "Solis Grid Time of Use Charge End (Slot 6)", "register": 43748, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge Start (Slot 6)", "register": 43788, "enabled": True},
-        {"type": "STE", "name": "Solis Grid Time of Use Charge Discharge End (Slot 6)", "register": 43790, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Discharge Start (Slot 6)", "register": 43788, "enabled": True},
+        {"type": "STE", "name": "Solis Grid Time of Use Discharge End (Slot 6)", "register": 43790, "enabled": True},
     ]
 
     for entity_definition in timeent:
@@ -117,7 +117,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN][TIME_ENTITIES]])
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 5))
+    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 3))
 
     return True
 
