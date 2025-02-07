@@ -494,11 +494,11 @@ hybrid_sensors = [
             {"type": "SS", "name": "Solis Time-Charging Charge Current",
              "unique": "solis_modbus_inverter_time_charging_charge_current",
              "register": ['43141'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT, "editable": True},
             {"type": "SS", "name": "Solis Time-Charging Discharge Current",
              "unique": "solis_modbus_inverter_time_charging_discharge_current",
              "register": ['43142'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT, "editable": True},
 
             {"type": "SS", "name": "Solis Time-Charging Charge Start Hour (Slot 1)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot1",
