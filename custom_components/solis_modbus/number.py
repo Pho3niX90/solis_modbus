@@ -93,7 +93,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             entity_multiplier = float(entity_definition['multiplier'])
             if entity_definition.get('editable', False) and entity_definition['register'][0].startswith('4'):
                 numberEntities.append(SolisNumberEntity(hass, modbus_controller, {"name": entity_definition['name'], "register": entity_register,
-                                "multiplier": 1 / entity_multiplier,
+                                "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
                                 "min_val": 0, "max_val": 100, "step": 1 if (entity_definition['multiplier'] == 1 or entity_definition['multiplier'] == 0) else entity_multiplier,
                                 "unit_of_measurement": entity_definition['unit_of_measurement'], "enabled": True}))
 
