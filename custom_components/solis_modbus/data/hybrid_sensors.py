@@ -365,6 +365,24 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 33243,
+        "scan_interval": 5,
+        "entities": [
+            {"type": "SS", "name": "Solis Parallel Inverter AC Current",
+             "unique": "solis_modbus_inverter_parallel_inverter_ac_current",
+             "register": ['33243'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis Parallel Inverter AC Voltage",
+             "unique": "solis_modbus_inverter_parallel_inverter_ac_voltage",
+             "register": ['33244'], "device_class": SensorDeviceClass.VOLTAGE, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis Parallel Inverter Power",
+             "unique": "solis_modbus_inverter_parallel_inverter_power",
+             "register": ['33245'], "device_class": SensorDeviceClass.POWER, "multiplier": 100.0,
+             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+        ]
+    },
+    {
         "register_start": 34328,
         "entities": [
             {"type": "SS", "name": "Solis SmartPort A Phase Voltage",
