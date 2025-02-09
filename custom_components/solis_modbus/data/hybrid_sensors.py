@@ -1082,6 +1082,12 @@ hybrid_sensors = [
         "entities": [{"type": "SS", "name": "Solis Generator Set Enable Switch",
                       "unique": "solis_modbus_inverter_generator_enablement_switch", "register": ['43340'], "multiplier": 1,
                       "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    {
+        "register_start": 43483,
+        "entities": [{"type": "SS", "name": "Solis Hybrid Function Control",
+                      "unique": "solis_modbus_inverter_hybrid_function_control", "register": ['43483'], "multiplier": 1,
+                      "state_class": SensorStateClass.MEASUREMENT}]
     }
 ]
 

@@ -60,6 +60,18 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 0, "name": "Solis Generator Input Mode (off = Manual, on = Auto)"},
                 {"type": "SBS", "bit_position": 1, "name": "Solis Generator Charge Enable"},
             ]
+        },{
+            "read_register": 43483, "write_register": 43483,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Dual Backup Enable"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis AC Coupling Enable"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis Smart load port grid-connected forced output"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis Allow export switch under self-generation and self-use"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Backup2Load manual/automatic switch (off = Manual, on = Automatic"},
+                {"type": "SBS", "bit_position": 5, "name": "Solis Backup2Load manual enable"},
+                {"type": "SBS", "bit_position": 6, "name": "Solis Smart load port stops output when off-grid"},
+                {"type": "SBS", "bit_position": 7, "name": "Solis Grid Peak-shaving power enable"},
+            ]
         }
     ]
 
