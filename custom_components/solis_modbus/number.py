@@ -47,39 +47,6 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     numberEntities: List[SolisNumberEntity] = []
 
-    # TODO use hybrid sensors x4 registrars, invert multiplier
-    numbers = [
-        {"type": "SNE", "name": "Solis Time-Charging Charge Current", "register": 43141,
-         "default": 50.0, "multiplier": 10,
-         "min_val": 0, "max_val": 135, "step": 0.1, "device_class": SensorDeviceClass.CURRENT,
-         "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "enabled": True},
-        {"type": "SNE", "name": "Solis Time-Charging Discharge Current", "register": 43142,
-         "default": 50.0, "multiplier": 10,
-         "min_val": 0, "max_val": 135, "step": 0.1, "device_class": SensorDeviceClass.CURRENT,
-         "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "enabled": True},
-        {"type": "SNE", "name": "Solis Backup SOC", "register": 43024,
-         "default": 80.0, "multiplier": 1,
-         "min_val": 0, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-        {"type": "SNE", "name": "Solis Battery Force-charge Power Limitation", "register": 43027,
-         "default": 3000.0, "multiplier": 0.1,
-         "min_val": 0, "max_val": 6000, "step": 1,
-         "unit_of_measurement": UnitOfPower.WATT, "enabled": True},
-
-        {"type": "SNE", "name": "Solis Overcharge SOC", "register": 43010,
-         "default": 90, "multiplier": 1,
-         "min_val": 70, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-        {"type": "SNE", "name": "Solis Overdischarge SOC", "register": 43011,
-         "default": 20, "multiplier": 1,
-         "min_val": 5, "max_val": 40, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-        {"type": "SNE", "name": "Solis Force Charge SOC", "register": 43018,
-         "default": 10, "multiplier": 1,
-         "min_val": 0, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-    ]
-
     if inverter_type in ["string", "grid"]:
         from .data.string_sensors import string_sensors as sensors
     elif inverter_type == "hybrid-waveshare":
@@ -104,10 +71,6 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                                                          "unit_of_measurement": entity_definition[
                                                              'unit_of_measurement'], "enabled": True}))
 
-    for entity_definition in numbers:
-        type = entity_definition["type"]
-        if type == "SNE":
-            numberEntities.append(SolisNumberEntity(hass, modbus_controller, entity_definition))
     hass.data[DOMAIN][NUMBER_ENTITIES] = numberEntities
     async_add_devices(numberEntities, True)
 

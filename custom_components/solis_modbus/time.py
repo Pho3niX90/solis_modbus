@@ -154,13 +154,14 @@ class SolisTimeEntity(TimeEntity):
 
     async def async_update(self):
         """Update Modbus data periodically."""
-        controller = self._modbus_controller
+        controller: ModbusController = self._modbus_controller
         self._attr_available = True
 
         hour = self._hass.data[DOMAIN][VALUES][str(self._register)]
         minute = self._hass.data[DOMAIN][VALUES][str(self._register + 1)]
+        _LOGGER.debug(f"Time: {self._register}, Hour = {hour}, Minute = {minute}")
 
-        if (hour == 0 or minute == 0) and controller.connected():
+        if (hour == 0 or minute == 0) and controller.connected() and not controller.data_received:
             new_vals = await controller.async_read_holding_register(self._register, count=2)
             hour = new_vals[0] if new_vals else None
             minute = new_vals[1] if new_vals else None
