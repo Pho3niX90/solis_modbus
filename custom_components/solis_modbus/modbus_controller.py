@@ -18,6 +18,7 @@ class ModbusController:
         self._poll_interval = poll_interval
         self._model = MODEL
         self._sw_version = "N/A"
+        self.enabled = True
 
     async def connect(self):
         try:
@@ -44,6 +45,10 @@ class ModbusController:
         except ConnectionError as e:
             _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {str(e)}")
             return False  # Return False if an exception occurs
+
+    async def disconnect(self):
+        if self.client.connected:
+            self.client.close()
 
     async def async_read_input_register(self, register, count=1):
         try:

@@ -70,6 +70,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             )
 
     async def get_modbus_updates(hass, controller: ModbusController):
+        if not controller.enabled:
+            return
+
         if not controller.connected():
             await controller.connect()
 
@@ -184,13 +187,11 @@ def decode_inverter_model(hex_value):
     protocol_version = (hex_value >> 8) & 0xFF
     inverter_model = hex_value & 0xFF
 
-    # Inverter model mapping based on provided table
     inverter_models = {
         0x00: "No definition",
         0x10: "1-Phase Grid-Tied Inverter (0.7-8K1P / 7-10K1P)",
         0x20: "3-Phase Grid-Tied Inverter (3-20K 3P)",
         0x21: "3-Phase Grid-Tied Inverter (25-50K / 50-70K / 80-110K / 90-136K / 125K / 250K)",
-        0x70: "External EPM Device",
         0x30: "1-Phase LV Hybrid Inverter",
         0x31: "1-Phase LV AC Coupled Energy Storage Inverter",
         0x32: "5-15kWh All-in-One Hybrid",

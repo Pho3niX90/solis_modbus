@@ -25,6 +25,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     switch_sensors = [
         {
+            "read_register": 5, 'write_register': 5,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Modbus Enabled"},
+            ]
+        },
+        {
             "read_register": 33132, 'write_register': 43110,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode"},
@@ -34,6 +40,43 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 4, "name": "Solis Reserve Battery Mode"},
                 {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
                 {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode"},
+            ]
+        },{
+            "read_register": 43365, "write_register": 43365,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Generator connection position"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis With Generator"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis Generator enable signal"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis AC Coupling Position (off = GEN port, on = Backup port)"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Generator access location"},
+            ]
+        },{
+            "read_register": 43815, "write_register": 43815,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Generator charging period 1 switch"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis Generator charging period 2 switch"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis Generator charging period 3 switch"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis Generator charging period 4 switch"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Generator charging period 5 switch"},
+                {"type": "SBS", "bit_position": 5, "name": "Solis Generator charging period 6 switch"},
+            ]
+        },{
+            "read_register": 43340, "write_register": 43340,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Generator Input Mode (off = Manual, on = Auto)"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis Generator Charge Enable"},
+            ]
+        },{
+            "read_register": 43483, "write_register": 43483,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Dual Backup Enable"},
+                {"type": "SBS", "bit_position": 1, "name": "Solis AC Coupling Enable"},
+                {"type": "SBS", "bit_position": 2, "name": "Solis Smart load port grid-connected forced output"},
+                {"type": "SBS", "bit_position": 3, "name": "Solis Allow export switch under self-generation and self-use"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Backup2Load manual/automatic switch (off = Manual, on = Automatic"},
+                {"type": "SBS", "bit_position": 5, "name": "Solis Backup2Load manual enable"},
+                {"type": "SBS", "bit_position": 6, "name": "Solis Smart load port stops output when off-grid"},
+                {"type": "SBS", "bit_position": 7, "name": "Solis Grid Peak-shaving power enable"},
             ]
         }
     ]
@@ -80,16 +123,24 @@ class SolisBinaryEntity(SwitchEntity):
 
     def update(self):
         """Update Modbus data periodically."""
-        value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
 
-        initial_state = self._attr_is_on
-        if not self._attr_available:
-            self._attr_available = True
-        self._attr_is_on = get_bool(value, self._bit_position)
+        if self._read_register == 5:
+            self._attr_is_on = self._modbus_controller.enabled
+            if not self._attr_available:
+                self._attr_available = True
+            return self._attr_is_on
 
-        if initial_state != self._attr_is_on:
-            _LOGGER.debug(
-                f'state change for {self._read_register}-{self._bit_position} from {initial_state} to {self._attr_is_on}')
+        value: int = self._hass.data[DOMAIN][VALUES].get(str(self._read_register), None)
+
+        if value is not None:
+            initial_state = self._attr_is_on
+            if not self._attr_available:
+                self._attr_available = True
+            self._attr_is_on = get_bool(value, self._bit_position)
+
+            if initial_state != self._attr_is_on:
+                _LOGGER.debug(
+                    f'state change for {self._read_register}-{self._bit_position} from {initial_state} to {self._attr_is_on}')
         return self._attr_is_on
 
     @property
@@ -99,11 +150,19 @@ class SolisBinaryEntity(SwitchEntity):
 
     def turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._read_register}-{self._bit_position} turn on called ")
-        self.set_register_bit(True)
+        if self._read_register == 5:
+            self._modbus_controller.enabled = True
+            self._modbus_controller.connect()
+        else:
+            self.set_register_bit(True)
 
     def turn_off(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._read_register}-{self._bit_position} turn off called ")
-        self.set_register_bit(False)
+        if self._read_register == 5:
+            self._modbus_controller.enabled = False
+            self._modbus_controller.disconnect()
+        else:
+            self.set_register_bit(False)
 
     def set_register_bit(self, value):
         """Set or clear a specific bit in the Modbus register."""

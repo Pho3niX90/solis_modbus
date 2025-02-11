@@ -15,7 +15,7 @@ from homeassistant.components.sensor import SensorDeviceClass, RestoreSensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfElectricCurrent, PERCENTAGE, UnitOfPower)
-from homeassistant.core import callback
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 
@@ -47,39 +47,6 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     numberEntities: List[SolisNumberEntity] = []
 
-    # TODO use hybrid sensors x4 registrars, invert multiplier
-    numbers = [
-        {"type": "SNE", "name": "Solis Time-Charging Charge Current", "register": 43141,
-         "default": 50.0, "multiplier": 10,
-         "min_val": 0, "max_val": 135, "step": 0.1, "device_class": SensorDeviceClass.CURRENT,
-         "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "enabled": True},
-        {"type": "SNE", "name": "Solis Time-Charging Discharge Current", "register": 43142,
-         "default": 50.0, "multiplier": 10,
-         "min_val": 0, "max_val": 135, "step": 0.1, "device_class": SensorDeviceClass.CURRENT,
-         "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "enabled": True},
-        {"type": "SNE", "name": "Solis Backup SOC", "register": 43024,
-         "default": 80.0, "multiplier": 1,
-         "min_val": 0, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-        {"type": "SNE", "name": "Solis Battery Force-charge Power Limitation", "register": 43027,
-         "default": 3000.0, "multiplier": 0.1,
-         "min_val": 0, "max_val": 6000, "step": 1,
-         "unit_of_measurement": UnitOfPower.WATT, "enabled": True},
-
-        {"type": "SNE", "name": "Solis Overcharge SOC", "register": 43010,
-         "default": 90, "multiplier": 1,
-         "min_val": 70, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-        {"type": "SNE", "name": "Solis Overdischarge SOC", "register": 43011,
-         "default": 20, "multiplier": 1,
-         "min_val": 5, "max_val": 40, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-        {"type": "SNE", "name": "Solis Force Charge SOC", "register": 43018,
-         "default": 10, "multiplier": 1,
-         "min_val": 0, "max_val": 100, "step": 1,
-         "unit_of_measurement": PERCENTAGE, "enabled": True},
-    ]
-
     if inverter_type in ["string", "grid"]:
         from .data.string_sensors import string_sensors as sensors
     elif inverter_type == "hybrid-waveshare":
@@ -92,16 +59,18 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             entity_register = int(entity_definition['register'][0])
             if entity_definition.get('editable', False) and entity_definition['register'][0].startswith('4'):
                 entity_multiplier = float(entity_definition['multiplier'])
-                numberEntities.append(SolisNumberEntity(hass, modbus_controller, {"name": entity_definition['name'], "register": entity_register,
-                                "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
-                                "min_val": 0, "max_val": 100, "step": 1 if (entity_definition['multiplier'] == 1 or entity_definition['multiplier'] == 0) else entity_multiplier,
-                                "unit_of_measurement": entity_definition['unit_of_measurement'], "enabled": True}))
+                numberEntities.append(SolisNumberEntity(hass, modbus_controller,
+                                                        {"name": entity_definition['name'], "register": entity_register,
+                                                         "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
+                                                         "min_val": entity_definition.get("min"),
+                                                         "max_val": entity_definition.get("max"),
+                                                         "default": entity_definition.get("default"),
+                                                         "step": 1 if (entity_definition['multiplier'] == 1 or
+                                                                       entity_definition[
+                                                                           'multiplier'] == 0) else entity_multiplier,
+                                                         "unit_of_measurement": entity_definition[
+                                                             'unit_of_measurement'], "enabled": True}))
 
-
-    for entity_definition in numbers:
-        type = entity_definition["type"]
-        if type == "SNE":
-            numberEntities.append(SolisNumberEntity(hass, modbus_controller, entity_definition))
     hass.data[DOMAIN][NUMBER_ENTITIES] = numberEntities
     async_add_devices(numberEntities, True)
 
@@ -112,12 +81,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
             hass.create_task(get_modbus_updates(hass, controller))
 
-    async def get_modbus_updates(hass, controller):
+    async def get_modbus_updates(thass: HomeAssistant, controller: ModbusController):
         if not controller.connected():
             await controller.connect()
 
         await asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in hass.data[DOMAIN][NUMBER_ENTITIES]]
+            *[asyncio.to_thread(entity.update) for entity in thass.data[DOMAIN][NUMBER_ENTITIES]]
         )
 
     async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval * 3))
@@ -166,11 +135,18 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
     def update(self):
         """Update Modbus data periodically."""
+        if not self.hass:  # Ensure hass is assigned
+            return
         self._attr_available = True
 
         value: float = self._hass.data[DOMAIN][VALUES][str(self._register)]
         self._hass.create_task(self.update_values(value))
-        self.schedule_update_ha_state()
+
+        try:
+            self.schedule_update_ha_state()
+        except Exception as e:
+            _LOGGER.debug(f"Failed to schedule update: {e}")
+
 
     async def update_values(self, value):
         if value == 0 and self._modbus_controller.connected():
