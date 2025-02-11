@@ -25,6 +25,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     switch_sensors = [
         {
+            "read_register": 5, 'write_register': 5,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis Modbus Enabled"},
+            ]
+        },
+        {
             "read_register": 33132, 'write_register': 43110,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode"},
@@ -117,6 +123,13 @@ class SolisBinaryEntity(SwitchEntity):
 
     def update(self):
         """Update Modbus data periodically."""
+
+        if self._read_register == 5:
+            self._attr_is_on = self._modbus_controller.enabled
+            if not self._attr_available:
+                self._attr_available = True
+            return self._attr_is_on
+
         value: int = self._hass.data[DOMAIN][VALUES].get(str(self._read_register), None)
 
         if value is not None:
@@ -137,11 +150,19 @@ class SolisBinaryEntity(SwitchEntity):
 
     def turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._read_register}-{self._bit_position} turn on called ")
-        self.set_register_bit(True)
+        if self._read_register == 5:
+            self._modbus_controller.enabled = True
+            self._modbus_controller.connect()
+        else:
+            self.set_register_bit(True)
 
     def turn_off(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._read_register}-{self._bit_position} turn off called ")
-        self.set_register_bit(False)
+        if self._read_register == 5:
+            self._modbus_controller.enabled = False
+            self._modbus_controller.disconnect()
+        else:
+            self.set_register_bit(False)
 
     def set_register_bit(self, value):
         """Set or clear a specific bit in the Modbus register."""
