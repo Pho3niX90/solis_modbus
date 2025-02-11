@@ -529,32 +529,36 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Overcharge SOC",
              "unique": "solis_modbus_inverter_overcharge_soc", "register": ['43010'], "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "default": 90,
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
+             "default": 90,
              "min": 70, "max": 100, "step": 1},
 
             {"type": "SS", "name": "Solis Overdischarge SOC",
              "unique": "solis_modbus_inverter_overdischarge_soc", "register": ['43011'], "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "default": 20,
-             "min": 5, "max": 40, "step": 1,},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
+             "default": 20, "min": 5, "max": 40, "step": 1, },
 
             {"type": "reserve", "register": ['43012', '43013', '43014', '43015', '43016', '43017']},
 
             {"type": "SS", "name": "Solis Force Charge SOC",
              "unique": "solis_modbus_inverter_force_charge_soc", "register": ['43018'], "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "default": 10,
-             "min": 0, "max": 100, "step": 1,},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
+             "default": 10,
+             "min": 0, "max": 100, "step": 1, },
 
             {"type": "reserve", "register": ['43019', '43020', '43021', '43022', '43023']},
 
             {"type": "SS", "name": "Solis Backup SOC",
              "unique": "solis_modbus_inverter_backup_soc", "register": ['43024'], "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "default": 80.0,
-             "min": 0, "max": 100, "step": 1,},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
+             "default": 80.0,
+             "min": 0, "max": 100, "step": 1, },
             {"type": "reserve", "register": ['43025', '43026']},
             {"type": "SS", "name": "Solis Battery Force-charge Power Limitation",
              "unique": "solis_modbus_inverter_battery_force_charge_limit",
              "register": ['43027'], "device_class": SensorDeviceClass.POWER, "multiplier": 10,
-             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "default": 3000.0,
+             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
+             "default": 3000.0,
              "min": 0, "max": 6000},
             {"type": "SS", "name": "Solis Battery Force Charge Source",
              "unique": "solis_modbus_inverter_battery_force_charge_source", "register": ['43028'], "multiplier": 0,
@@ -562,17 +566,28 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 43137,
+        "entities": [
+            {"type": "SS", "name": "Solis Off-Grid Overdischarge SOC",
+             "unique": "solis_modbus_inverter_overdischarge_offgrid_soc",
+             "register": ['43137'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 1,
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT,
+             "editable": True, "min": 10, "max": 100, "default": 10}
+        ]
+    },
+    {
         "register_start": 43141,
-        "scan_interval": 10,
         "entities": [
             {"type": "SS", "name": "Solis Time-Charging Charge Current",
              "unique": "solis_modbus_inverter_time_charging_charge_current",
              "register": ['43141'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 135, "step": 0.1, "default": 50},
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT,
+             "editable": True, "min": 0, "max": 135, "step": 0.1, "default": 50},
             {"type": "SS", "name": "Solis Time-Charging Discharge Current",
              "unique": "solis_modbus_inverter_time_charging_discharge_current",
              "register": ['43142'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 135, "step": 0.1, "default": 50},
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT,
+             "editable": True, "min": 0, "max": 135, "step": 0.1, "default": 50},
 
             {"type": "SS", "name": "Solis Time-Charging Charge Start Hour (Slot 1)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot1",
@@ -748,7 +763,7 @@ hybrid_sensors = [
              "register": ['43190'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
         ]
-    },{
+    }, {
         "register_start": 43363,
         "entities": [
             {"type": "SS", "name": "Solis Forced Start of Generator",
@@ -757,7 +772,7 @@ hybrid_sensors = [
             {"type": "SS", "name": "Solis Rated Input Power of Generator",
              "unique": "solis_modbus_inverter_generator_rated_input_power", "register": ['43364'], "multiplier": 0.1,
              "device_class": SensorDeviceClass.POWER, "unit_of_measurement": UnitOfPower.KILO_WATT,
-             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100 },
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
             {"type": "SS", "name": "Solis Generator Setting Switch",
              "unique": "solis_modbus_inverter_generator_setting_switch", "register": ['43365'], "multiplier": 1,
              "state_class": SensorStateClass.MEASUREMENT},
@@ -770,11 +785,11 @@ hybrid_sensors = [
              "state_class": SensorStateClass.MEASUREMENT, "editable": True},
             {"type": "SS", "name": "Solis Generator Target Power",
              "unique": "solis_modbus_inverter_generator_target_power", "register": ['43368'], "multiplier": 0.1,
-             "unit_of_measurement": UnitOfPower.KILO_WATT,"device_class": SensorDeviceClass.POWER,
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
              "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100, "default": 90},
             {"type": "SS", "name": "Solis Generator Charging Power",
              "unique": "solis_modbus_inverter_generator_charging_power", "register": ['43369'], "multiplier": 0.1,
-             "unit_of_measurement": UnitOfPower.KILO_WATT,"device_class": SensorDeviceClass.POWER,
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
              "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
         ]
     },
@@ -786,7 +801,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Charge cut off SOC (Slot 1)", "register": ['43708'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_charge_1", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Charge battery current (Slot 1)", "register": ['43709'],
              "unique": "solis_modbus_inverter_tou_charge_v2_battery_current_1", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -811,7 +827,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Charge cut off SOC (Slot 2)", "register": ['43715'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_charge_2", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Charge battery current (Slot 2)", "register": ['43716'],
              "unique": "solis_modbus_inverter_tou_charge_v2_battery_current_2", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -836,7 +853,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Charge cut off SOC (Slot 3)", "register": ['43722'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_charge_3", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Charge battery current (Slot 3)", "register": ['43723'],
              "unique": "solis_modbus_inverter_tou_charge_v2_battery_current_3", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -861,7 +879,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Charge cut off SOC (Slot 4)", "register": ['43729'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_charge_4", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Charge battery current (Slot 4)", "register": ['43730'],
              "unique": "solis_modbus_inverter_tou_charge_v2_battery_current_4", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -886,7 +905,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Charge cut off SOC (Slot 5)", "register": ['43736'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_charge_5", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Charge battery current (Slot 5)", "register": ['43737'],
              "unique": "solis_modbus_inverter_tou_charge_v2_battery_current_5", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -911,7 +931,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Charge cut off SOC (Slot 6)", "register": ['43743'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_charge_6", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Charge battery current (Slot 6)", "register": ['43744'],
              "unique": "solis_modbus_inverter_tou_charge_v2_battery_current_6", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -939,7 +960,8 @@ hybrid_sensors = [
         "entities": [
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off SOC (Slot 1)", "register": ['43750'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_1", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 1)", "register": ['43751'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_1", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -964,7 +986,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off SOC (Slot 2)", "register": ['43757'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_2", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 2)", "register": ['43758'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_2", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -989,7 +1012,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off SOC (Slot 3)", "register": ['43764'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_3", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 3)", "register": ['43765'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_3", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -1014,7 +1038,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off SOC (Slot 4)", "register": ['43771'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_4", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 4)", "register": ['43772'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_4", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -1039,7 +1064,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off SOC (Slot 5)", "register": ['43778'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_5", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 5)", "register": ['43779'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_5", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -1064,7 +1090,8 @@ hybrid_sensors = [
 
             {"type": "SS", "name": "Solis Grid Time of Use Discharge cut off SOC (Slot 6)", "register": ['43785'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_6", "multiplier": 1,
-             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 100},
+             "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0,
+             "max": 100},
             {"type": "SS", "name": "Solis Grid Time of Use Discharge battery current (Slot 6)", "register": ['43786'],
              "unique": "solis_modbus_inverter_tou_discharge_v2_battery_current_6", "multiplier": 0.1,
              "device_class": SensorDeviceClass.CURRENT, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
@@ -1091,13 +1118,15 @@ hybrid_sensors = [
     {
         "register_start": 43815,
         "entities": [{"type": "SS", "name": "Solis Generator charging switch",
-                      "unique": "solis_modbus_inverter_generator_chargin_switch", "register": ['43815'], "multiplier": 1,
+                      "unique": "solis_modbus_inverter_generator_chargin_switch", "register": ['43815'],
+                      "multiplier": 1,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
         "register_start": 43340,
         "entities": [{"type": "SS", "name": "Solis Generator Set Enable Switch",
-                      "unique": "solis_modbus_inverter_generator_enablement_switch", "register": ['43340'], "multiplier": 1,
+                      "unique": "solis_modbus_inverter_generator_enablement_switch", "register": ['43340'],
+                      "multiplier": 1,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
