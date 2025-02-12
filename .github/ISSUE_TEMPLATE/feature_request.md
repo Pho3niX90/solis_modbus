@@ -1,20 +1,24 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+name: Feature Request
+about: Suggest an improvement or new feature for the Home Assistant inverter integration.
+title: "[Feature]: "
+labels: "enhancement"
 assignees: ''
-
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## 🚀 Feature Request
+A clear and concise description of the feature or improvement.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+## 🔍 Use Case
+Explain **why** this feature is needed and **how** it improves the integration.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## ✅ Expected Behavior
+Describe how the feature should work when implemented.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## 🛠️ Implementation Ideas (if any)
+If you have suggestions on how this could be implemented, share them here.
+
+## 🔗 Additional Context
+- Related feature requests/issues: [e.g., #123]
+- Reference links or documentation: [e.g., Modbus register documentation]
+
