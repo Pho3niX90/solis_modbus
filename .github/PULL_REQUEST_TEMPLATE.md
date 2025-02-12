@@ -1,11 +1,3 @@
----
-name: Pull Request
-about: Submit a code change, fix, or feature improvement.
-title: "[PR]: "
-labels: "pull request"
-assignees: ''
----
-
 ## 🔥 Description
 Describe what this pull request does and why.
 
