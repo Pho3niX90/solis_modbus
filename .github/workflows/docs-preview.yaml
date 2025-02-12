@@ -1,6 +1,5 @@
 # .github/workflows/documentation-links.yml
-
-name: readthedocs/actions
+name: Generate Docs Preview
 on:
   pull_request_target:
     types:
@@ -17,4 +16,4 @@ jobs:
     steps:
       - uses: readthedocs/actions/preview@v1
         with:
-          project-slug: "readthedocs-preview"
+          project-slug: "solis-modbus"
