@@ -27,7 +27,7 @@ The following sensors are provided in the integration.
 | Solis Allow Grid To Charge The Battery                                  | 43110    | 5            |
 | Solis Feed In Priority Mode                                             | 43110    | 6            |
 | Solis Batt OVC                                                          | 43110    | 7            |
-| Solis Battery Focecharge Peakshaving                                    | 43110    | 8            |
+| Solis Battery Forcecharge Peakshaving                                   | 43110    | 8            |
 | Solis Battery current correction                                        | 43110    | 9            |
 | Solis Battery healing mode                                              | 43110    | 10           |
 | Solis Peak-shaving mode                                                 | 43110    | 11           |

@@ -41,7 +41,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
                 {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode"},
                 {"type": "SBS", "bit_position": 7, "name": "Solis Batt OVC"},
-                {"type": "SBS", "bit_position": 8, "name": "Solis Battery Focecharge Peakshaving"},
+                {"type": "SBS", "bit_position": 8, "name": "Solis Battery Forcecharge Peakshaving"},
                 {"type": "SBS", "bit_position": 9, "name": "Solis Battery current correction"},
                 {"type": "SBS", "bit_position": 10, "name": "Solis Battery healing mode"},
                 {"type": "SBS", "bit_position": 11, "name": "Solis Peak-shaving mode"},
