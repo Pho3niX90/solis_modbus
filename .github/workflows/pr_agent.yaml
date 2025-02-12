@@ -9,6 +9,7 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
+      contents: read
     runs-on: ubuntu-latest
     name: Run pr agent on every pull request, respond to user comments
     steps:

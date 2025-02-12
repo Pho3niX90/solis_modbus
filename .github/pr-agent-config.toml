@@ -1,0 +1,29 @@
+[summary]
+enabled = true
+include_files_changed = true # Shows affected files
+include_commits = true # Summarizes commit messages
+
+[labels]
+enabled = true
+use_ai_labels = true # AI will analyze PR content to suggest labels
+
+[review]
+enabled = true
+level = "medium" # Options: "low", "medium", "strict"
+comment_inline = true # Leave comments in the PR instead of one block
+
+[reviewers]
+enabled = true
+use_codeowners = true # Uses .github/CODEOWNERS file
+fallback_reviewers = ["pho3nix90"] # If no CODEOWNERS match
+
+[commit]
+enforce_conventional = true
+allow_rebase_merges = false
+require_signed_commits = true # Enforce GPG-signed commits
+
+[stale]
+enabled = true
+days_before_stale = 30
+days_before_close = 7
+comment_before_closing = "This PR is stale. If no further activity occurs, it will be closed."
