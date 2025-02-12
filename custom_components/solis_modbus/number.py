@@ -11,10 +11,8 @@ from datetime import timedelta
 from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.components.sensor import SensorDeviceClass, RestoreSensor
+from homeassistant.components.sensor import RestoreSensor
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower)
 from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval

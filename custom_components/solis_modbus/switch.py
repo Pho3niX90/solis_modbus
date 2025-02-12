@@ -1,12 +1,14 @@
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import List, Any
 
+from attr.validators import instance_of
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_track_time_interval, async_track_time_change
+from setuptools.command.install import install
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
@@ -14,9 +16,12 @@ from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURE
 
 _LOGGER = logging.getLogger(__name__)
 
+kill_switch = None
+kill_switch_state = False
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
+    global kill_switch
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
@@ -89,10 +94,14 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             if type == "SBS":
                 child_entity['read_register'] = main_entity['read_register']
                 child_entity['write_register'] = main_entity['write_register']
-                switchEntities.append(SolisBinaryEntity(hass, modbus_controller, child_entity))
+                entity = SolisBinaryEntity(hass, modbus_controller, child_entity)
+                if entity._read_register == 5:
+                    kill_switch = entity
+                switchEntities.append(entity)
 
     hass.data[DOMAIN][SWITCH_ENTITIES] = switchEntities
     async_add_devices(switchEntities, True)
+    async_track_time_change(hass, toggle_kill_switch, second=0)
 
     @callback
     def async_update(now):
@@ -105,6 +114,18 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     return True
 
+@callback
+def toggle_kill_switch(now):
+    """Turn off the kill switch at minute 4 and turn it back on at minute 6."""
+    global kill_switch_state
+    if kill_switch:
+        current_minute = datetime.now().minute
+        if current_minute % 10 == 4:
+            kill_switch.turn_off()
+            _LOGGER.info("Kill switch turned OFF at minute 4")
+        elif current_minute % 10 == 6:
+            kill_switch.turn_on()
+            _LOGGER.info("Kill switch turned ON at minute 6")
 
 class SolisBinaryEntity(SwitchEntity):
 
