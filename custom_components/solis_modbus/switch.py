@@ -40,6 +40,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 4, "name": "Solis Reserve Battery Mode"},
                 {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
                 {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode"},
+                {"type": "SBS", "bit_position": 7, "name": "Solis Batt OVC"},
+                {"type": "SBS", "bit_position": 8, "name": "Solis Battery Forcecharge Peakshaving"},
+                {"type": "SBS", "bit_position": 9, "name": "Solis Battery current correction"},
+                {"type": "SBS", "bit_position": 10, "name": "Solis Battery healing mode"},
+                {"type": "SBS", "bit_position": 11, "name": "Solis Peak-shaving mode"},
             ]
         },{
             "read_register": 43365, "write_register": 43365,
@@ -77,6 +82,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 5, "name": "Solis Backup2Load manual enable"},
                 {"type": "SBS", "bit_position": 6, "name": "Solis Smart load port stops output when off-grid"},
                 {"type": "SBS", "bit_position": 7, "name": "Solis Grid Peak-shaving power enable"},
+            ]
+        },{
+            "read_register": 43135, "write_register": 43135,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "Solis RC Force Battery Charge/discharge"},
             ]
         }
     ]

@@ -26,6 +26,11 @@ The following sensors are provided in the integration.
 | Solis Reserve Battery Mode                                              | 43110    | 4            |
 | Solis Allow Grid To Charge The Battery                                  | 43110    | 5            |
 | Solis Feed In Priority Mode                                             | 43110    | 6            |
+| Solis Batt OVC                                                          | 43110    | 7            |
+| Solis Battery Forcecharge Peakshaving                                   | 43110    | 8            |
+| Solis Battery current correction                                        | 43110    | 9            |
+| Solis Battery healing mode                                              | 43110    | 10           |
+| Solis Peak-shaving mode                                                 | 43110    | 11           |
 | Solis Generator connection position                                     | 43365    | 0            |
 | Solis With Generator                                                    | 43365    | 1            |
 | Solis Generator enable signal                                           | 43365    | 2            |
