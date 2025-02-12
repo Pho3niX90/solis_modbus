@@ -25,7 +25,7 @@ enable_auto_approval=true
 [pr_description] # /describe #
 publish_labels=true
 add_original_user_description=true
-generate_ai_title=false
+generate_ai_title=true
 use_bullet_points=true
 extra_instructions = ""
 enable_pr_type=true
