@@ -26,6 +26,11 @@ The following sensors are provided in the integration.
 | Solis Reserve Battery Mode                                              | 43110    | 4            |
 | Solis Allow Grid To Charge The Battery                                  | 43110    | 5            |
 | Solis Feed In Priority Mode                                             | 43110    | 6            |
+| Solis Batt OVC                                                          | 43110    | 7            |
+| Solis Battery Forcecharge Peakshaving                                   | 43110    | 8            |
+| Solis Battery current correction                                        | 43110    | 9            |
+| Solis Battery healing mode                                              | 43110    | 10           |
+| Solis Peak-shaving mode                                                 | 43110    | 11           |
 | Solis Generator connection position                                     | 43365    | 0            |
 | Solis With Generator                                                    | 43365    | 1            |
 | Solis Generator enable signal                                           | 43365    | 2            |
@@ -47,6 +52,7 @@ The following sensors are provided in the integration.
 | Solis Backup2Load manual enable                                         | 43483    | 5            |
 | Solis Smart load port stops output when off-grid                        | 43483    | 6            |
 | Solis Grid Peak-shaving power enable                                    | 43483    | 7            | When disabled, the battery charging power is notlimited according to the power situation on the public grid side; when enabled, the power taken from the public grid side exceeds the set value of 43488, and the battery charging power is limited;                                                          |
+| Solis RC Force Battery Charge/discharge                                 | 43135    |              |                                                                                                                                                                                                                                                                                                               |
 
 # Time Control Sensors
 | Name                                         | Register |
