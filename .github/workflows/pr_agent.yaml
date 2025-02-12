@@ -19,3 +19,6 @@ jobs:
         env:
           OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_DESCRIPTION.GENERATE_AI_TITLE: "true"
+          PR_DESCRIPTION.PUBLISH_LABELS: "true"
+          PR_REVIEWER.ENABLE_AUTO_APPROVAL: "true"
