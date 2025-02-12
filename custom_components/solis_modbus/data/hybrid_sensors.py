@@ -576,6 +576,14 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 43135,
+        "entities": [
+            {"type": "SS", "name": "Solis RC Force Battery Charge/discharge",
+             "unique": "solis_modbus_inverter_rc_force_charge_discharge",
+             "register": ['43135'], "multiplier": 1, "state_class": SensorStateClass.MEASUREMENT, "switch": True}
+        ]
+    },
+    {
         "register_start": 43141,
         "entities": [
             {"type": "SS", "name": "Solis Time-Charging Charge Current",
