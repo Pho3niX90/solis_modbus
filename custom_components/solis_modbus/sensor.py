@@ -245,7 +245,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         # Hidden Class Extended Instance Attributes
         self._device_attribute = entity_definition.get("attribute", None)
         self._multiplier = entity_definition.get("multiplier", 1)
-        self._display_multiplier = entity_definition.get("display_multiplier", 1)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -295,8 +294,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
             if isinstance(n_value, Number):
                 self._attr_available = True
-                self._attr_native_value = n_value * self._display_multiplier
-                self._state = n_value * self._display_multiplier
+                self._attr_native_value = str(n_value)
+                self._state = n_value
                 self.schedule_update_ha_state()
             if isinstance(n_value, str):
                 self._attr_available = True
