@@ -88,6 +88,18 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             "entities": [
                 {"type": "SBS", "on_value": 1, "name": "Solis RC Force Battery Charge/discharge"},
             ]
+        }, {
+            "read_register": 43249, "write_register": 43249,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "MPPT Parallel Function"},
+                {"type": "SBS", "bit_position": 1, "name": "IgFollow"},
+                {"type": "SBS", "bit_position": 2, "name": "Relay Protection"},
+                {"type": "SBS", "bit_position": 3, "name": "I-Leak Protection"},
+                {"type": "SBS", "bit_position": 4, "name": "PV ISO Protection"},
+                {"type": "SBS", "bit_position": 5, "name": "Grid-Interference Protection"},
+                {"type": "SBS", "bit_position": 6, "name": "The DC component of the grid current protection switch"},
+                {"type": "SBS", "bit_position": 7, "name": "Const Voltage Mode Enable Const Voltage"},
+            ]
         }
     ]
 

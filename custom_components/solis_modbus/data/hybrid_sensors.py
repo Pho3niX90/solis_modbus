@@ -1122,25 +1122,32 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_tou_discharge_end_minute_6", "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
         ]
-    },
-    {
+    }, {
         "register_start": 43815,
         "entities": [{"type": "SS", "name": "Solis Generator charging switch",
                       "unique": "solis_modbus_inverter_generator_chargin_switch", "register": ['43815'],
-                      "multiplier": 1,
+                      "multiplier": 1, "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
         "register_start": 43340,
         "entities": [{"type": "SS", "name": "Solis Generator Set Enable Switch",
                       "unique": "solis_modbus_inverter_generator_enablement_switch", "register": ['43340'],
-                      "multiplier": 1,
+                      "multiplier": 1, "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
         "register_start": 43483,
         "entities": [{"type": "SS", "name": "Solis Hybrid Function Control",
                       "unique": "solis_modbus_inverter_hybrid_function_control", "register": ['43483'], "multiplier": 1,
+                      "hidden": True,
+                      "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    {
+        "register_start": 43249,
+        "entities": [{"type": "SS", "name": "Special Settings",
+                      "unique": "solis_modbus_inverter_special_settings", "register": ['43249'], "multiplier": 1,
+                      "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     }
 ]
