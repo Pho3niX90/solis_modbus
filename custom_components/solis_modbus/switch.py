@@ -31,7 +31,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             ]
         },
         {
-            "read_register": 33132, 'write_register': 43110,
+            "read_register": 43110, 'write_register': 43110,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode"},
                 {"type": "SBS", "bit_position": 1, "name": "Solis Time Of Use Mode"},

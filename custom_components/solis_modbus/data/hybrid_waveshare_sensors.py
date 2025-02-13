@@ -1060,7 +1060,7 @@ hybrid_waveshare = [
         "register_start": 43487,
         "entities": [
             {"type": "SS", "name": "Solis Peak Baseline SOC",
-             "unique": "solis_modbus_inverter_peak_baseline_soc", "register": ['43487'], "multiplier": 0.01,
+             "unique": "solis_modbus_inverter_peak_baseline_soc", "register": ['43487'], "multiplier": 1,
              "device_class": SensorDeviceClass.BATTERY, "unit_of_measurement": PERCENTAGE,
              "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 7, "max": 100},
             {"type": "SS", "name": "Solis Peak Max Usable Grid Power",
@@ -1073,6 +1073,14 @@ hybrid_waveshare = [
         "register_start": 43249,
         "entities": [{"type": "SS", "name": "Special Settings",
                       "unique": "solis_modbus_inverter_special_settings", "register": ['43249'], "multiplier": 1,
+                      "hidden": True,
+                      "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    ## Remove 33132 in next update if this works
+    {
+        "register_start": 43110,
+        "entities": [{"type": "SS", "name": "Storage control Switch value",
+                      "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'], "multiplier": 1,
                       "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     }

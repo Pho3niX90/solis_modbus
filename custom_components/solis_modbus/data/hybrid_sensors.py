@@ -1153,6 +1153,14 @@ hybrid_sensors = [
                       "unique": "solis_modbus_inverter_special_settings", "register": ['43249'], "multiplier": 1,
                       "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    ## Remove 33132 in next update if this works
+    {
+        "register_start": 43110,
+        "entities": [{"type": "SS", "name": "Storage control Switch value",
+                      "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'], "multiplier": 1,
+                      "hidden": True,
+                      "state_class": SensorStateClass.MEASUREMENT}]
     }
 ]
 
