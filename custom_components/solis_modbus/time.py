@@ -117,11 +117,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN][TIME_ENTITIES]])
         # Schedule the update function to run every X seconds
 
-    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 3))
+    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 2))
 
     return True
-
-    # fmt: on
 
 
 class SolisTimeEntity(TimeEntity):
@@ -161,7 +159,7 @@ class SolisTimeEntity(TimeEntity):
         minute = self._hass.data[DOMAIN][VALUES][str(self._register + 1)]
         _LOGGER.debug(f"Time: {self._register}, Hour = {hour}, Minute = {minute}")
 
-        if (hour == 0 or minute == 0) and controller.connected() and not controller.data_received:
+        if (hour == 0 or minute == 0 or hour is None or minute is None) and controller.connected() and not controller.data_received:
             new_vals = await controller.async_read_holding_register(self._register, count=2)
             hour = new_vals[0] if new_vals else None
             minute = new_vals[1] if new_vals else None

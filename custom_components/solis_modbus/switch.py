@@ -33,9 +33,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         {
             "read_register": 43110, 'write_register': 43110,
             "entities": [
-                {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode"},
-                {"type": "SBS", "bit_position": 1, "name": "Solis Time Of Use Mode"},
-                {"type": "SBS", "bit_position": 2, "name": "Solis OFF-Grid Mode"},
+                {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode", "work_mode": (0,1,2,11)},
+                {"type": "SBS", "bit_position": 1, "name": "Solis Time Of Use Mode", "work_mode": (0,1,2,11)},
+                {"type": "SBS", "bit_position": 2, "name": "Solis OFF-Grid Mode", "work_mode": (0,1,2,11)},
                 {"type": "SBS", "bit_position": 3, "name": "Solis Battery Wakeup Switch"},
                 {"type": "SBS", "bit_position": 4, "name": "Solis Reserve Battery Mode"},
                 {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
@@ -44,7 +44,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 8, "name": "Solis Battery Forcecharge Peakshaving"},
                 {"type": "SBS", "bit_position": 9, "name": "Solis Battery current correction"},
                 {"type": "SBS", "bit_position": 10, "name": "Solis Battery healing mode"},
-                {"type": "SBS", "bit_position": 11, "name": "Solis Peak-shaving mode"},
+                {"type": "SBS", "bit_position": 11, "name": "Solis Peak-shaving Mode", "work_mode": (0,1,2,11)},
             ]
         },{
             "read_register": 43365, "write_register": 43365,
@@ -136,6 +136,7 @@ class SolisBinaryEntity(SwitchEntity):
         self._read_register: int = entity_definition["read_register"]
         self._write_register: int = entity_definition["write_register"]
         self._bit_position = entity_definition.get("bit_position", None)
+        self._work_mode = entity_definition.get("work_mode", None)
         self._on_value = entity_definition.get("on_value", None)
         self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._read_register,
                                                     self._bit_position)
@@ -192,7 +193,11 @@ class SolisBinaryEntity(SwitchEntity):
         current_register_value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
 
         if self._bit_position is not None:
+            if value is True and self._work_mode is not None:
+                for wbit in self._work_mode:
+                    current_register_value = set_bit(current_register_value, wbit, False)
             new_register_value: int = set_bit(current_register_value, self._bit_position, value)
+
         else:
             new_register_value: int = value
 
@@ -204,7 +209,6 @@ class SolisBinaryEntity(SwitchEntity):
             self._hass.data[DOMAIN][VALUES][str(self._read_register)] = new_register_value
 
         self._attr_is_on = value
-
         self._attr_available = True
 
     @property

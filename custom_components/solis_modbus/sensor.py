@@ -1,7 +1,9 @@
 import asyncio
+import fractions
 import logging
+import numbers
 from datetime import timedelta, datetime
-from numbers import Number
+import decimal
 from typing import List
 
 from homeassistant.components.sensor import SensorEntity, RestoreSensor
@@ -292,9 +294,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self._modbus_controller._model = model_description
                 n_value = model_description + f"(Protocol {protocol_version})"
 
-            if isinstance(n_value, Number):
+            if isinstance(n_value, (numbers.Number, decimal.Decimal, fractions.Fraction)):
                 self._attr_available = True
-                self._attr_native_value = str(n_value)
+                self._attr_native_value = n_value
                 self._state = n_value
                 self.schedule_update_ha_state()
             if isinstance(n_value, str):
