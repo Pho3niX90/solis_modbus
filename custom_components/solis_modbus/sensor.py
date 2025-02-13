@@ -35,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         from .data.string_sensors import string_sensors_derived as sensors_derived
     elif inverter_type == "hybrid-waveshare":
         from .data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
-        from .data.hybrid_waveshare_sensors import hybrid_wavesahre_sensors_derived as sensors_derived
+        from .data.hybrid_waveshare_sensors import hybrid_waveshare_sensors_derived as sensors_derived
     else:
         from .data.hybrid_sensors import hybrid_sensors as sensors
         from .data.hybrid_sensors import hybrid_sensors_derived as sensors_derived
