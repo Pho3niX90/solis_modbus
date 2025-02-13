@@ -6,7 +6,6 @@ from homeassistant.const import UnitOfElectricPotential, UnitOfElectricCurrent, 
 hybrid_sensors = [
     {
         "register_start": 33000,
-        "scan_interval": 0,
         "entities": [
             {"type": "SS", "name": "Solis Model No", "unique": "solis_modbus_inverter_model_no",
              "register": ['33000'], "multiplier": 0},
@@ -25,7 +24,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 35000,
-        "scan_interval": 0,
         "entities": [
             {"type": "SS", "name": "Solis Inverter Type Definition", "unique": "solis_modbus_inverter_type_definition",
              "register": ['35000'], "multiplier": 0},
@@ -33,7 +31,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33025,
-        "scan_interval": 60,
         "entities": [
 
             {"type": "SS", "name": "Solis Clock (Hours)",
@@ -83,7 +80,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33049,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis PV Voltage 1",
              "unique": "solis_modbus_inverter_dc_voltage_1",
@@ -133,7 +129,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33072,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis PV Bus Half Voltage",
              "unique": "solis_modbus_inverter_dc_bus_half_voltage",
@@ -185,7 +180,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33093,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis Temperature", "unique": "solis_modbus_inverter_temperature",
              "register": ['33093'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
@@ -206,7 +200,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33132,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis Storage Control Switching Value",
              "unique": "solis_modbus_inverter_storage_control_switching_value", "register": ['33132'],
@@ -366,7 +359,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 33243,
-        "scan_interval": 5,
         "entities": [
             {"type": "SS", "name": "Solis Parallel Inverter AC Current",
              "unique": "solis_modbus_inverter_parallel_inverter_ac_current",
@@ -524,7 +516,6 @@ hybrid_sensors = [
     },
     {
         "register_start": 43011,
-        "scan_interval": 10,
         "entities": [
 
             {"type": "SS", "name": "Solis Overcharge SOC",
@@ -1142,6 +1133,19 @@ hybrid_sensors = [
                       "unique": "solis_modbus_inverter_hybrid_function_control", "register": ['43483'], "multiplier": 1,
                       "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    {
+        "register_start": 43487,
+        "entities": [
+            {"type": "SS", "name": "Solis Peak Baseline SOC",
+             "unique": "solis_modbus_inverter_peak_baseline_soc", "register": ['43483'], "multiplier": 0.01,
+             "device_class": SensorDeviceClass.BATTERY, "unit_of_measurement": PERCENTAGE,
+             "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis Peak Max Usable Grid Power",
+             "unique": "solis_modbus_inverter_peak_max_usuable_grid_power", "register": ['43488'], "multiplier": 100,
+             "device_class": SensorDeviceClass.POWER, "unit_of_measurement": UnitOfPower.WATT,
+             "state_class": SensorStateClass.MEASUREMENT}
+        ]
     },
     {
         "register_start": 43249,
