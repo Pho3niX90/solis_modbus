@@ -163,6 +163,7 @@ class SolisTimeEntity(TimeEntity):
             new_vals = await controller.async_read_holding_register(self._register, count=2)
             hour = new_vals[0] if new_vals else None
             minute = new_vals[1] if new_vals else None
+            _LOGGER.debug(f"(retry) Time: {self._register}, Hour = {hour}, Minute = {minute}")
 
         if hour is not None and minute is not None:
             self._attr_native_value = time(hour=hour, minute=minute)

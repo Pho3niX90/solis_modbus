@@ -612,8 +612,11 @@ hybrid_waveshare = [
              "unique": "solis_modbus_inverter_time_discharge_end_minute_slot3",
              "register": ['43170'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
-
-            {"type": "reserve", "register": ['43071', '43072']},
+        ]
+    },
+    {
+        "register_start": 43173,
+        "entities": [
 
             {"type": "SS", "name": "Solis Time-Charging Charge Start Hour (Slot 4)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot4",
@@ -1066,7 +1069,7 @@ hybrid_waveshare = [
             {"type": "SS", "name": "Solis Peak Max Usable Grid Power",
              "unique": "solis_modbus_inverter_peak_max_usuable_grid_power", "register": ['43488'], "multiplier": 100,
              "device_class": SensorDeviceClass.POWER, "unit_of_measurement": UnitOfPower.WATT,
-             "state_class": SensorStateClass.MEASUREMENT,  "editable": True, "min": 0, "max": 15000}
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 15000}
         ]
     },
     {
@@ -1080,7 +1083,8 @@ hybrid_waveshare = [
     {
         "register_start": 43110,
         "entities": [{"type": "SS", "name": "Storage control Switch value",
-                      "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'], "multiplier": 1,
+                      "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'],
+                      "multiplier": 1,
                       "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     }
