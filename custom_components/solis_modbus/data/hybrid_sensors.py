@@ -1141,7 +1141,7 @@ hybrid_sensors = [
         "entities": [
             {"type": "SS", "name": "Solis Peak Baseline SOC",
              "unique": "solis_modbus_inverter_peak_baseline_soc", "register": ['43487'], "multiplier": 1,
-             "device_class": SensorDeviceClass.BATTERY, "unit_of_measurement": PERCENTAGE,
+             "unit_of_measurement": PERCENTAGE,
              "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 7, "max": 100},
             {"type": "SS", "name": "Solis Peak Max Usable Grid Power",
              "unique": "solis_modbus_inverter_peak_max_usuable_grid_power", "register": ['43488'], "multiplier": 100,

@@ -11,7 +11,7 @@ class ModbusController:
     def __init__(self, host, port=502, poll_interval=15):
         self.host = host
         self.port = port
-        self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(self.host, port=self.port)
+        self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(self.host, port=self.port, retries=10, timeout=10, reconnect_delay=10)
         self.connect_failures = 0
         self._lock = asyncio.Lock()
         self._data_received = False
@@ -51,7 +51,6 @@ class ModbusController:
                     return True
 
             except ConnectionError as e:
-                _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {str(e)}")
                 return False  # Return False if an exception occurs
 
     async def disconnect(self):

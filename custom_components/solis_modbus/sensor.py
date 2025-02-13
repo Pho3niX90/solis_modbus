@@ -78,6 +78,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         if not controller.connected():
             await controller.connect()
 
+        if not controller.connected():
+            return
+
         for sensor_group in sensors:
             start_register = sensor_group['register_start']
 
@@ -333,7 +336,6 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, entity_definition["unique"])
 
         self._register: List[int] = entity_definition["register"]
-        self._state = None
         self._unit_of_measurement = entity_definition.get("unit_of_measurement", None)
         self._device_class = entity_definition.get("device_class", None)
 
@@ -350,13 +352,12 @@ class SolisSensor(RestoreSensor, SensorEntity):
         # Hidden Class Extended Instance Attributes
         self._device_attribute = entity_definition.get("attribute", None)
         self._multiplier = entity_definition.get("multiplier", 1)
-        self._display_multiplier = entity_definition.get("display_multiplier", 1)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
         if state and state.native_value is not None:
-            self._attr_native_value = state.native_value * self._display_multiplier
+            self._attr_native_value = state.native_value
         self.is_added_to_hass = True
 
     def update(self):
@@ -384,8 +385,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
             if n_value is not None and not asyncio.iscoroutine(n_value):
                 self._attr_available = True
-                self._attr_native_value = n_value * self._display_multiplier
-                self._state = n_value * self._display_multiplier
+                self._attr_native_value = n_value
+                self._state = n_value
                 self.schedule_update_ha_state()
 
         except ValueError as e:
