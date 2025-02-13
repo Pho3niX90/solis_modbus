@@ -7,16 +7,14 @@ This is where we will describe what this module does
 """
 import asyncio
 import logging
+import datetime
 from datetime import time
-from datetime import timedelta
 from typing import List
 
 from homeassistant.components.number import NumberMode
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
@@ -28,21 +26,11 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
     modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
-    # We only want this platform to be set up via discovery.
-    _LOGGER.info("Options %s", len(config_entry.options))
-
-    platform_config = config_entry.data or {}
-    if len(config_entry.options) > 0:
-        platform_config = config_entry.options
-
-    _LOGGER.info(f"Solis platform_config: {platform_config}")
 
     inverter_type = config_entry.data.get("type", "hybrid")
 
     if inverter_type == 'string':
         return False
-
-    # fmt: off
 
     timeEntities: List[SolisTimeEntity] = []
 
@@ -111,18 +99,6 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     hass.data[DOMAIN][TIME_ENTITIES] = timeEntities
     async_add_devices(timeEntities, True)
 
-    @callback
-    async def async_update(now):
-        """Update Modbus data periodically."""
-        await asyncio.gather(*[entity.async_update() for entity in hass.data[DOMAIN][TIME_ENTITIES]])
-        # Schedule the update function to run every X seconds
-
-    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 3))
-
-    return True
-
-    # fmt: on
-
 
 class SolisTimeEntity(TimeEntity):
     """Representation of a Time entity."""
@@ -140,34 +116,11 @@ class SolisTimeEntity(TimeEntity):
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_native_value = entity_definition.get("default", None)
-        self._attr_assumed_state = entity_definition.get("assumed", False)
-        self._attr_available = False
+        self._attr_available = True
         self._attr_device_class = entity_definition.get("device_class", None)
         self._attr_icon = entity_definition.get("icon", None)
         self._attr_mode = entity_definition.get("mode", NumberMode.AUTO)
-        self._attr_should_poll = False
         self._attr_entity_registry_enabled_default = entity_definition.get("enabled", False)
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        _LOGGER.debug(f"async_added_to_hass {self._attr_name},  {self.entity_id},  {self.unique_id}")
-
-    async def async_update(self):
-        """Update Modbus data periodically."""
-        controller: ModbusController = self._modbus_controller
-        self._attr_available = True
-
-        hour = self._hass.data[DOMAIN][VALUES][str(self._register)]
-        minute = self._hass.data[DOMAIN][VALUES][str(self._register + 1)]
-        _LOGGER.debug(f"Time: {self._register}, Hour = {hour}, Minute = {minute}")
-
-        if (hour == 0 or minute == 0) and controller.connected() and not controller.data_received:
-            new_vals = await controller.async_read_holding_register(self._register, count=2)
-            hour = new_vals[0] if new_vals else None
-            minute = new_vals[1] if new_vals else None
-
-        if hour is not None and minute is not None:
-            self._attr_native_value = time(hour=hour, minute=minute)
 
     @property
     def device_info(self):
@@ -180,11 +133,10 @@ class SolisTimeEntity(TimeEntity):
             sw_version=self._modbus_controller.sw_version,
         )
 
-    def set_native_value(self, value):
-        """Update the current value."""
-        if self._attr_native_value == value:
-            return
-        _LOGGER.debug(f'set_native_value : register = {self._register}, value = {value}')
+    @property
+    def native_value(self):
+        vals = self._hass.data[DOMAIN][VALUES]
+        return datetime.time(hour=vals[str(self._register)], minute=vals[str(self._register + 1)])
 
     async def async_set_value(self, value: time) -> None:
         """Set the time."""

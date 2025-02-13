@@ -25,24 +25,29 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     switch_sensors = [
         {
-            "read_register": 5, 'write_register': 5,
+            "register": 5,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Modbus Enabled"},
             ]
         },
         {
-            "read_register": 33132, 'write_register': 43110,
+            "register": 43110,
             "entities": [
-                {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode"},
+                {"type": "SBS", "bit_position": 0, "name": "Solis Self-Use Mode", "work_mode": (0,6,11)},
                 {"type": "SBS", "bit_position": 1, "name": "Solis Time Of Use Mode"},
                 {"type": "SBS", "bit_position": 2, "name": "Solis OFF-Grid Mode"},
                 {"type": "SBS", "bit_position": 3, "name": "Solis Battery Wakeup Switch"},
-                {"type": "SBS", "bit_position": 4, "name": "Solis Reserve Battery Mode"},
+                {"type": "SBS", "bit_position": 4, "name": "Solis Reserve Battery Mode", "work_mode": (4,11)},
                 {"type": "SBS", "bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
-                {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode"},
+                {"type": "SBS", "bit_position": 6, "name": "Solis Feed In Priority Mode", "work_mode": (0,6,11)},
+                {"type": "SBS", "bit_position": 7, "name": "Solis Batt OVC"},
+                {"type": "SBS", "bit_position": 8, "name": "Solis Battery Forcecharge Peakshaving"},
+                {"type": "SBS", "bit_position": 9, "name": "Solis Battery current correction"},
+                {"type": "SBS", "bit_position": 10, "name": "Solis Battery healing mode"},
+                {"type": "SBS", "bit_position": 11, "name": "Solis Peak-shaving Mode", "work_mode": (0,4,6,11)},
             ]
         },{
-            "read_register": 43365, "write_register": 43365,
+            "register": 43365,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Generator connection position"},
                 {"type": "SBS", "bit_position": 1, "name": "Solis With Generator"},
@@ -51,7 +56,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 4, "name": "Solis Generator access location"},
             ]
         },{
-            "read_register": 43815, "write_register": 43815,
+            "register": 43815,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Generator charging period 1 switch"},
                 {"type": "SBS", "bit_position": 1, "name": "Solis Generator charging period 2 switch"},
@@ -61,13 +66,13 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 5, "name": "Solis Generator charging period 6 switch"},
             ]
         },{
-            "read_register": 43340, "write_register": 43340,
+            "register": 43340,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Generator Input Mode (off = Manual, on = Auto)"},
                 {"type": "SBS", "bit_position": 1, "name": "Solis Generator Charge Enable"},
             ]
         },{
-            "read_register": 43483, "write_register": 43483,
+            "register": 43483,
             "entities": [
                 {"type": "SBS", "bit_position": 0, "name": "Solis Dual Backup Enable"},
                 {"type": "SBS", "bit_position": 1, "name": "Solis AC Coupling Enable"},
@@ -78,6 +83,24 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "bit_position": 6, "name": "Solis Smart load port stops output when off-grid"},
                 {"type": "SBS", "bit_position": 7, "name": "Solis Grid Peak-shaving power enable"},
             ]
+        }, {
+            "register": 43249,
+            "entities": [
+                {"type": "SBS", "bit_position": 0, "name": "MPPT Parallel Function"},
+                {"type": "SBS", "bit_position": 1, "name": "IgFollow"},
+                {"type": "SBS", "bit_position": 2, "name": "Relay Protection"},
+                {"type": "SBS", "bit_position": 3, "name": "I-Leak Protection"},
+                {"type": "SBS", "bit_position": 4, "name": "PV ISO Protection"},
+                {"type": "SBS", "bit_position": 5, "name": "Grid-Interference Protection"},
+                {"type": "SBS", "bit_position": 6, "name": "The DC component of the grid current protection switch"},
+                {"type": "SBS", "bit_position": 7, "name": "Const Voltage Mode Enable Const Voltage"},
+            ]
+        }, {
+            "register": 43135,
+            "entities": [
+                {"type": "SBS", "name": "Solis RC Force Battery Discharge", "on_value": 1},
+                {"type": "SBS", "name": "Solis RC Force Battery Charge",  "on_value": 2}
+            ]
         }
     ]
 
@@ -87,8 +110,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         for child_entity in main_entity[ENTITIES]:
             type = child_entity["type"]
             if type == "SBS":
-                child_entity['read_register'] = main_entity['read_register']
-                child_entity['write_register'] = main_entity['write_register']
+                child_entity['register'] = main_entity['register']
                 switchEntities.append(SolisBinaryEntity(hass, modbus_controller, child_entity))
 
     hass.data[DOMAIN][SWITCH_ENTITIES] = switchEntities
@@ -111,11 +133,12 @@ class SolisBinaryEntity(SwitchEntity):
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
         self._modbus_controller: ModbusController = modbus_controller
-        self._read_register: int = entity_definition["read_register"]
-        self._write_register: int = entity_definition["write_register"]
-        self._bit_position = entity_definition["bit_position"]
-        self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._read_register,
-                                                    self._bit_position)
+        self._register: int = entity_definition["register"]
+        self._bit_position = entity_definition.get("bit_position", None)
+        self._work_mode = entity_definition.get("work_mode", None)
+        self._on_value = entity_definition.get("on_value", None)
+        self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._register,
+                                                    self._on_value if self._on_value is not None else self._bit_position)
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_available = False
@@ -124,23 +147,22 @@ class SolisBinaryEntity(SwitchEntity):
     def update(self):
         """Update Modbus data periodically."""
 
-        if self._read_register == 5:
+        if self._register == 5:
             self._attr_is_on = self._modbus_controller.enabled
             if not self._attr_available:
                 self._attr_available = True
             return self._attr_is_on
 
-        value: int = self._hass.data[DOMAIN][VALUES].get(str(self._read_register), None)
+        value: int = self._hass.data[DOMAIN][VALUES].get(str(self._register), None)
 
         if value is not None:
             initial_state = self._attr_is_on
             if not self._attr_available:
                 self._attr_available = True
-            self._attr_is_on = get_bool(value, self._bit_position)
-
-            if initial_state != self._attr_is_on:
-                _LOGGER.debug(
-                    f'state change for {self._read_register}-{self._bit_position} from {initial_state} to {self._attr_is_on}')
+            if self._bit_position is not None:
+                self._attr_is_on = get_bool(value, self._bit_position)
+            if self._on_value is not None:
+                self._attr_is_on = value == self._on_value
         return self._attr_is_on
 
     @property
@@ -149,16 +171,16 @@ class SolisBinaryEntity(SwitchEntity):
         return self._attr_is_on
 
     def turn_on(self, **kwargs: Any) -> None:
-        _LOGGER.debug(f"{self._read_register}-{self._bit_position} turn on called ")
-        if self._read_register == 5:
+        _LOGGER.debug(f"{self._register}-{self._bit_position} turn on called ")
+        if self._register == 5:
             self._modbus_controller.enabled = True
             self._modbus_controller.connect()
         else:
             self.set_register_bit(True)
 
     def turn_off(self, **kwargs: Any) -> None:
-        _LOGGER.debug(f"{self._read_register}-{self._bit_position} turn off called ")
-        if self._read_register == 5:
+        _LOGGER.debug(f"{self._register}-{self._bit_position} turn off called ")
+        if self._register == 5:
             self._modbus_controller.enabled = False
             self._modbus_controller.disconnect()
         else:
@@ -167,18 +189,25 @@ class SolisBinaryEntity(SwitchEntity):
     def set_register_bit(self, value):
         """Set or clear a specific bit in the Modbus register."""
         controller = self._modbus_controller
-        current_register_value: int = self._hass.data[DOMAIN][VALUES][str(self._read_register)]
-        new_register_value: int = set_bit(current_register_value, self._bit_position, value)
+        current_register_value: int = self._hass.data[DOMAIN][VALUES][str(self._register)]
+
+        if self._bit_position is not None:
+            if value is True and self._work_mode is not None:
+                for wbit in self._work_mode:
+                    current_register_value = set_bit(current_register_value, wbit, False)
+            new_register_value: int = set_bit(current_register_value, self._bit_position, value)
+
+        else:
+            new_register_value: int = value
 
         _LOGGER.debug(
-            f"Attempting bit {self._bit_position} to {value} in register {self._read_register}. New value for register {new_register_value}")
+            f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
-            self._hass.create_task(controller.async_write_holding_register(self._write_register, new_register_value))
-            self._hass.data[DOMAIN][VALUES][str(self._read_register)] = new_register_value
+            self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))
+            self._hass.data[DOMAIN][VALUES][str(self._register)] = new_register_value
 
         self._attr_is_on = value
-
         self._attr_available = True
 
     @property

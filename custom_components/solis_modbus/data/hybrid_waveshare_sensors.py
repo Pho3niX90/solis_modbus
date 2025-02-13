@@ -487,13 +487,21 @@ hybrid_waveshare = [
         ]
     },
     {
-        "register_start": 43137,
+        "register_start": 43135,
         "entities": [
+            {"type": "SS", "name": "Solis RC Force Battery Charge/discharge",
+             "unique": "solis_modbus_inverter_rc_force_charge_discharge", "hidden": True,
+             "register": ['43135'], "multiplier": 1, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis RC Force Battery Charge Power",
+             "unique": "solis_modbus_inverter_rc_force_charge_power",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 6000, "default": 1500,
+             "register": ['43136'], "multiplier": 10},
             {"type": "SS", "name": "Solis Off-Grid Overdischarge SOC",
              "unique": "solis_modbus_inverter_overdischarge_offgrid_soc",
              "register": ['43137'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 1,
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT,
-             "editable": True, "min": 10, "max": 100, "default": 10}
+             "editable": True, "min": 10, "max": 100, "default": 10},
         ]
     },
     {
@@ -612,8 +620,11 @@ hybrid_waveshare = [
              "unique": "solis_modbus_inverter_time_discharge_end_minute_slot3",
              "register": ['43170'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
-
-            {"type": "reserve", "register": ['43071', '43072']},
+        ]
+    },
+    {
+        "register_start": 43173,
+        "entities": [
 
             {"type": "SS", "name": "Solis Time-Charging Charge Start Hour (Slot 4)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot4",
@@ -1039,23 +1050,53 @@ hybrid_waveshare = [
         "register_start": 43815,
         "entities": [{"type": "SS", "name": "Solis Generator charging switch",
                       "unique": "solis_modbus_inverter_generator_chargin_switch", "register": ['43815'],
-                      "multiplier": 1,
+                      "multiplier": 1, "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
         "register_start": 43340,
         "entities": [{"type": "SS", "name": "Solis Generator Set Enable Switch",
                       "unique": "solis_modbus_inverter_generator_enablement_switch", "register": ['43340'],
-                      "multiplier": 1,
+                      "multiplier": 1, "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
         "register_start": 43483,
         "entities": [{"type": "SS", "name": "Solis Hybrid Function Control",
                       "unique": "solis_modbus_inverter_hybrid_function_control", "register": ['43483'], "multiplier": 1,
+                      "hidden": True,
+                      "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    {
+        "register_start": 43487,
+        "entities": [
+            {"type": "SS", "name": "Solis Peak Baseline SOC",
+             "unique": "solis_modbus_inverter_peak_baseline_soc", "register": ['43487'], "multiplier": 1,
+             "device_class": SensorDeviceClass.BATTERY, "unit_of_measurement": PERCENTAGE,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 7, "max": 100},
+            {"type": "SS", "name": "Solis Peak Max Usable Grid Power",
+             "unique": "solis_modbus_inverter_peak_max_usuable_grid_power", "register": ['43488'], "multiplier": 100,
+             "device_class": SensorDeviceClass.POWER, "unit_of_measurement": UnitOfPower.WATT,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 15000}
+        ]
+    },
+    {
+        "register_start": 43249,
+        "entities": [{"type": "SS", "name": "Special Settings",
+                      "unique": "solis_modbus_inverter_special_settings", "register": ['43249'], "multiplier": 1,
+                      "hidden": True,
+                      "state_class": SensorStateClass.MEASUREMENT}]
+    },
+    {
+        "register_start": 43110,
+        "entities": [{"type": "SS", "name": "Storage control Switch value",
+                      "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'],
+                      "multiplier": 1,
+                      "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     }
 ]
+## Remove 33132 in next update if this works (43110)
 
 hybrid_waveshare_sensors_derived = [
     {"type": "SDS", "name": "Solis Status String",

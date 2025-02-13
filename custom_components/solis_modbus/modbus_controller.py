@@ -1,6 +1,6 @@
 import asyncio
 import logging
-
+import time
 from pymodbus.client import AsyncModbusTcpClient
 
 from custom_components.solis_modbus.const import MODEL
@@ -11,7 +11,7 @@ class ModbusController:
     def __init__(self, host, port=502, poll_interval=15):
         self.host = host
         self.port = port
-        self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(self.host, port=self.port)
+        self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(self.host, port=self.port, retries=10, timeout=10, reconnect_delay=10)
         self.connect_failures = 0
         self._lock = asyncio.Lock()
         self._data_received = False
@@ -19,32 +19,39 @@ class ModbusController:
         self._model = MODEL
         self._sw_version = "N/A"
         self.enabled = True
+        self._last_attempt = 0  # Track last connection attempt time
 
     async def connect(self):
-        try:
-            if self.client.connected:
-                return True
+        async with self._lock:
+            now = time.monotonic()
+            if now - self._last_attempt < 1:
+                return False  # Skip execution if called too soon
 
-            _LOGGER.debug('connecting')
+            self._last_attempt = now  # Update last attempt time
 
-            if not await self.client.connect():
-                self.connect_failures += 1
-                fail_msg = f"Failed to connect to Modbus device. Will retry, failures = {self.connect_failures}"
-                if self.connect_failures > 50:
-                    _LOGGER.warning(fail_msg)
-                elif self.connect_failures > 30:
-                    _LOGGER.info(fail_msg)
+            try:
+                if self.client.connected:
+                    return True
+
+                _LOGGER.debug('connecting')
+
+                if not await self.client.connect():
+                    self.connect_failures += 1
+                    fail_msg = f"Failed to connect to Modbus device. Will retry, failures = {self.connect_failures}"
+                    if self.connect_failures > 50:
+                        _LOGGER.warning(fail_msg)
+                    elif self.connect_failures > 30:
+                        _LOGGER.info(fail_msg)
+                    else:
+                        _LOGGER.debug(fail_msg)
+                    return False
+
                 else:
-                    _LOGGER.debug(fail_msg)
-                return False
+                    self.connect_failures = 0
+                    return True
 
-            else:
-                self.connect_failures = 0
-                return True
-
-        except ConnectionError as e:
-            _LOGGER.debug(f"Failed to connect to Modbus device. Will retry. Exception: {str(e)}")
-            return False  # Return False if an exception occurs
+            except ConnectionError as e:
+                return False  # Return False if an exception occurs
 
     async def disconnect(self):
         if self.client.connected:

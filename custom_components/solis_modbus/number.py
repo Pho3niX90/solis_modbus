@@ -11,10 +11,8 @@ from datetime import timedelta
 from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.components.sensor import SensorDeviceClass, RestoreSensor
+from homeassistant.components.sensor import RestoreSensor
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    UnitOfElectricCurrent, PERCENTAGE, UnitOfPower)
 from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -92,8 +90,6 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval * 3))
 
     return True
-
-    # fmt: on
 
 
 class SolisNumberEntity(RestoreSensor, NumberEntity):
