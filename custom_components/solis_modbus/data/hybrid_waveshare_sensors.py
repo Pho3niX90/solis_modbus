@@ -487,13 +487,21 @@ hybrid_waveshare = [
         ]
     },
     {
-        "register_start": 43137,
+        "register_start": 43135,
         "entities": [
+            {"type": "SS", "name": "Solis RC Force Battery Charge/discharge",
+             "unique": "solis_modbus_inverter_rc_force_charge_discharge", "hidden": True,
+             "register": ['43135'], "multiplier": 1, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "SS", "name": "Solis RC Force Battery Charge Power",
+             "unique": "solis_modbus_inverter_rc_force_charge_power",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 6000, "default": 1500,
+             "register": ['43136'], "multiplier": 10},
             {"type": "SS", "name": "Solis Off-Grid Overdischarge SOC",
              "unique": "solis_modbus_inverter_overdischarge_offgrid_soc",
              "register": ['43137'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 1,
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT,
-             "editable": True, "min": 10, "max": 100, "default": 10}
+             "editable": True, "min": 10, "max": 100, "default": 10},
         ]
     },
     {
@@ -1079,7 +1087,6 @@ hybrid_waveshare = [
                       "hidden": True,
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
-    ## Remove 33132 in next update if this works
     {
         "register_start": 43110,
         "entities": [{"type": "SS", "name": "Storage control Switch value",
@@ -1089,6 +1096,7 @@ hybrid_waveshare = [
                       "state_class": SensorStateClass.MEASUREMENT}]
     }
 ]
+## Remove 33132 in next update if this works (43110)
 
 hybrid_waveshare_sensors_derived = [
     {"type": "SDS", "name": "Solis Status String",
