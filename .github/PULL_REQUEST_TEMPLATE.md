@@ -11,9 +11,8 @@ Closes #[issue number] (if applicable)
 - [ ] Refactor / Code Cleanup
 
 ## ✅ Testing Steps
-1. **Test Environment**: [e.g., Home Assistant OS, Docker]
-2. **Tested With**: [e.g., Solis 5G 6kW, Axitec 10kW]
-3. **Test Results**: [e.g., Switches update correctly, no errors]
+1. **Tested With**: [e.g., Solis 5G 6kW, Axitec 10kW]
+2. **Test Results**: [e.g., Switches update correctly, no errors]
 
 ## 📸 Screenshots / Logs (if applicable)
 Add relevant screenshots or logs.
