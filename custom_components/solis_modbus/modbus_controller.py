@@ -22,6 +22,9 @@ class ModbusController:
         self._last_attempt = 0  # Track last connection attempt time
 
     async def connect(self):
+        if self.client.connected:
+            return True
+
         async with self._lock:
             now = time.monotonic()
             if now - self._last_attempt < 1:
@@ -30,9 +33,6 @@ class ModbusController:
             self._last_attempt = now  # Update last attempt time
 
             try:
-                if self.client.connected:
-                    return True
-
                 _LOGGER.debug('connecting')
 
                 if not await self.client.connect():
