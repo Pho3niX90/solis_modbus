@@ -101,6 +101,22 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 {"type": "SBS", "name": "Solis RC Force Battery Discharge", "on_value": 1},
                 {"type": "SBS", "name": "Solis RC Force Battery Charge",  "on_value": 2}
             ]
+        }, {
+            "register": 43707,
+            "entities": [
+                {"type": "SBS", "name": "Solis Grid Time of Use Charging Period 1", "bit_position": 0},
+                {"type": "SBS", "name": "Solis Grid Time of Use Charging Period 2", "bit_position": 1},
+                {"type": "SBS", "name": "Solis Grid Time of Use Charging Period 3", "bit_position": 2},
+                {"type": "SBS", "name": "Solis Grid Time of Use Charging Period 4", "bit_position": 3},
+                {"type": "SBS", "name": "Solis Grid Time of Use Charging Period 5", "bit_position": 4},
+                {"type": "SBS", "name": "Solis Grid Time of Use Charging Period 6", "bit_position": 5},
+                {"type": "SBS", "name": "Solis Grid Time of Use Discharge Period 1", "bit_position": 6},
+                {"type": "SBS", "name": "Solis Grid Time of Use Discharge Period 2", "bit_position": 7},
+                {"type": "SBS", "name": "Solis Grid Time of Use Discharge Period 3", "bit_position": 8},
+                {"type": "SBS", "name": "Solis Grid Time of Use Discharge Period 4", "bit_position": 9},
+                {"type": "SBS", "name": "Solis Grid Time of Use Discharge Period 5", "bit_position": 10},
+                {"type": "SBS", "name": "Solis Grid Time of Use Discharge Period 6", "bit_position": 11},
+            ]
         }
     ]
 
