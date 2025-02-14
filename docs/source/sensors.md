@@ -325,3 +325,39 @@ The following sensors are provided in the integration.
 | Solis PV Power 2                                          | POWER          | WATT                       | MEASUREMENT      | 33051, 33052                           |
 | Solis Battery Charge Power                                | POWER          | WATT                       | MEASUREMENT      | if 33135 == 0 then 33149, 33150 else 0 |
 | Solis Battery Discharge Power                             | POWER          | WATT                       | MEASUREMENT      | if 33135 == 1 then 33149, 33150 else 0 |
+
+
+# Solar Inverter Modes in Solis Inverters
+
+## 1. Feed-in Priority Mode
+- **Solis Implementation**: In this mode, the system prioritizes exporting solar power to the grid. The battery remains inactive unless "Time Charging" is enabled and configured.
+- This mode is ideal for users with large PV systems relative to their consumption and battery capacity.
+- [Source](https://usservice.solisinverters.com/support/solutions/articles/73000558755-12-of-20-energy-storage-operating-modes-feed-in-priority)
+
+## 2. Off-Grid Mode
+- **Solis Implementation**: Designed for installations without grid power.
+- The inverter supplies power to backup loads from PV and the battery, depending on availability.
+- [Source](https://usservice.solisinverters.com/support/solutions/articles/73000560490-energy-storage-operating-modes)
+
+## 3. Reserve Battery Mode
+- **Solis Implementation**: Known as "Backup" mode.
+- The system reserves a portion of the battery's charge for backup purposes during grid outages.
+- The "Backup SOC" setting determines the minimum state of charge maintained for emergencies.
+- [Source](https://usservice.solisinverters.com/support/solutions/articles/73000560490-energy-storage-operating-modes)
+
+## 4. Self-Use Mode
+- **Solis Implementation**: The inverter stores excess PV power in the battery for later use, such as during evening hours when grid power may be more expensive.
+- Supports energy arbitrage or peak-rate shaving.
+- [Source](https://usservice.solisinverters.com/support/solutions/articles/73000558744-11-of-20-energy-storage-operating-modes-self-use)
+
+## 5. Time-of-Use (TOU) Mode
+- **Solis Implementation**: Known as "Time Charging."
+- Users can set specific charge and discharge periods, allowing the battery to charge during times of low grid rates or high solar production and discharge during peak rate periods.
+- [Source](https://usservice.solisinverters.com/support/solutions/articles/73000560490-energy-storage-operating-modes)
+
+## 6. Peak Shaving Mode
+- **Solis Implementation**: While not explicitly named, the combination of "Self-Use" and "Time Charging" modes can achieve peak shaving.
+- The battery discharges during peak demand times to reduce grid reliance and associated costs.
+- [Source](https://usservice.solisinverters.com/support/solutions/articles/73000560490-energy-storage-operating-modes)
+
+For detailed configuration and to ensure optimal performance tailored to your needs, consult the Solis inverter manual or contact their technical support.
