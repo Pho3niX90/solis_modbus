@@ -20,7 +20,7 @@ jobs:
           stale-pr-message: "This PR has been automatically marked as stale due to inactivity. It will be closed if no further updates are made."
           close-issue-message: "Closing this issue due to inactivity. Feel free to reopen if needed."
           close-pr-message: "Closing this PR due to inactivity."
-          days-before-stale: 14 # Number of days before marking as stale
+          days-before-stale: 7 # Number of days before marking as stale
           days-before-close: 7 # Number of days before closing after being marked stale
           exempt-issue-labels: "pinned,security" # Issues with these labels won't be marked stale
           exempt-pr-labels: "pinned,security"
