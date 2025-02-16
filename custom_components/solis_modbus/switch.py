@@ -189,16 +189,14 @@ class SolisBinaryEntity(SwitchEntity):
     def turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn on called ")
         if self._register == 5:
-            self._modbus_controller.enabled = True
-            self._modbus_controller.connect()
+            self._modbus_controller.enable_connection()
         else:
             self.set_register_bit(True)
 
     def turn_off(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn off called ")
         if self._register == 5:
-            self._modbus_controller.enabled = False
-            self._modbus_controller.disconnect()
+            self._modbus_controller.disable_connection()
         else:
             self.set_register_bit(False)
 
