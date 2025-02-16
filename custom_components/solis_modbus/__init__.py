@@ -20,17 +20,20 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup(hass: HomeAssistant):
     """Set up the Modbus integration."""
 
     def service_write_holding_register(call: ServiceCall):
         address = call.data.get('address')
         value = call.data.get('value')
-        host = entry.data.get("host")
-        controller = hass.data[DOMAIN][CONTROLLER][host]
-        # Perform the logic to write to the holding register using register_address and value_to_write
-        # ...
-        hass.create_task(controller.write_holding_register(address, value))
+        host = call.data.get("host")
+
+        if host:
+            controller = hass.data[DOMAIN][CONTROLLER][host]
+            hass.create_task(controller.write_holding_register(address, value))
+        else:
+            for controller in hass.data[DOMAIN][CONTROLLER]:
+                hass.create_task(controller.write_holding_register(address, value))
 
     hass.services.async_register(
         DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER
@@ -51,7 +54,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     host = entry.data.get("host")
     port = entry.data.get("port", 502)
-
     poll_interval = entry.data.get("poll_interval")
 
     if poll_interval is None or poll_interval < 5:
