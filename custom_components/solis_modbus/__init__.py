@@ -20,7 +20,7 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant):
+async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Modbus integration."""
 
     def service_write_holding_register(call: ServiceCall):
