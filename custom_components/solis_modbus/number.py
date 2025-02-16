@@ -19,7 +19,9 @@ from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
-    VALUES, NUMBER_ENTITIES
+    VALUES, NUMBER_ENTITIES, REGISTER, VALUE
+from custom_components.solis_modbus.helpers import cache_save
+from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,11 +48,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     numberEntities: List[SolisNumberEntity] = []
 
     if inverter_type in ["string", "grid"]:
-        from .data.string_sensors import string_sensors as sensors
+        from .sensor_data.string_sensors import string_sensors as sensors
     elif inverter_type == "hybrid-waveshare":
-        from .data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
+        from .sensor_data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
     else:
-        from .data.hybrid_sensors import hybrid_sensors as sensors
+        from .sensor_data.hybrid_sensors import hybrid_sensors as sensors
 
     for sensor_group in sensors:
         for entity_definition in sensor_group['entities']:
@@ -95,79 +97,92 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 class SolisNumberEntity(RestoreSensor, NumberEntity):
     """Representation of a Number entity."""
 
-    def __init__(self, hass, modbus_controller, entity_definition):
+    def __init__(self, hass, modbus_controller, sensor: SolisBaseSensor):
         """Initialize the Number entity."""
-        #
-        # Visible Instance Attributes Outside Class
         self._hass = hass
         self._modbus_controller: ModbusController = modbus_controller
-        self._register = entity_definition["register"]
-        self._multiplier = entity_definition["multiplier"]
+        self._register = sensor.registrars  # Multi-register support
+        self._multiplier = sensor.multiplier
 
-        # Hidden Inherited Instance Attributes
+        # Unique ID based on all registers
         self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._register)
         self._attr_has_entity_name = True
-        self._attr_name = entity_definition["name"]
-        self._attr_native_value = entity_definition.get("default", None)
-        self._attr_assumed_state = entity_definition.get("assumed", False)
+        self._attr_name = sensor.name
+        self._attr_native_value = sensor.default
         self._attr_available = False
         self.is_added_to_hass = False
-        self._attr_device_class = entity_definition.get("device_class", None)
-        self._attr_icon = entity_definition.get("icon", None)
-        self._attr_mode = entity_definition.get("mode", NumberMode.AUTO)
-        self._attr_native_unit_of_measurement = entity_definition.get("unit_of_measurement", None)
-        self._attr_native_min_value = entity_definition.get("min_val", None)
-        self._attr_native_max_value = entity_definition.get("max_val", None)
-        self._attr_native_step = entity_definition.get("step", 1.0)
+        self._attr_device_class = sensor.device_class
+        self._attr_mode = NumberMode.AUTO
+        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
+        self._attr_native_min_value = sensor.min_value
+        self._attr_native_max_value = sensor.max_value
+        self._attr_native_step = sensor.step
         self._attr_should_poll = False
-        self._attr_entity_registry_enabled_default = entity_definition.get("enabled", False)
+        self._attr_entity_registry_enabled_default = sensor.enabled
+        self.base_sensor = sensor
+
+        # 🔹 Track received register values before updating
+        self._received_values = {}
 
     async def async_added_to_hass(self) -> None:
+        """Called when entity is added to HA."""
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
         if state:
             self._attr_native_value = state.native_value
+
         self.is_added_to_hass = True
 
-    def update(self):
-        """Update Modbus data periodically."""
-        if not self.hass:  # Ensure hass is assigned
-            return
-        self._attr_available = True
+        # 🔥 Register event listener for real-time updates
+        self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
 
-        value: float = self._hass.data[DOMAIN][VALUES][str(self._register)]
-        self._hass.create_task(self.update_values(value))
+    @callback
+    def handle_modbus_update(self, event):
+        """Callback function that updates sensor when new register data is available."""
+        updated_register = int(event.data.get(REGISTER))
+        updated_value = int(event.data.get(VALUE))
+        updated_controller = int(event.data.get(CONTROLLER))
 
-        try:
-            self.schedule_update_ha_state()
-        except Exception as e:
-            _LOGGER.debug(f"Failed to schedule update: {e}")
+        if updated_controller != self._modbus_controller.host:
+            return # meant for a different sensor/inverter combo
 
+        # If this register belongs to the sensor, store it temporarily
+        if updated_register in self._register:
+            self._received_values[updated_register] = updated_value
 
-    async def update_values(self, value):
-        if value == 0 and self._modbus_controller.connected():
-            register_value = await self._modbus_controller.async_read_holding_register(self._register)
-            value = register_value[0] if register_value else value
+            new_value = self.base_sensor.get_value
 
-        self._attr_native_value = round(value / self._multiplier)
+            # Clear received values after update
+            self._received_values.clear()
 
-    @property
-    def device_info(self):
-        """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._modbus_controller.host)},
-            manufacturer=MANUFACTURER,
-            model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}",
-            sw_version=self._modbus_controller.sw_version,
-        )
+            # Update state if valid value exists
+            if new_value is not None:
+                self._attr_native_value = round(new_value / self._multiplier)
+                self.schedule_update_ha_state()
 
     def set_native_value(self, value):
         """Update the current value."""
         if self._attr_native_value == value:
             return
 
+        # 🔹 Handle multi-register writing
+        if len(self._register) == 1:
+            register_value = round(value * self._multiplier)
+        elif len(self._register) == 2:
+            # Convert the value into two 16-bit registers
+            int_value = round(value * self._multiplier)
+            register_value = [(int_value >> 16) & 0xFFFF, int_value & 0xFFFF]
+        else:
+            _LOGGER.warning("More than 2 registers not yet supported for writing.")
+            return
+
+        # Write to Modbus controller
         self.hass.create_task(
-            self._modbus_controller.async_write_holding_register(self._register, round(value * self._multiplier)))
+            self._modbus_controller.async_write_holding_register(self._register[0], register_value)
+        )
+
+        if len(self._register) == 1:
+            cache_save(self.hass, self._register[0], value)
+
         self._attr_native_value = value
         self.schedule_update_ha_state()
