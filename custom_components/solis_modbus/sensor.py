@@ -26,11 +26,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     for sensor_group in controller.sensor_groups:
         for sensor in sensor_group.sensors:
-            sensor_entities.append(SolisSensor(hass, sensor))
+            if sensor.name != "reserve":
+                sensor_entities.append(SolisSensor(hass, sensor))
 
-    for sensor_group in controller.sensor_derived_groups:
-        for sensor in sensor_group.sensors:
-            sensor_derived_entities.append(SolisDerivedSensor(hass, controller, sensor))
+    for sensor in controller.sensor_derived_groups:
+        sensor_derived_entities.append(SolisDerivedSensor(hass, sensor))
 
     hass.data[DOMAIN][SENSOR_ENTITIES] = sensor_entities
     hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES] = sensor_derived_entities

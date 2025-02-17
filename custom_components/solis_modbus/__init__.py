@@ -1,9 +1,10 @@
 """The Modbus Integration."""
 import asyncio
 import logging
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform, EVENT_HOMEASSISTANT_STARTED
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, CONTROLLER
@@ -24,7 +25,7 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant):
+async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Modbus integration."""
 
     def service_write_holding_register(call: ServiceCall):
@@ -34,10 +35,10 @@ async def async_setup(hass: HomeAssistant):
 
         if host:
             controller = hass.data[DOMAIN][CONTROLLER][host]
-            hass.create_task(controller.write_holding_register(address, value))
+            hass.create_task(controller.async_write_holding_register(address, value))
         else:
             for controller in hass.data[DOMAIN][CONTROLLER]:
-                hass.create_task(controller.write_holding_register(address, value))
+                hass.create_task(controller.async_write_holding_register(address, value))
 
     hass.services.async_register(
         DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER
@@ -76,22 +77,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Create the Modbus controller and assign sensor groups
     controller = ModbusController(
         host=host,
-        sensor_groups=[SolisSensorGroup(hass=hass, definition=group, controller_host=host) for group in sensors],
-        derived_sensors=list(map(lambda sensor: SolisDerivedSensor(
-            hass=hass,
-            sensor=sensor
-        ),
-        list(map(lambda entity: SolisBaseSensor(
-            hass=hass,
-            name= entity.get("name", None),
-            controller_host=host,
-            registrars=[int(r) for r in entity.get("resgiter")],
-            multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}".format(DOMAIN, entity["unique"])), sensors_derived
-        )))),
         port=port,
         poll_interval=poll_interval
     )
+
+    controller._sensor_groups = [
+        SolisSensorGroup(hass=hass, definition=group, controller=controller)
+        for group in sensors
+    ]
+
+    controller._derived_sensors = [
+        SolisBaseSensor(
+            hass=hass,
+            name=entity.get("name"),
+            controller=controller,
+            registrars=[int(r) for r in entity.get("register", [])],
+            state_class=entity.get("state_class", None),
+            device_class=entity.get("device_class", None),
+            unit_of_measurement=entity.get("unit_of_measurement", None),
+            hidden=entity.get("hidden", False),
+            multiplier=entity.get("multiplier", 1),
+            unique_id=f"{DOMAIN}_{entity['unique']}"
+        )
+        for entity in sensors_derived
+    ]
 
     # Store controller in HA data
     hass.data[DOMAIN][CONTROLLER][host] = controller

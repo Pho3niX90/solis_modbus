@@ -128,7 +128,9 @@ class SolisTimeEntity(TimeEntity):
     @property
     def native_value(self):
         vals = self._hass.data[DOMAIN][VALUES]
-        return datetime.time(hour=vals[str(self._register)], minute=vals[str(self._register + 1)])
+        hour = vals.get(str(self._register), 0)
+        minute = vals.get(str(self._register +1), 0)
+        return datetime.time(hour=hour, minute=minute)
 
     async def async_set_value(self, value: time) -> None:
         """Set the time."""

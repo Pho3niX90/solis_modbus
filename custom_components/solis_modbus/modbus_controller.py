@@ -11,7 +11,7 @@ from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDer
 _LOGGER = logging.getLogger(__name__)
 
 class ModbusController:
-    def __init__(self, host, sensor_groups: List[SolisSensorGroup], derived_sensors: List[SolisDerivedSensor], port=502, poll_interval=15):
+    def __init__(self, host, sensor_groups: List[SolisSensorGroup] = None, derived_sensors: List[SolisDerivedSensor] = None, port=502, poll_interval=15):
         self.host = host
         self.port = port
         self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(host=self.host, port=self.port, retries=10, timeout=10, reconnect_delay=10)
@@ -24,11 +24,6 @@ class ModbusController:
         self._last_attempt = 0  # Track last connection attempt time
         self._sensor_groups = sensor_groups
         self._derived_sensors = derived_sensors
-
-        ## make the connection, might not always connect first time, sometimes takes more than 10 attempts
-        self.connect()
-
-        ## after connect, get model, firmware, version to register a device_info
 
 
 
@@ -50,10 +45,7 @@ class ModbusController:
                 self.connect_failures += 1
                 _LOGGER.warning(f"Failed to connect (Attempt {self.connect_failures})")
                 return False
-
-
-                self.connect_failures = 0# Reset failure counter
-                return True
+            return True
 
         except Exception as e:
             _LOGGER.error(f"Connection error: {e}")

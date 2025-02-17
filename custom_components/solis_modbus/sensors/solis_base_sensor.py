@@ -1,11 +1,14 @@
 # solis_base.py
+from typing import Union
+
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.switch import SwitchDeviceClass
 from homeassistant.const import PERCENTAGE, UnitOfElectricPotential, UnitOfApparentPower, UnitOfPower, \
     UnitOfElectricCurrent
-from homeassistant.core import HomeAssistant, DOMAIN
+from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
+from custom_components.solis_modbus.const import DOMAIN
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
 
 class SolisBaseSensor:
@@ -13,17 +16,18 @@ class SolisBaseSensor:
 
     def __init__(self,
                  hass: HomeAssistant,
-                 controller_host: str,
+                 controller,
                  unique_id: str,
                  name: str,
                  registrars: List[int],
                  multiplier: float,
-                 device_class: SwitchDeviceClass | SensorDeviceClass | PERCENTAGE = None,
+                 device_class: Union[SwitchDeviceClass, SensorDeviceClass, str] = None,
                  unit_of_measurement: UnitOfElectricPotential | UnitOfApparentPower | UnitOfElectricCurrent | UnitOfPower = None,
                  editable: bool = False,
                  state_class: SensorStateClass = None,
                  default = None,
                  step = 0.1,
+                 hidden = False,
                  enabled = True,
                  min_value: Optional[int] = None, max_value: Optional[int] = None):
         """
@@ -32,7 +36,7 @@ class SolisBaseSensor:
         """
         self.hass = hass
         self.unique_id = unique_id
-        self.controller_host = controller_host
+        self.controller = controller
         self.name = name
         self.default = default
         self.registrars = registrars
@@ -40,6 +44,7 @@ class SolisBaseSensor:
         self.multiplier = multiplier
         self.device_class = device_class
         self.unit_of_measurement = unit_of_measurement
+        self.hidden = hidden
         self.state_class = state_class
         self.max_value = max_value
         self.step = step
@@ -105,14 +110,18 @@ class SolisBaseSensor:
 class SolisSensorGroup:
     sensors: List[SolisBaseSensor]
 
-    def __init__(self, hass, definition, controller_host: str):
+    def __init__(self, hass, definition, controller):
         self._sensors = list(map(lambda entity: SolisBaseSensor(
             hass=hass,
             name= entity.get("name", "reserve"),
-            controller_host=controller_host,
+            controller=controller,
             registrars=[int(r) for r in entity["register"]],
+            state_class=entity.get("state_class", None),
+            device_class=entity.get("device_class", None),
+            unit_of_measurement=entity.get("unit_of_measurement", None),
+            hidden=entity.get("hidden", False),
             multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}_{}".format(DOMAIN, controller_host, entity.get("unique", "reserve"))
+            unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
         ), definition.get("entities", [])))
         # TODO add derived sensors
         # TODO add number sensors
@@ -120,12 +129,17 @@ class SolisSensorGroup:
 
     @property
     def sensors_count(self):
-        return self._sensors.count()
+        return len(self._sensors)
 
     @property
     def sensors(self):
         return self._sensors
 
     @property
+    def registrar_count(self):
+        return sum(len(sensor.registrars) for sensor in self._sensors)
+
+
+    @property
     def start_register(self):
-        return min(sensor.registrars for sensor in self._sensors)
+        return min(reg for sensor in self._sensors for reg in sensor.registrars)

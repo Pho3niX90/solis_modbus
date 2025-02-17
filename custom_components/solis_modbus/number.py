@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
-    modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
+    controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 
@@ -43,77 +43,39 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     _LOGGER.info(f"Solis platform_config: {platform_config}")
 
-    # fmt: off
+    sensors = []
+    for sensor_group in controller.sensor_groups:
+        for sensor in sensor_group.sensors:
+            if sensor.name != "reserve" and sensor.editable:
+                sensors.append(SolisNumberEntity(hass, sensor))
 
-    numberEntities: List[SolisNumberEntity] = []
-
-    if inverter_type in ["string", "grid"]:
-        from .sensor_data.string_sensors import string_sensors as sensors
-    elif inverter_type == "hybrid-waveshare":
-        from .sensor_data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
-    else:
-        from .sensor_data.hybrid_sensors import hybrid_sensors as sensors
-
-    for sensor_group in sensors:
-        for entity_definition in sensor_group['entities']:
-            entity_register = int(entity_definition['register'][0])
-            if entity_definition.get('editable', False) and entity_definition['register'][0].startswith('4'):
-                entity_multiplier = float(entity_definition['multiplier'])
-                numberEntities.append(SolisNumberEntity(hass, modbus_controller,
-                                                        {"name": entity_definition['name'], "register": entity_register,
-                                                         "multiplier": 1 / entity_multiplier if entity_multiplier != 0 else 1,
-                                                         "min_val": entity_definition.get("min"),
-                                                         "max_val": entity_definition.get("max"),
-                                                         "default": entity_definition.get("default"),
-                                                         "step": 1 if (entity_definition['multiplier'] == 1 or
-                                                                       entity_definition[
-                                                                           'multiplier'] == 0) else entity_multiplier,
-                                                         "unit_of_measurement": entity_definition[
-                                                             'unit_of_measurement'], "enabled": True}))
-
-    hass.data[DOMAIN][NUMBER_ENTITIES] = numberEntities
-    async_add_devices(numberEntities, True)
-
-    @callback
-    def update(now):
-        """Update Modbus data periodically."""
-        for controller in hass.data[DOMAIN][CONTROLLER].values():
-            _LOGGER.info(f"calling number update for {len(hass.data[DOMAIN][NUMBER_ENTITIES])} groups")
-            hass.create_task(get_modbus_updates(hass, controller))
-
-    async def get_modbus_updates(thass: HomeAssistant, controller: ModbusController):
-        if not controller.connected():
-            await controller.connect()
-
-        await asyncio.gather(
-            *[asyncio.to_thread(entity.update) for entity in thass.data[DOMAIN][NUMBER_ENTITIES]]
-        )
-
-    async_track_time_interval(hass, update, timedelta(seconds=modbus_controller.poll_interval * 3))
-
+    async_add_devices(sensors, True)
     return True
 
 
 class SolisNumberEntity(RestoreSensor, NumberEntity):
     """Representation of a Number entity."""
 
-    def __init__(self, hass, modbus_controller, sensor: SolisBaseSensor):
+    def __init__(self, hass, sensor: SolisBaseSensor):
         """Initialize the Number entity."""
         self._hass = hass
-        self._modbus_controller: ModbusController = modbus_controller
         self._register = sensor.registrars  # Multi-register support
         self._multiplier = sensor.multiplier
 
+        self._device_class = sensor.device_class
+        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._attr_device_class = sensor.device_class
+        self._attr_state_class = sensor.state_class
+        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
+
         # Unique ID based on all registers
-        self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._register)
+        self._attr_unique_id = sensor.unique_id
         self._attr_has_entity_name = True
         self._attr_name = sensor.name
         self._attr_native_value = sensor.default
         self._attr_available = False
         self.is_added_to_hass = False
-        self._attr_device_class = sensor.device_class
         self._attr_mode = NumberMode.AUTO
-        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
         self._attr_native_min_value = sensor.min_value
         self._attr_native_max_value = sensor.max_value
         self._attr_native_step = sensor.step
@@ -141,9 +103,9 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
         updated_value = int(event.data.get(VALUE))
-        updated_controller = int(event.data.get(CONTROLLER))
+        updated_controller = str(event.data.get(CONTROLLER))
 
-        if updated_controller != self._modbus_controller.host:
+        if updated_controller != self.base_sensor.controller.host:
             return # meant for a different sensor/inverter combo
 
         # If this register belongs to the sensor, store it temporarily
@@ -178,7 +140,7 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
         # Write to Modbus controller
         self.hass.create_task(
-            self._modbus_controller.async_write_holding_register(self._register[0], register_value)
+            self.base_sensor.controller.async_write_holding_register(self._register[0], register_value)
         )
 
         if len(self._register) == 1:

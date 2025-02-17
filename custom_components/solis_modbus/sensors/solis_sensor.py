@@ -1,30 +1,38 @@
+import logging
+
 from homeassistant.core import HomeAssistant
 
-from custom_components.solis_modbus import ModbusController, CONTROLLER
 from typing import List
 from homeassistant.components.sensor import RestoreSensor, SensorEntity
-from homeassistant.const import DOMAIN
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from custom_components.solis_modbus.const import REGISTER, VALUE
-from custom_components.solis_modbus.helpers import get_controller
+from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
+
+from custom_components.solis_modbus.const import REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 from homeassistant.core import callback
+
+_LOGGER = logging.getLogger(__name__)
 
 class SolisSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus sensor."""
 
     def __init__(self, hass: HomeAssistant, sensor: SolisBaseSensor):
         self._hass = hass
-        self._modbus_controller: ModbusController = get_controller(hass, sensor.controller_host)
 
         self._attr_name = sensor.name
         self._attr_has_entity_name = True
         self._attr_unique_id = sensor.unique_id
 
         self._register: List[int] = sensor.registrars
-        self._unit_of_measurement = sensor.unit_of_measurement
+
         self._device_class = sensor.device_class
+        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._attr_device_class = sensor.device_class
+        self._attr_state_class = sensor.state_class
+        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
+        self._attr_available = not sensor.hidden
 
         self.is_added_to_hass = False
         self._state = None
@@ -48,9 +56,9 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
         updated_value = int(event.data.get(VALUE))
-        updated_controller = int(event.data.get(CONTROLLER))
+        updated_controller = str(event.data.get(CONTROLLER))
 
-        if updated_controller != self._modbus_controller.host:
+        if updated_controller != self.base_sensor.controller.host:
             return # meant for a different sensor/inverter combo
 
         # Only process if this register belongs to the sensor
@@ -58,8 +66,14 @@ class SolisSensor(RestoreSensor, SensorEntity):
             # Store received register value temporarily
             self._received_values[updated_register] = updated_value
 
+            # 🔍 Debug: Log missing registers
+            missing_regs = [reg for reg in self._register if reg not in self._received_values]
+            if missing_regs:
+                _LOGGER.warning(f"Waiting for registers {missing_regs} before updating {self._attr_name}")
+
             # If we haven't received all registers yet, wait
             if not all(reg in self._received_values for reg in self._register):
+                _LOGGER.warning(f"not all values received yet = {self._received_values}")
                 return  # Wait until all registers are received
 
             new_value = self.base_sensor.get_value
@@ -77,5 +91,15 @@ class SolisSensor(RestoreSensor, SensorEntity):
     @property
     def native_value(self):
         """Retrieve sensor value from cache."""
-        return self.base_sensor.get_value()
+        return self.base_sensor.get_value
 
+    @property
+    def device_info(self):
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.base_sensor.controller.host)},
+            manufacturer=MANUFACTURER,
+            model=self.base_sensor.controller.model,
+            name=f"{MANUFACTURER} {self.base_sensor.controller.model}",
+            sw_version=self.base_sensor.controller.sw_version,
+        )

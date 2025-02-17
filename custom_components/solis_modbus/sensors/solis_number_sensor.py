@@ -1,20 +1,10 @@
 import logging
-
-from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.components.sensor import RestoreSensor
-
-from custom_components.solis_modbus import ModbusController, DOMAIN
-from custom_components.solis_modbus.const import VALUES
-from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
-
-_LOGGER = logging.getLogger(__name__)
-
-import logging
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import RestoreSensor
 from homeassistant.core import callback
-from custom_components.solis_modbus import ModbusController, DOMAIN
-from custom_components.solis_modbus.const import VALUES, REGISTER
+from homeassistant.helpers.device_registry import DeviceInfo
+
+from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, MANUFACTURER
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.helpers import cache_get
 
@@ -23,29 +13,33 @@ _LOGGER = logging.getLogger(__name__)
 class SolisNumberEntity(RestoreSensor, NumberEntity):
     """Representation of a Number entity."""
 
-    def __init__(self, hass, modbus_controller, sensor: SolisBaseSensor):
+    def __init__(self, hass, sensor: SolisBaseSensor):
         """Initialize the Number entity."""
         self._hass = hass
         self.base_sensor = sensor
-        self._modbus_controller: ModbusController = modbus_controller
+        self._modbus_controller = sensor.controller
         self._register = sensor.registrars  # Multi-register support
         self._multiplier = sensor.multiplier
+
+        self._device_class = sensor.device_class
+        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._attr_device_class = sensor.device_class
+        self._attr_state_class = sensor.state_class
+        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
 
         # Unique ID based on all registers
         self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, "_".join(map(str, self._register)))
         self._attr_has_entity_name = True
         self._attr_name = sensor.name
         self._attr_native_value = sensor.default
-        self._attr_available = False
         self.is_added_to_hass = False
-        self._attr_device_class = sensor.device_class
         self._attr_mode = NumberMode.AUTO
-        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
         self._attr_native_min_value = sensor.min_value
         self._attr_native_max_value = sensor.max_value
         self._attr_native_step = sensor.step
         self._attr_should_poll = False
         self._attr_entity_registry_enabled_default = sensor.enabled
+        self._attr_available = not sensor.hidden
 
         # 🔹 Track received register values before updating
         self._received_values = {}
@@ -66,6 +60,11 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
     def handle_modbus_update(self, event):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
+        updated_value = int(event.data.get(VALUE))
+        updated_controller = str(event.data.get(CONTROLLER))
+
+        if updated_controller != self.base_sensor.controller.host:
+            return # meant for a different sensor/inverter combo
 
         # If this register belongs to the sensor, store it temporarily
         if updated_register in self._register:
@@ -116,4 +115,15 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
         self._attr_native_value = value
         self.schedule_update_ha_state()
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._modbus_controller.host)},
+            manufacturer=MANUFACTURER,
+            model=self._modbus_controller.model,
+            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            sw_version=self._modbus_controller.sw_version,
+        )
 

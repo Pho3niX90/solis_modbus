@@ -9,3 +9,7 @@ solis_write_holding_register:
       description: Value to write
       default: ''
       example: 500
+    host:
+      description: IP of the inverter, only required when running multiple inverters
+      default: ''
+      example: 192.168.1.75

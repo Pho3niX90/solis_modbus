@@ -7,9 +7,8 @@ from homeassistant.components.sensor import RestoreSensor, SensorEntity
 from homeassistant.components.switch import SwitchDeviceClass
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import MANUFACTURER, DOMAIN
-from custom_components.solis_modbus.helpers import get_value, decode_inverter_model, get_controller
+from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
+from custom_components.solis_modbus.helpers import get_value, decode_inverter_model
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
@@ -19,17 +18,19 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
     def __init__(self, hass, sensor: SolisBaseSensor):
         self._hass = hass if hass else sensor.hass
-        self._modbus_controller: ModbusController = get_controller(hass, sensor.controller_host)
         self._attr_name = sensor.name
         self._attr_has_entity_name = True
         self._attr_unique_id = sensor.unique_id
+        self.base_sensor = sensor
 
-        self._device_class = SwitchDeviceClass.SWITCH
+        self._device_class = sensor.device_class
+        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._attr_device_class = sensor.device_class
+        self._attr_state_class = sensor.state_class
+        self._attr_native_unit_of_measurement = sensor.unit_of_measurement
 
         self._register: List[int] = sensor.registrars
         self._state = None
-        self._unit_of_measurement = sensor.unit_of_measurement
-        self._device_class = sensor.device_class
 
         # Visible Instance Attributes Outside Class
         self.is_added_to_hass = False
@@ -77,8 +78,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             # set after
             if '35000' in self._register:
                 protocol_version, model_description = decode_inverter_model(n_value)
-                self._modbus_controller._sw_version = protocol_version
-                self._modbus_controller._model = model_description
+                self.base_sensor.controller._sw_version = protocol_version
+                self.base_sensor.controller._model = model_description
                 n_value = model_description + f"(Protocol {protocol_version})"
 
             if isinstance(n_value, (numbers.Number, decimal.Decimal, fractions.Fraction)):
@@ -100,9 +101,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._modbus_controller.host)},
+            identifiers={(DOMAIN, self.base_sensor.controller.host)},
             manufacturer=MANUFACTURER,
-            model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}",
-            sw_version=self._modbus_controller.sw_version,
+            model=self.base_sensor.controller.model,
+            name=f"{MANUFACTURER} {self.base_sensor.controller.model}",
+            sw_version=self.base_sensor.controller.sw_version,
         )
