@@ -1,17 +1,20 @@
 import decimal
 import fractions
+import logging
 import numbers
 from typing import List
 
 from homeassistant.components.sensor import RestoreSensor, SensorEntity
-from homeassistant.components.switch import SwitchDeviceClass
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
-from custom_components.solis_modbus.helpers import get_value, decode_inverter_model
+from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
+from custom_components.solis_modbus.helpers import get_value, decode_inverter_model, cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
+from homeassistant.core import callback
+
+_LOGGER = logging.getLogger(__name__)
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
@@ -35,6 +38,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         # Visible Instance Attributes Outside Class
         self.is_added_to_hass = False
         self._multiplier = sensor.multiplier
+        self._received_values = {}
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -43,59 +47,82 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             self._attr_native_value = state.native_value
         self.is_added_to_hass = True
 
-    def update(self):
-        """Update the sensor value."""
-        try:
-            if not self.is_added_to_hass:
-                return
+        # 🔥 Register event listener for real-time updates
+        self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
 
-            n_value = None
+    @callback
+    def handle_modbus_update(self, event):
+        """Callback function that updates sensor when new register data is available."""
+        updated_register = int(event.data.get(REGISTER))
+        updated_value = int(event.data.get(VALUE))
+        updated_controller = str(event.data.get(CONTROLLER))
 
-            if '33095' in self._register:
-                n_value = round(get_value(self))
-                n_value = STATUS_MAPPING.get(n_value, "Unknown")
+        if updated_controller != self.base_sensor.controller.host:
+            return # meant for a different sensor/inverter combo
 
-            if '33049' in self._register or '33051' in self._register or '33053' in self._register or '33055' in self._register:
-                r1_value = self._hass.data[DOMAIN]['values'][self._register[0]] * self._multiplier
-                r2_value = self._hass.data[DOMAIN]['values'][self._register[1]] * self._multiplier
-                n_value = round(r1_value * r2_value)
+        # Only process if this register belongs to the sensor
+        if updated_register in self._register:
+            # Store received register value temporarily
+            self._received_values[updated_register] = updated_value
 
-            if '33135' in self._register and len(self._register) == 4:
+            # 🔍 Debug: Log missing registers
+            missing_regs = [reg for reg in self._register if reg not in self._received_values]
+            if missing_regs:
+                _LOGGER.warning(f"Waiting for registers {missing_regs} before updating {self._attr_name}")
+
+            # If we haven't received all registers yet, wait
+            if not all(reg in self._received_values for reg in self._register):
+                _LOGGER.warning(f"not all values received yet = {self._received_values}")
+                return  # Wait until all registers are received
+
+            new_value = self.base_sensor.get_value
+
+            ## start
+
+            if 33095 in self._register:
+                new_value = round(get_value(self))
+                new_value = STATUS_MAPPING.get(new_value, "Unknown")
+
+            if 33049 in self._register or '33051' in self._register or '33053' in self._register or '33055' in self._register:
+                r1_value = self._received_values[self._register[0]] * self._multiplier
+                r2_value = self._received_values[self._register[1]] * self._multiplier
+                new_value = round(r1_value * r2_value)
+
+            if 33135 in self._register and len(self._register) == 4:
                 registers = self._register.copy()
                 self._register = registers[:2]
 
                 p_value = get_value(self)
                 d_w_value = registers[3]
-                d_value = self._hass.data[DOMAIN]['values'][registers[2]]
+                d_value = self._received_values[registers[2]]
 
                 self._register = registers
 
                 if str(d_value) == str(d_w_value):
-                    n_value = round(p_value * 10)
+                    new_value = round(p_value * 10)
                 else:
-                    n_value = 0
+                    new_value = 0
 
             # set after
-            if '35000' in self._register:
-                protocol_version, model_description = decode_inverter_model(n_value)
+            if 35000 in self._register:
+                protocol_version, model_description = decode_inverter_model(new_value)
                 self.base_sensor.controller._sw_version = protocol_version
                 self.base_sensor.controller._model = model_description
-                n_value = model_description + f"(Protocol {protocol_version})"
+                new_value = model_description + f"(Protocol {protocol_version})"
 
-            if isinstance(n_value, (numbers.Number, decimal.Decimal, fractions.Fraction)):
+            if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value, str):
                 self._attr_available = True
-                self._attr_native_value = n_value
-                self._state = n_value
-                self.schedule_update_ha_state()
-            if isinstance(n_value, str):
-                self._attr_available = True
-                self._attr_native_value = n_value
-                self._state = n_value
+                self._attr_native_value = new_value
+                self._state = new_value
                 self.schedule_update_ha_state()
 
-        except ValueError as e:
-            self._state = None
-            self._attr_available = False
+            # Update state if valid value exists
+            if new_value is not None:
+                self._attr_native_value = new_value
+                self.schedule_update_ha_state()
+
+            # Clear received values after update
+            self._received_values.clear()
 
     @property
     def device_info(self):

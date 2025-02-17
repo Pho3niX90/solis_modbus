@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import timedelta
-
+import time
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
@@ -46,16 +46,33 @@ class DataRetrieval:
         if not self.controller.enabled:
             return
 
+        total_start_time = time.perf_counter()
+        group_times = {}
+        total_registrars = 0
+        total_groups  = 0
+
         for sensor_group in self.controller.sensor_groups:
+            group_start_time = time.perf_counter()
+
             start_register = sensor_group.start_register
             count = sensor_group.registrar_count
+            group_name = f"(Registers {start_register} to {start_register + count - 1})"
+            total_registrars += count
+            total_groups += 1
 
             values = await (
                 self.controller.async_read_holding_register(start_register, count)
                 if start_register >= 40000
                 else self.controller.async_read_input_register(start_register, count)
             )
-            _LOGGER.warning(f"Reading values {start_register} to {start_register + count}, values are {values}")
+
+            group_end_time = time.perf_counter()
+            group_duration = group_end_time - group_start_time
+            group_times[group_name] = group_duration
+
+            _LOGGER.debug(
+                f"Modbus Group '{group_name}' read in {group_duration:.4f}s "
+            )
 
             if values is None:
                 continue
@@ -69,3 +86,14 @@ class DataRetrieval:
                 self.hass.bus.async_fire(DOMAIN, {REGISTER: register_key, VALUE: value, CONTROLLER: self.controller.host})
 
             self.controller._data_received = True
+
+            total_end_time = time.perf_counter()
+            total_duration = total_end_time - total_start_time
+
+            avg_time = total_duration / len(self.controller.sensor_groups) if self.controller.sensor_groups else 0
+
+            diff = self.controller.poll_interval - total_duration
+            if diff <= 0:
+                _LOGGER.warning(f"🚨 Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
+            else:
+                _LOGGER.warning(f"✅ Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")

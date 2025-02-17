@@ -21,6 +21,7 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
     {
         vol.Required("address"): vol.Coerce(int),
         vol.Required("value"): vol.Coerce(int),
+        vol.Optional("host"): vol.Coerce(str),
     }
 )
 
@@ -37,7 +38,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             controller = hass.data[DOMAIN][CONTROLLER][host]
             hass.create_task(controller.async_write_holding_register(address, value))
         else:
-            for controller in hass.data[DOMAIN][CONTROLLER]:
+            for controller in hass.data[DOMAIN][CONTROLLER].values():
                 hass.create_task(controller.async_write_holding_register(address, value))
 
     hass.services.async_register(

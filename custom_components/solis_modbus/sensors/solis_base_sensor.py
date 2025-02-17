@@ -139,7 +139,6 @@ class SolisSensorGroup:
     def registrar_count(self):
         return sum(len(sensor.registrars) for sensor in self._sensors)
 
-
     @property
     def start_register(self):
         return min(reg for sensor in self._sensors for reg in sensor.registrars)

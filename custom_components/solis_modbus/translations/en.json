@@ -23,6 +23,10 @@
         "value": {
           "name": "Value",
           "description": "Value to write"
+        },
+        "host": {
+          "name": "Inverter",
+          "description": "Inverter IP (only required if you have multiple inverters)"
         }
       }
     }
