@@ -2,15 +2,16 @@ import logging
 from datetime import timedelta
 from typing import List, Any
 
+from homeassistant.components.sensor import RestoreSensor
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, \
-    VALUES, ENTITIES, SWITCH_ENTITIES
+    VALUES, ENTITIES, SWITCH_ENTITIES, REGISTER, VALUE
+from custom_components.solis_modbus.helpers import cache_get, cache_save
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,19 +133,10 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     hass.data[DOMAIN][SWITCH_ENTITIES] = switchEntities
     async_add_devices(switchEntities, True)
 
-    @callback
-    def async_update(now):
-        """Update Modbus data periodically."""
-        # for entity in hass.data[DOMAIN]["switch_entities"]:
-        #    entity.update()
-        # Schedule the update function to run every X seconds
-
-    async_track_time_interval(hass, async_update, timedelta(seconds=modbus_controller.poll_interval * 2))
-
     return True
 
 
-class SolisBinaryEntity(SwitchEntity):
+class SolisBinaryEntity(RestoreSensor, SwitchEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
@@ -159,26 +151,52 @@ class SolisBinaryEntity(SwitchEntity):
         self._attr_has_entity_name = True
         self._attr_available = False
         self._attr_is_on = None
+        self._received_values = {}
+
+    async def async_added_to_hass(self) -> None:
+        """Called when entity is added to HA."""
+        await super().async_added_to_hass()
+        state = await self.async_get_last_sensor_data()
+        if state:
+            self._attr_native_value = state.native_value
+
+        self.is_added_to_hass = True
+
+        # 🔥 Register event listener for real-time updates
+        self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
+
+    @callback
+    def handle_modbus_update(self, event):
+        """Callback function that updates sensor when new register data is available."""
+        updated_register = int(event.data.get(REGISTER))
+        updated_value = int(event.data.get(VALUE))
+        updated_controller = str(event.data.get(CONTROLLER))
+
+        if updated_controller != self._modbus_controller.host:
+            return # meant for a different sensor/inverter combo
+
+        # If this register belongs to the sensor, store it temporarily
+        if updated_register == self._register:
+            self._received_values[updated_register] = updated_value
+
+            if self._register == 5:
+                self._attr_is_on = self._modbus_controller.enabled
+                self._attr_available = True
+                return self._attr_is_on
+
+            value = updated_value
+            if value is None:
+                value = cache_get(self._hass, self._register)
+
+            if value is not None:
+                self._attr_available = True
+                if self._bit_position is not None:
+                    self._attr_is_on = get_bool(value, self._bit_position)
+                if self._on_value is not None:
+                    self._attr_is_on = value == self._on_value
 
     def update(self):
         """Update Modbus data periodically."""
-
-        if self._register == 5:
-            self._attr_is_on = self._modbus_controller.enabled
-            if not self._attr_available:
-                self._attr_available = True
-            return self._attr_is_on
-
-        value: int = self._hass.data[DOMAIN][VALUES].get(str(self._register), None)
-
-        if value is not None:
-            initial_state = self._attr_is_on
-            if not self._attr_available:
-                self._attr_available = True
-            if self._bit_position is not None:
-                self._attr_is_on = get_bool(value, self._bit_position)
-            if self._on_value is not None:
-                self._attr_is_on = value == self._on_value
         return self._attr_is_on
 
     @property
@@ -203,7 +221,7 @@ class SolisBinaryEntity(SwitchEntity):
     def set_register_bit(self, value):
         """Set or clear a specific bit in the Modbus register."""
         controller = self._modbus_controller
-        current_register_value: int = self._hass.data[DOMAIN][VALUES][str(self._register)]
+        current_register_value: int = cache_get(self._hass, self._register)
 
         if self._bit_position is not None:
             if value is True and self._work_mode is not None:
@@ -219,7 +237,7 @@ class SolisBinaryEntity(SwitchEntity):
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
             self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))
-            self._hass.data[DOMAIN][VALUES][str(self._register)] = new_register_value
+            cache_save(self._hass, self._register, new_register_value)
 
         self._attr_is_on = value
         self._attr_available = True

@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
+from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class SolisBaseSensor:
         self.hidden = hidden
         self.state_class = state_class
         self.max_value = max_value
-        self.step = step
+        self.step = self.get_step(step)
         self.enabled = enabled
         self.min_value = min_value
 
@@ -64,6 +65,16 @@ class SolisBaseSensor:
             return 0,6
         if self.device_class == UnitOfPower.WATT:
             return 0,6000
+
+
+    def get_step(self, wanted_step):
+        if self.device_class == PERCENTAGE:
+            return 1
+        if self.device_class == UnitOfPower.KILO_WATT:
+            return 0,1
+        if self.device_class == UnitOfPower.WATT:
+            return 1
+        return wanted_step
 
     @property
     def get_raw_values(self):
@@ -114,6 +125,7 @@ class SolisSensorGroup:
     sensors: List[SolisBaseSensor]
 
     def __init__(self, hass, definition, controller):
+        self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL)
         self._sensors = list(map(lambda entity: SolisBaseSensor(
             hass=hass,
             name= entity.get("name", "reserve"),
@@ -131,6 +143,15 @@ class SolisSensorGroup:
             unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
         ), definition.get("entities", [])))
         _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
+        self.validate_sequential_registrars()
+
+    def validate_sequential_registrars(self):
+        """Ensure all registrars increase sequentially without skipping numbers."""
+        all_registrars = sorted(set(reg for sensor in self._sensors for reg in sensor.registrars))
+
+        for i in range(len(all_registrars) - 1):
+            if all_registrars[i + 1] != all_registrars[i] + 1:
+                _LOGGER.error(f"🚨 Registrar sequence error! Found gap between {all_registrars[i]} and {all_registrars[i + 1]} in sensor group.")
 
     @property
     def sensors_count(self):

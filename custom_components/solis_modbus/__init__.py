@@ -36,10 +36,10 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
         if host:
             controller = hass.data[DOMAIN][CONTROLLER][host]
-            hass.create_task(controller.async_write_holding_register(address, value))
+            hass.create_task(controller.async_write_holding_register(int(address), int(value)))
         else:
             for controller in hass.data[DOMAIN][CONTROLLER].values():
-                hass.create_task(controller.async_write_holding_register(address, value))
+                hass.create_task(controller.async_write_holding_register(int(address), int(value)))
 
     hass.services.async_register(
         DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER
@@ -57,12 +57,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     host = entry.data.get("host")
     port = entry.data.get("port", 502)
-    poll_interval = entry.data.get("poll_interval", 15)
+    poll_interval_fast = entry.data.get("poll_interval_fast", 5)
+    poll_interval_normal = entry.data.get("poll_interval_normal", 15)
+    poll_interval_slow = entry.data.get("poll_interval_slow", 30)
     inverter_type = entry.data.get("type", "hybrid")
-
-    # Ensure valid polling interval
-    if poll_interval is None or poll_interval < 5:
-        poll_interval = 15
 
     # Load correct sensor data based on inverter type
     if inverter_type in ["string", "grid"]:
@@ -77,9 +75,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Create the Modbus controller and assign sensor groups
     controller = ModbusController(
+        hass=hass,
         host=host,
         port=port,
-        poll_interval=poll_interval
+        fast_poll=poll_interval_fast,
+        normal_poll=poll_interval_normal,
+        slow_poll=poll_interval_slow,
     )
 
     controller._sensor_groups = [
@@ -96,6 +97,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             state_class=entity.get("state_class", None),
             device_class=entity.get("device_class", None),
             unit_of_measurement=entity.get("unit_of_measurement", None),
+            editable=entity.get("editable", False),
             hidden=entity.get("hidden", False),
             multiplier=entity.get("multiplier", 1),
             unique_id=f"{DOMAIN}_{entity['unique']}"

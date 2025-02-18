@@ -8,7 +8,7 @@ from homeassistant.components.sensor import RestoreSensor, SensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
-from custom_components.solis_modbus.helpers import get_value, decode_inverter_model, cache_get
+from custom_components.solis_modbus.helpers import get_value, decode_inverter_model
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 

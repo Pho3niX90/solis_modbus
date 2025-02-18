@@ -12,7 +12,17 @@ CONFIG_SCHEMA = vol.Schema(
         vol.Required("host", default="", description="your solis ip"): str,
         vol.Required("port", default=502, description="port of your modbus, typically 502 or 8899"): int,
         vol.Optional(
-            "poll_interval",
+            "poll_interval_fast",
+            default=10,
+            description="poll interval in seconds"
+        ): vol.All(int, vol.Range(min=5)),
+        vol.Optional(
+            "poll_interval_normal",
+            default=15,
+            description="poll interval in seconds"
+        ): vol.All(int, vol.Range(min=5)),
+        vol.Optional(
+            "poll_interval_slow",
             default=15,
             description="poll interval in seconds"
         ): vol.All(int, vol.Range(min=5)),
@@ -46,11 +56,20 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device."""
 
-        poll_interval = user_input.get("poll_interval")
-        if poll_interval is None or poll_interval < 5:
-            poll_interval = 15
+        poll_interval_fast = user_input.get("poll_interval_fast")
+        poll_interval_normal = user_input.get("poll_interval_normal")
+        poll_interval_slow = user_input.get("poll_interval_slow")
+        if poll_interval_fast is None or poll_interval_fast < 5:
+            poll_interval_fast = 10
+        if poll_interval_normal is None or poll_interval_normal < 5:
+            poll_interval_normal = 20
+        if poll_interval_slow is None or poll_interval_slow < 5:
+            poll_interval_slow = 30
 
-        modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502), poll_interval)
+        modbus_controller = ModbusController(user_input["host"], user_input.get("port", 502),
+                                             fast_poll=poll_interval_fast,
+                                             normal_poll=poll_interval_normal,
+                                             slow_poll=poll_interval_slow)
 
         try:
             await modbus_controller.connect()

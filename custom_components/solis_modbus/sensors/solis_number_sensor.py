@@ -1,4 +1,6 @@
 import logging
+from typing import List
+
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import RestoreSensor
 from homeassistant.core import callback
@@ -13,44 +15,41 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
     """Representation of a Number entity."""
 
     def __init__(self, hass, sensor: SolisBaseSensor):
-        """Initialize the Number entity."""
         self._hass = hass
         self.base_sensor = sensor
-        self._register = sensor.registrars  # Multi-register support
-        self._multiplier = sensor.multiplier
+
+        self._attr_name = sensor.name
+        self._attr_has_entity_name = True
+        self._attr_unique_id = sensor.unique_id
+
+        self._register: List[int] = sensor.registrars
 
         self._device_class = sensor.device_class
         self._unit_of_measurement  = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
+        self._attr_available = not sensor.hidden
+
+        self._received_values = {}
+
+        self._multiplier = sensor.multiplier
 
         # Unique ID based on all registers
         #"{}_{}_{}".format(DOMAIN, self.base_sensor.controller.host, "_".join(map(str, self._register)))
-        self._attr_unique_id = sensor.unique_id
-        self._attr_has_entity_name = True
-        self._attr_name = sensor.name
         self._attr_native_value = sensor.default
-        self.is_added_to_hass = False
         self._attr_mode = NumberMode.AUTO
         self._attr_native_min_value = sensor.min_value
         self._attr_native_max_value = sensor.max_value
         self._attr_native_step = sensor.step
         self._attr_should_poll = False
         self._attr_entity_registry_enabled_default = sensor.enabled
-        self._attr_available = not sensor.hidden
-
-        # 🔹 Track received register values before updating
-        self._received_values = {}
 
     async def async_added_to_hass(self) -> None:
-        """Called when entity is added to HA."""
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
         if state:
             self._attr_native_value = state.native_value
-
-        self.is_added_to_hass = True
 
         # 🔥 Register event listener for real-time updates
         self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
@@ -101,17 +100,11 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
         # Write to Modbus controller
         self.hass.create_task(
-            self.base_sensor.controller.async_write_holding_register(self._register, register_value)
+            self.base_sensor.controller.async_write_holding_register(self._register[0], int(register_value))
         )
 
         self._attr_native_value = value
         self.schedule_update_ha_state()
-
-
-    @property
-    def native_value(self):
-        """Retrieve sensor value from cache."""
-        return self.base_sensor.get_value
 
     @property
     def device_info(self):

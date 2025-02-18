@@ -2,10 +2,13 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.const import UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, UnitOfTime, UnitOfEnergy, \
     UnitOfReactivePower, UnitOfFrequency, UnitOfTemperature, UnitOfApparentPower, PERCENTAGE
 
+from custom_components.solis_modbus.data.enums import PollSpeed
+
 # based on RS485_MODBUS RTU Hybrid Inverter Protocol Ver3.2
 hybrid_sensors = [
     {
         "register_start": 33000,
+        "poll_speed": PollSpeed.ONCE,
         "entities": [
             {"name": "Solis Model No", "unique": "solis_modbus_inverter_model_no",
              "register": ['33000'], "multiplier": 0},
@@ -24,6 +27,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 35000,
+        "poll_speed": PollSpeed.ONCE,
         "entities": [
             {"name": "Solis Inverter Type Definition", "unique": "solis_modbus_inverter_type_definition",
              "register": ['35000'], "multiplier": 0},
@@ -80,6 +84,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33049,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis PV Voltage 1",
              "unique": "solis_modbus_inverter_dc_voltage_1",
@@ -129,6 +134,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33072,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis PV Bus Half Voltage",
              "unique": "solis_modbus_inverter_dc_bus_half_voltage",
@@ -180,6 +186,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33093,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis Temperature", "unique": "solis_modbus_inverter_temperature",
              "register": ['33093'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
@@ -200,6 +207,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33132,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis Storage Control Switching Value",
              "unique": "solis_modbus_inverter_storage_control_switching_value", "register": ['33132'],
@@ -376,6 +384,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 34328,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis SmartPort A Phase Voltage",
              "unique": "solis_modbus_inverter_smartport_a_phase_voltage",
@@ -406,6 +415,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33251,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis Meter AC Voltage A",
              "unique": "solis_modbus_inverter_meter_ac_voltage_a",
@@ -452,6 +462,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33530,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Solis Generator Phase A Active Power",
              "unique": "solis_modbus_inverter_generator_phase_a_active_power",
@@ -477,6 +488,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33580,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Solis Household Load Total Energy",
              "unique": "solis_modbus_inverter_household_total_energy",
@@ -516,6 +528,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43011,
+        "poll_speed": PollSpeed.NORMAL,
         "entities": [
 
             {"name": "Solis Overcharge SOC",
@@ -575,7 +588,7 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43141,
+        "register_start": 43141, #
         "entities": [
             {"name": "Solis Time-Charging Charge Current",
              "unique": "solis_modbus_inverter_time_charging_charge_current",
@@ -620,7 +633,7 @@ hybrid_sensors = [
              "multiplier": 0, "unit_of_measurement": UnitOfTime.MINUTES,
              "state_class": SensorStateClass.MEASUREMENT},
 
-            {"type": "reserve", "register": ['43051', '43052']},
+            {"type": "reserve", "register": ['43151', '43152']},
 
             {"name": "Solis Time-Charging Charge Start Hour (Slot 2)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot2", "register": ['43153'],
@@ -654,7 +667,7 @@ hybrid_sensors = [
              "register": ['43160'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
 
-            {"type": "reserve", "register": ['43061', '43062']},
+            {"type": "reserve", "register": ['43161', '43162']},
 
             {"name": "Solis Time-Charging Charge Start Hour (Slot 3)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot3",
@@ -692,7 +705,7 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43173,
+        "register_start": 43173, #
         "entities": [
             {"name": "Solis Time-Charging Charge Start Hour (Slot 4)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot4",
@@ -728,7 +741,7 @@ hybrid_sensors = [
              "register": ['43180'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
 
-            {"type": "reserve", "register": ['43081', '43082']},
+            {"type": "reserve", "register": ['43181', '43182']},
 
             {"name": "Solis Time-Charging Charge Start Hour (Slot 5)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot5",

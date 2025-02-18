@@ -20,6 +20,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
     def __init__(self, hass: HomeAssistant, sensor: SolisBaseSensor):
         self._hass = hass
+        self.base_sensor = sensor
 
         self._attr_name = sensor.name
         self._attr_has_entity_name = True
@@ -36,16 +37,13 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
         self.is_added_to_hass = False
         self._state = None
-        self.base_sensor = sensor
         self._received_values = {}
 
     async def async_added_to_hass(self) -> None:
-        """Called when entity is added to HA."""
         await super().async_added_to_hass()
-        sensor_data = await self.async_get_last_sensor_data()
-        if sensor_data.native_value is not None:
-            self._attr_native_value = sensor_data.native_value
-
+        state = await self.async_get_last_sensor_data()
+        if state:
+            self._attr_native_value = state.native_value
         self.is_added_to_hass = True
 
         # 🔥 Register event listener for real-time updates

@@ -585,7 +585,7 @@ hybrid_waveshare = [
              "register": ['43160'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
 
-            {"type": "reserve", "register": ['43061', '43062']},
+            {"type": "reserve", "register": ['43161', '43162']},
 
             {"name": "Solis Time-Charging Charge Start Hour (Slot 3)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot3",
@@ -660,7 +660,7 @@ hybrid_waveshare = [
              "register": ['43180'], "multiplier": 0,
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
 
-            {"type": "reserve", "register": ['43081', '43082']},
+            {"type": "reserve", "register": ['43181', '43182']},
 
             {"name": "Solis Time-Charging Charge Start Hour (Slot 5)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot5",
