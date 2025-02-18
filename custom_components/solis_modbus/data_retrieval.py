@@ -56,7 +56,9 @@ class DataRetrieval:
 
             start_register = sensor_group.start_register
             count = sensor_group.registrar_count
-            group_name = f"(Registers {start_register} to {start_register + count - 1})"
+            register_list = ', '.join(str(start_register + i) for i in range(count))
+            group_name = f"(Registers: {register_list})"
+
             total_registrars += count
             total_groups += 1
 
@@ -82,7 +84,6 @@ class DataRetrieval:
                 cache_save(self.hass, register_key, value)
 
                 # 🔥 Fire event when new data is available
-                # todo consider sensors with multiple registers
                 self.hass.bus.async_fire(DOMAIN, {REGISTER: register_key, VALUE: value, CONTROLLER: self.controller.host})
 
             self.controller._data_received = True
@@ -94,6 +95,6 @@ class DataRetrieval:
 
         diff = self.controller.poll_interval - total_duration
         if diff <= 0:
-            _LOGGER.warning(f"🚨 Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
+            _LOGGER.warning(f"🚨 Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups} groups")
         else:
-            _LOGGER.debug(f"✅ Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
+            _LOGGER.debug(f"✅ Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups} groups")

@@ -1,4 +1,5 @@
 # solis_base.py
+import logging
 from typing import Union
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
@@ -10,6 +11,8 @@ from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
+
+_LOGGER = logging.getLogger(__name__)
 
 class SolisBaseSensor:
     """Base class for all Solis sensors."""
@@ -127,6 +130,7 @@ class SolisSensorGroup:
             multiplier=entity.get("multiplier", 1),
             unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
         ), definition.get("entities", [])))
+        _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
 
     @property
     def sensors_count(self):

@@ -79,13 +79,6 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 self._attr_native_value = new_value
                 self.schedule_update_ha_state()
 
-
-
-    @property
-    def native_value(self):
-        """Retrieve sensor value from cache."""
-        return self.base_sensor.get_value
-
     @property
     def device_info(self):
         """Return device info."""
