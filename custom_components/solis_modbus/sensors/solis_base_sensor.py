@@ -120,12 +120,13 @@ class SolisSensorGroup:
             device_class=entity.get("device_class", None),
             unit_of_measurement=entity.get("unit_of_measurement", None),
             hidden=entity.get("hidden", False),
+            editable=entity.get("editable", False),
+            max_value=entity.get("max", 3000),
+            min_value=entity.get("min", 0),
+            default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
             unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
         ), definition.get("entities", [])))
-        # TODO add derived sensors
-        # TODO add number sensors
-        # TODO add time sensors
 
     @property
     def sensors_count(self):

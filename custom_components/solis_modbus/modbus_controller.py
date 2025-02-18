@@ -43,7 +43,7 @@ class ModbusController:
 
             if not await self.client.connect():
                 self.connect_failures += 1
-                _LOGGER.warning(f"Failed to connect (Attempt {self.connect_failures})")
+                _LOGGER.debug(f"Failed to connect (Attempt {self.connect_failures})")
                 return False
             return True
 

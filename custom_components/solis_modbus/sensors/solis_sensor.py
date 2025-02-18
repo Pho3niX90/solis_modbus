@@ -61,20 +61,13 @@ class SolisSensor(RestoreSensor, SensorEntity):
         if updated_controller != self.base_sensor.controller.host:
             return # meant for a different sensor/inverter combo
 
-        # Only process if this register belongs to the sensor
         if updated_register in self._register:
-            # Store received register value temporarily
             self._received_values[updated_register] = updated_value
-
-            # 🔍 Debug: Log missing registers
-            missing_regs = [reg for reg in self._register if reg not in self._received_values]
-            if missing_regs:
-                _LOGGER.warning(f"Waiting for registers {missing_regs} before updating {self._attr_name}")
 
             # If we haven't received all registers yet, wait
             if not all(reg in self._received_values for reg in self._register):
-                _LOGGER.warning(f"not all values received yet = {self._received_values}")
-                return  # Wait until all registers are received
+                _LOGGER.debug(f"not all values received yet = {self._received_values}")
+                return
 
             new_value = self.base_sensor.get_value
 

@@ -8,10 +8,10 @@ from custom_components.solis_modbus.const import DRIFT_COUNTER, VALUES, CONTROLL
 
 def get_value(self):
     if len(self._register) >= 15:
-        values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
+        values = [cache_get(self._hass, reg) for reg in self._register]
         n_value = extract_serial_number(values)
     elif len(self._register) > 1:
-        s32_values = [self._hass.data[DOMAIN]['values'][reg] for reg in self._register]
+        s32_values = [cache_get(self._hass, reg) for reg in self._register]
         # These are two 16-bit values representing a 32-bit signed integer (S32)
         high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
         low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
@@ -25,9 +25,9 @@ def get_value(self):
     else:
         # Treat it as a single register (U16)
         if self._multiplier == 0:
-            n_value = round(self._hass.data[DOMAIN]['values'][self._register[0]])
+            n_value = round(cache_get(self._hass, self._register[0]))
         else:
-            n_value = self._hass.data[DOMAIN]['values'][self._register[0]] * self._multiplier
+            n_value = cache_get(self._hass, self._register[0]) * self._multiplier
 
     return n_value
 

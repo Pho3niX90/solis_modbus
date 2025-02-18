@@ -65,14 +65,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             # Store received register value temporarily
             self._received_values[updated_register] = updated_value
 
-            # 🔍 Debug: Log missing registers
-            missing_regs = [reg for reg in self._register if reg not in self._received_values]
-            if missing_regs:
-                _LOGGER.warning(f"Waiting for registers {missing_regs} before updating {self._attr_name}")
-
             # If we haven't received all registers yet, wait
             if not all(reg in self._received_values for reg in self._register):
-                _LOGGER.warning(f"not all values received yet = {self._received_values}")
+                _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return  # Wait until all registers are received
 
             new_value = self.base_sensor.get_value
@@ -83,7 +78,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 new_value = round(get_value(self))
                 new_value = STATUS_MAPPING.get(new_value, "Unknown")
 
-            if 33049 in self._register or '33051' in self._register or '33053' in self._register or '33055' in self._register:
+            if 33049 in self._register or 33051 in self._register or 33053 in self._register or 33055 in self._register:
                 r1_value = self._received_values[self._register[0]] * self._multiplier
                 r2_value = self._received_values[self._register[1]] * self._multiplier
                 new_value = round(r1_value * r2_value)

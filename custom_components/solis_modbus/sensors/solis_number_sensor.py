@@ -6,7 +6,6 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, MANUFACTURER
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
-from custom_components.solis_modbus.helpers import cache_get
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,7 +16,6 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         """Initialize the Number entity."""
         self._hass = hass
         self.base_sensor = sensor
-        self._modbus_controller = sensor.controller
         self._register = sensor.registrars  # Multi-register support
         self._multiplier = sensor.multiplier
 
@@ -28,7 +26,8 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
 
         # Unique ID based on all registers
-        self._attr_unique_id = "{}_{}_{}".format(DOMAIN, self._modbus_controller.host, "_".join(map(str, self._register)))
+        #"{}_{}_{}".format(DOMAIN, self.base_sensor.controller.host, "_".join(map(str, self._register)))
+        self._attr_unique_id = sensor.unique_id
         self._attr_has_entity_name = True
         self._attr_name = sensor.name
         self._attr_native_value = sensor.default
@@ -54,7 +53,7 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         self.is_added_to_hass = True
 
         # 🔥 Register event listener for real-time updates
-        self._hass.bus.async_listen("solis_modbus_update", self.handle_modbus_update)
+        self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
 
     @callback
     def handle_modbus_update(self, event):
@@ -66,23 +65,15 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         if updated_controller != self.base_sensor.controller.host:
             return # meant for a different sensor/inverter combo
 
-        # If this register belongs to the sensor, store it temporarily
         if updated_register in self._register:
-            self._received_values[updated_register] = cache_get(self._hass, updated_register)
+            self._received_values[updated_register] = updated_value
 
             # Wait until all registers have been received
             if not all(reg in self._received_values for reg in self._register):
-                return  # Wait for remaining registers
+                _LOGGER.debug(f"not all values received yet = {self._received_values}")
+                return
 
-            # All registers received, combine the values
-            all_values = [self._received_values[reg] for reg in self._register]
-
-            # 🔄 Combine registers based on type
-            if len(self._register) == 1:
-                new_value = all_values[0]  # Single register value
-            elif len(self._register) == 2:
-                # Example: Handling U32/S32 conversions (2 registers)
-                new_value = (all_values[0] << 16) | all_values[1]
+            new_value = self.base_sensor.get_value
 
             # Clear received values after update
             self._received_values.clear()
@@ -110,20 +101,26 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
 
         # Write to Modbus controller
         self.hass.create_task(
-            self._modbus_controller.async_write_holding_register(self._register, register_value)
+            self.base_sensor.controller.async_write_holding_register(self._register, register_value)
         )
 
         self._attr_native_value = value
         self.schedule_update_ha_state()
 
+
+    @property
+    def native_value(self):
+        """Retrieve sensor value from cache."""
+        return self.base_sensor.get_value
+
     @property
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._modbus_controller.host)},
+            identifiers={(DOMAIN, self.base_sensor.controller.host)},
             manufacturer=MANUFACTURER,
-            model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}",
-            sw_version=self._modbus_controller.sw_version,
+            model=self.base_sensor.controller.model,
+            name=f"{MANUFACTURER} {self.base_sensor.controller.model}",
+            sw_version=self.base_sensor.controller.sw_version,
         )
 

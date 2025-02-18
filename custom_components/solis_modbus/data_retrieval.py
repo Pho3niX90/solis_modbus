@@ -32,7 +32,7 @@ class DataRetrieval:
                 _LOGGER.info("Modbus controller connected successfully.")
                 break
 
-            _LOGGER.warning(f"Modbus connection failed, retrying in {retry_delay} seconds...")
+            _LOGGER.debug(f"Modbus connection failed, retrying in {retry_delay} seconds...")
             await asyncio.sleep(retry_delay)
 
         # Once connected, start polling data
@@ -43,7 +43,7 @@ class DataRetrieval:
     async def get_modbus_updates(self, now):
         """Read registers from the Modbus controller and store values."""
 
-        if not self.controller.enabled:
+        if not self.controller.enabled or not self.controller.connected():
             return
 
         total_start_time = time.perf_counter()
@@ -87,13 +87,13 @@ class DataRetrieval:
 
             self.controller._data_received = True
 
-            total_end_time = time.perf_counter()
-            total_duration = total_end_time - total_start_time
+        total_end_time = time.perf_counter()
+        total_duration = total_end_time - total_start_time
 
-            avg_time = total_duration / len(self.controller.sensor_groups) if self.controller.sensor_groups else 0
+        avg_time = total_duration / len(self.controller.sensor_groups) if self.controller.sensor_groups else 0
 
-            diff = self.controller.poll_interval - total_duration
-            if diff <= 0:
-                _LOGGER.warning(f"🚨 Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
-            else:
-                _LOGGER.warning(f"✅ Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
+        diff = self.controller.poll_interval - total_duration
+        if diff <= 0:
+            _LOGGER.warning(f"🚨 Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
+        else:
+            _LOGGER.debug(f"✅ Modbus total update time: {total_duration:.4f}s (Avg per group: {avg_time:.4f}s). {total_registrars} registrars read, which consists of {total_groups}")
