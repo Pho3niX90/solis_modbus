@@ -66,7 +66,6 @@ class SolisBaseSensor:
         if self.device_class == UnitOfPower.WATT:
             return 0,6000
 
-
     def get_step(self, wanted_step):
         if self.device_class == PERCENTAGE:
             return 1

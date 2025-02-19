@@ -539,6 +539,7 @@ hybrid_sensors = [
 
             {"name": "Solis Overdischarge SOC",
              "unique": "solis_modbus_inverter_overdischarge_soc", "register": ['43011'], "multiplier": 1,
+             "device_class": SensorDeviceClass.BATTERY,
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
              "default": 20, "min": 5, "max": 40, "step": 1, },
 

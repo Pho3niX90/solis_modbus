@@ -33,7 +33,6 @@ class ModbusController:
 
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
-        self.hass.create_task(self.process_write_queue())
 
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially."""

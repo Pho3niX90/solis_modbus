@@ -63,6 +63,8 @@ class DataRetrieval:
         async_track_time_interval(self.hass, self.modbus_update_normal, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15)))
         async_track_time_interval(self.hass, self.modbus_update_slow, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30)))
 
+        self.hass.create_task(self.controller.process_write_queue())
+
     async def modbus_update_fast(self, now):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
 
