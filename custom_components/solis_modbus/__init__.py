@@ -1,13 +1,14 @@
 """The Modbus Integration."""
 import asyncio
 import logging
+from datetime import datetime
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import DOMAIN, CONTROLLER
+from .const import DOMAIN, CONTROLLER, TIME_ENTITIES
 from .data_retrieval import DataRetrieval
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
@@ -22,6 +23,12 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
         vol.Required("address"): vol.Coerce(int),
         vol.Required("value"): vol.Coerce(int),
         vol.Optional("host"): vol.Coerce(str),
+    }
+)
+SCHEME_TIME_SET = vol.Schema(
+    {
+        vol.Required("entity_id"): vol.Coerce(str),
+        vol.Required("time"): vol.Coerce(str)
     }
 )
 
@@ -41,26 +48,67 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             for controller in hass.data[DOMAIN][CONTROLLER].values():
                 hass.create_task(controller.async_write_holding_register(int(address), int(value)))
 
+    # @Ian-Johnston
+    async def service_set_time(call: ServiceCall) -> None:
+        """Service to update a Solis time entity."""
+        entity_id = call.data.get("entity_id")
+        time_str = call.data.get("time")
+
+        if not entity_id or not time_str:
+            _LOGGER.error("Missing entity_id or time parameter in service call")
+            return
+
+        try:
+            # Try to parse time in HH:MM:SS format first, then fallback to HH:MM
+            try:
+                new_time = datetime.strptime(time_str, "%H:%M:%S").time()
+            except ValueError:
+                new_time = datetime.strptime(time_str, "%H:%M").time()
+        except Exception as e:
+            _LOGGER.error("❌ Failed to parse time string '%s': %s", time_str, e)
+            return
+
+        # Look through the registered time entities for one that matches the given entity_id
+        for entity in call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES, []):
+            if entity.entity_id == entity_id:
+                await entity.async_set_value(new_time)
+                _LOGGER.debug("Set time for %s to %s", entity_id, new_time)
+                return
+
+        _LOGGER.error("⚠️ Entity with id %s not found in solis_modbus TIME_ENTITIES", entity_id)
+
     hass.services.async_register(
         DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER
+    )
+    hass.services.async_register(
+        DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET
     )
 
     return True
 
+async def async_update_options(entry):
+    """Handle options updates."""
+    hass = entry.hass
+    hass.config_entries.async_update_entry(entry, options=entry.options)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Modbus from a config entry."""
 
+    # Merge data and options (options take priority)
+    config = {**entry.data, **entry.options}
+
     # Initialize storage for controllers
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(CONTROLLER, {})
+    hass.data[DOMAIN][entry.entry_id] = entry
+    _LOGGER.info(f"Loaded Solis Modbus Integration with Model: {config.get('model')}")
 
-    host = entry.data.get("host")
-    port = entry.data.get("port", 502)
-    poll_interval_fast = entry.data.get("poll_interval_fast", 5)
-    poll_interval_normal = entry.data.get("poll_interval_normal", 15)
-    poll_interval_slow = entry.data.get("poll_interval_slow", 30)
-    inverter_type = entry.data.get("type", "hybrid")
+    host = config.get("host")
+    port = config.get("port", 502)
+    poll_interval_fast = config.get("poll_interval_fast", 5)
+    poll_interval_normal = config.get("poll_interval_normal", 15)
+    poll_interval_slow = config.get("poll_interval_slow", 30)
+    inverter_type = config.get("type", "hybrid")
 
     # Load correct sensor data based on inverter type
     if inverter_type in ["string", "grid"]:

@@ -1,0 +1,58 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Solis Modbus",
+        "description": "Ingrese los detalles de conexión de su inversor Solis.",
+        "data": {
+          "host": "Dirección IP del inversor Solis",
+          "port": "Puerto (por defecto: 502)",
+          "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
+          "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
+          "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
+          "model": "Modelo del Inversor"
+        }
+      }
+    },
+    "error": {
+      "base": "No se puede conectar al inversor. Verifique su configuración."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modificar configuraciones de Solis Modbus",
+        "description": "Cambie la configuración de su inversor Solis.",
+        "data": {
+          "host": "Dirección IP del inversor Solis",
+          "port": "Puerto (por defecto: 502)",
+          "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
+          "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
+          "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
+          "model": "Modelo del Inversor"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Escribir registro de retención",
+      "description": "Escribe un valor en un registro de retención",
+      "fields": {
+        "address": {
+          "name": "Dirección",
+          "description": "Dirección a escribir"
+        },
+        "value": {
+          "name": "Valor",
+          "description": "Valor a escribir"
+        },
+        "host": {
+          "name": "Inversor",
+          "description": "IP del inversor (solo requerido si tiene múltiples inversores)"
+        }
+      }
+    }
+  }
+}

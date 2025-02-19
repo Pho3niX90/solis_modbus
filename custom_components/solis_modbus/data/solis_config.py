@@ -1,6 +1,6 @@
 # solis_config.py
 
-SOLIS_INVERTERS = {
+SOLIS_INVERTERS = [
     {"model": "S6-GR1P(0.7-3.6)K-M", "wattage": [700, 1000, 1500, 2000, 2500, 3000, 3600], "phases": 1},
     {"model": "S6-GR1P(2.5-6)K-S", "wattage": [2500, 3000, 3600, 4000, 4600, 5000, 6000], "phases": 1},
     {"model": "S6-GR1P(2.5-6)K", "wattage": [2500, 3000, 3600, 4000, 4600, 5000, 6000], "phases": 1},
@@ -25,4 +25,4 @@ SOLIS_INVERTERS = {
     {"model": "S5-EO1P(4-5)K-48", "wattage": [4000, 5000], "phases": 1},
     {"model": "RHI-(3-6)K-48ES-5G", "wattage": [3000, 3600, 5000, 6000], "phases": 1},
     {"model": "RHI-3P(5-10)K-HVES-5G", "wattage": [5000, 6000, 8000, 9000, 10000], "phases": 3},
-}
+]

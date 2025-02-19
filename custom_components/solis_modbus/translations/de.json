@@ -1,0 +1,58 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solis Modbus konfigurieren",
+        "description": "Geben Sie die Verbindungsdetails für Ihren Solis-Wechselrichter ein.",
+        "data": {
+          "host": "IP-Adresse des Solis-Wechselrichters",
+          "port": "Port (Standard: 502)",
+          "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
+          "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
+          "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
+          "model": "Wechselrichtermodell"
+        }
+      }
+    },
+    "error": {
+      "base": "Verbindung zum Wechselrichter fehlgeschlagen. Überprüfen Sie Ihre Einstellungen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solis Modbus-Einstellungen ändern",
+        "description": "Ändern Sie die Einstellungen für Ihren Solis-Wechselrichter.",
+        "data": {
+          "host": "IP-Adresse des Solis-Wechselrichters",
+          "port": "Port (Standard: 502)",
+          "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
+          "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
+          "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
+          "model": "Wechselrichtermodell"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Halteregister schreiben",
+      "description": "Schreibt einen Wert in ein Halteregister",
+      "fields": {
+        "address": {
+          "name": "Adresse",
+          "description": "Adresse zum Schreiben"
+        },
+        "value": {
+          "name": "Wert",
+          "description": "Zu schreibender Wert"
+        },
+        "host": {
+          "name": "Wechselrichter",
+          "description": "IP des Wechselrichters (nur erforderlich, wenn mehrere Wechselrichter vorhanden sind)"
+        }
+      }
+    }
+  }
+}

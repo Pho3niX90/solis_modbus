@@ -1,0 +1,58 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfigureer Solis Modbus",
+        "description": "Voer die verbindingsbesonderhede vir jou Solis-omsetter in.",
+        "data": {
+          "host": "IP-adres van Solis-omsetter",
+          "port": "Poort (verstek: 502)",
+          "poll_interval_fast": "Vinnige polsinterval (sekondes)",
+          "poll_interval_normal": "Normale polsinterval (sekondes)",
+          "poll_interval_slow": "Stadige polsinterval (sekondes)",
+          "model": "Omsettermodel"
+        }
+      }
+    },
+    "error": {
+      "base": "Kan nie aan die omsetter koppel nie. Gaan jou instellings na."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Wysig Solis Modbus-instellings",
+        "description": "Verander die instellings vir jou Solis-omsetter.",
+        "data": {
+          "host": "IP-adres van Solis-omsetter",
+          "port": "Poort (verstek: 502)",
+          "poll_interval_fast": "Vinnige polsinterval (sekondes)",
+          "poll_interval_normal": "Normale polsinterval (sekondes)",
+          "poll_interval_slow": "Stadige polsinterval (sekondes)",
+          "model": "Omsettermodel"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Skryf houerregister",
+      "description": "Skryf 'n waarde na 'n houerregister",
+      "fields": {
+        "address": {
+          "name": "Adres",
+          "description": "Adres om na te skryf"
+        },
+        "value": {
+          "name": "Waarde",
+          "description": "Waarde om te skryf"
+        },
+        "host": {
+          "name": "Omsetter",
+          "description": "IP van die omsetter (slegs nodig as jy verskeie omsetters het)"
+        }
+      }
+    }
+  }
+}

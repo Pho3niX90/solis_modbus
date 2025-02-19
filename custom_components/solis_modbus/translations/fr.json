@@ -1,0 +1,58 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer Solis Modbus",
+        "description": "Entrez les détails de connexion de votre onduleur Solis.",
+        "data": {
+          "host": "Adresse IP de l'onduleur Solis",
+          "port": "Port (par défaut: 502)",
+          "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
+          "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
+          "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
+          "model": "Modèle de l'onduleur"
+        }
+      }
+    },
+    "error": {
+      "base": "Impossible de se connecter à l'onduleur. Vérifiez vos paramètres."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modifier les paramètres de Solis Modbus",
+        "description": "Modifiez les paramètres de votre onduleur Solis.",
+        "data": {
+          "host": "Adresse IP de l'onduleur Solis",
+          "port": "Port (par défaut: 502)",
+          "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
+          "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
+          "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
+          "model": "Modèle de l'onduleur"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Écrire un registre de maintien",
+      "description": "Écrit une valeur dans un registre de maintien",
+      "fields": {
+        "address": {
+          "name": "Adresse",
+          "description": "Adresse à écrire"
+        },
+        "value": {
+          "name": "Valeur",
+          "description": "Valeur à écrire"
+        },
+        "host": {
+          "name": "Onduleur",
+          "description": "IP de l'onduleur (nécessaire uniquement si plusieurs onduleurs sont présents)"
+        }
+      }
+    }
+  }
+}

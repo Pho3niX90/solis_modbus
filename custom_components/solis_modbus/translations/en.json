@@ -1,12 +1,36 @@
 {
+  "title": "Solis Modbus",
   "config": {
     "step": {
       "user": {
-        "title": "Solis",
-        "description": "Integration configuration for Solis Inverters",
+        "title": "Configure Solis Modbus",
+        "description": "Enter the connection details for your Solis inverter.",
         "data": {
           "host": "IP address of Solis Inverter",
-          "port": "TCP Port of Inverter"
+          "port": "Port (default: 502)",
+          "poll_interval_fast": "Fast Poll Interval (seconds)",
+          "poll_interval_normal": "Normal Poll Interval (seconds)",
+          "poll_interval_slow": "Slow Poll Interval (seconds)",
+          "model": "Inverter Model"
+        }
+      }
+    },
+    "error": {
+      "base": "Cannot connect to the inverter. Check your settings."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modify Solis Modbus Settings",
+        "description": "Change the settings for your Solis inverter.",
+        "data": {
+          "host": "IP address of Solis Inverter",
+          "port": "Port (default: 502)",
+          "poll_interval_fast": "Fast Poll Interval (seconds)",
+          "poll_interval_normal": "Normal Poll Interval (seconds)",
+          "poll_interval_slow": "Slow Poll Interval (seconds)",
+          "model": "Inverter Model"
         }
       }
     }

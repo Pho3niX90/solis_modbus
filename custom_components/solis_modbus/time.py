@@ -1,9 +1,8 @@
 import logging
 import datetime
-from datetime import time
 from typing import List
 
-from datetime import time, timedelta
+from datetime import time
 from homeassistant.components.sensor import RestoreSensor
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
@@ -11,7 +10,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
+from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER, TIME_ENTITIES
 from custom_components.solis_modbus.helpers import get_controller, cache_get
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,6 +87,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     for entity_definition in timeent:
         timeEntities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
+    hass.data[DOMAIN][TIME_ENTITIES] = timeEntities
     async_add_devices(timeEntities, True)
 
 

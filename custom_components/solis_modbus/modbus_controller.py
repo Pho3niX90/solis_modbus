@@ -71,7 +71,7 @@ class ModbusController:
                     return None
 
                 cache_save(self.hass, int_register, int_value)
-                self.hass.bus.async_fire(DOMAIN, {REGISTER: int_register, VALUE: int_value, CONTROLLER: self.host})
+                self.hass.bus.async_fire(DOMAIN, {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host})
 
                 return result
         except Exception as e:
@@ -90,6 +90,11 @@ class ModbusController:
                     _LOGGER.error(f"Failed to write holding registers {start_register} with values {values}: {result}")
                     return None
 
+                for i, value in result.registers:
+                    reg = start_register + i
+                    cache_save(self.hass, reg, value)
+                    self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: value, CONTROLLER: self.host})
+
                 return result
         except Exception as e:
             _LOGGER.error(f"Failed to write holding registers {start_register} with values {values}: {str(e)}")
@@ -103,6 +108,7 @@ class ModbusController:
     async def async_write_holding_registers(self, start_register, values):
         """Queues multiple holding registers write asynchronously."""
         await self.write_queue.put((start_register, values, True))
+
         _LOGGER.debug(f"Queued Write Holding Registers register = {start_register}, values = {values}")
 
     async def async_read_input_register(self, register, count=1):
