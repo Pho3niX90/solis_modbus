@@ -38,6 +38,14 @@ class ModbusController:
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially."""
         while True:
+            if not self.connected():
+                await asyncio.sleep(5)
+                continue
+
+            if self.write_queue.empty():
+                await asyncio.sleep(0.2)
+                continue
+
             write_request = await self.write_queue.get()
             register, value, multiple = write_request
 
