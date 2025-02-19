@@ -7,6 +7,7 @@ from typing import List
 
 from custom_components.solis_modbus.const import MODEL, DOMAIN, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import PollSpeed
+from custom_components.solis_modbus.helpers import cache_save
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 
@@ -69,7 +70,9 @@ class ModbusController:
                     _LOGGER.error(f"Failed to write holding register {register} with value {value}, int_value = {int_value}: {result}")
                     return None
 
+                cache_save(self.hass, int_register, int_value)
                 self.hass.bus.async_fire(DOMAIN, {REGISTER: int_register, VALUE: int_value, CONTROLLER: self.host})
+
                 return result
         except Exception as e:
             _LOGGER.error(f"Failed to write holding register {register} with value {value}, int_value = {int_value}: {str(e)}")

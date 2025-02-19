@@ -4,14 +4,13 @@ from typing import Any
 from custom_components.solis_modbus.helpers import cache_get, cache_save
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.components.sensor import RestoreSensor
 from homeassistant.components.switch import SwitchEntity
 from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, REGISTER, VALUE
 from custom_components.solis_modbus import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-class SolisBinaryEntity(RestoreSensor, SwitchEntity):
+class SolisBinaryEntity(SwitchEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
@@ -24,14 +23,10 @@ class SolisBinaryEntity(RestoreSensor, SwitchEntity):
                                                     self._on_value if self._on_value is not None else self._bit_position)
         self._attr_name = entity_definition["name"]
         self._attr_available = False
-        self._attr_is_on = None
 
     async def async_added_to_hass(self) -> None:
         """Called when entity is added to HA."""
         await super().async_added_to_hass()
-        state = await self.async_get_last_sensor_data()
-        if state:
-            self._attr_native_value = state.native_value
 
         # 🔥 Register event listener for real-time updates
         self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
@@ -48,10 +43,10 @@ class SolisBinaryEntity(RestoreSensor, SwitchEntity):
 
         # If this register belongs to the sensor, store it temporarily
         if updated_register == self._register:
-            if self._bit_position:
-                _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, get_bool = {get_bool(updated_value, self._bit_position)}")
+            if self._bit_position is not None:
+                _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, get_bit_bool = {get_bit_bool(updated_value, self._bit_position)}")
             else:
-                _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, on_value = {self._on_value}")
+                _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, on_value = {self._on_value}, is_on = {self._on_value == updated_value}, ")
 
             if self._register == 5:
                 self._attr_is_on = self._modbus_controller.enabled
@@ -63,12 +58,17 @@ class SolisBinaryEntity(RestoreSensor, SwitchEntity):
             if value is None:
                 value = cache_get(self._hass, self._register)
 
-            if value is not None:
-                self._attr_available = True
-                if self._bit_position is not None:
-                    self._attr_is_on = get_bool(value, self._bit_position)
-                if self._on_value is not None:
-                    self._attr_is_on = value == self._on_value
+            self._attr_available = True
+            if self._bit_position is not None:
+                self._attr_is_on = get_bit_bool(value, self._bit_position)
+            if self._on_value is not None:
+                self._attr_is_on = value == self._on_value
+            _LOGGER.debug(f"switch {self.unique_id} set to {self._attr_is_on}")
+
+    @property
+    def is_on(self):
+        """Return true if the binary sensor is on."""
+        return self._attr_is_on
 
     def turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn on called ")
@@ -129,7 +129,7 @@ def set_bit(value, bit_position, new_bit_value):
     return round(value)
 
 
-def get_bool(modbus_value, bit_position):
+def get_bit_bool(modbus_value, bit_position):
     """
     Decode Modbus value to boolean state for the specified bit position.
 
