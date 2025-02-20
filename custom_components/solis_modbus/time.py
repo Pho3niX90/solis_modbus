@@ -53,7 +53,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     ]
 
     if inverter_config.type == InverterType.HYBRID or InverterFeature.V2 in inverter_config.features:
-        timeent.append([
+        timeent.extend([
             {"name": "Solis Grid Time of Use Charge Start (Slot 1)", "register": 43711, "enabled": True},
             {"name": "Solis Grid Time of Use Charge End (Slot 1)", "register": 43713, "enabled": True},
             {"name": "Solis Grid Time of Use Discharge Start (Slot 1)", "register": 43753, "enabled": True},
