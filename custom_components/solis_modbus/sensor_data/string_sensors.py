@@ -1,6 +1,8 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy
 
+from custom_components.solis_modbus.data.enums import PollSpeed
+
 # base on RS485_MODBUS Communication Protocol Ver18
 string_sensors = [
     {
@@ -34,7 +36,7 @@ string_sensors = [
     },
     {
         "register_start": 36028,
-        "scan_interval": 60,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"type": "SS", "name": "Total Load power",
              "unique": "solis_modbus_inverter_total_load_power",
@@ -44,7 +46,7 @@ string_sensors = [
     },
     {
         "register_start": 36050,
-        "scan_interval": 60,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"type": "SS", "name": "Total Generation Energy",
              "unique": "solis_modbus_inverter_total_generation_energy",
@@ -69,7 +71,7 @@ string_sensors = [
     },
     {
         "register_start": 33005,
-        "scan_interval": 15,
+        "poll_speed": PollSpeed.FAST,
         "entities": [
             {"type": "SS", "name": "Active Power",
              "unique": "solis_modbus_inverter_active_power",
