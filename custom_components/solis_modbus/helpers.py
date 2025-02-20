@@ -5,33 +5,6 @@ from homeassistant.core import HomeAssistant
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import DRIFT_COUNTER, VALUES, CONTROLLER
 
-
-def get_value(self):
-    if len(self._register) >= 15:
-        values = [cache_get(self._hass, reg) for reg in self._register]
-        n_value = extract_serial_number(values)
-    elif len(self._register) > 1:
-        s32_values = [cache_get(self._hass, reg) for reg in self._register]
-        # These are two 16-bit values representing a 32-bit signed integer (S32)
-        high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
-        low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
-
-        # Combine the high and low words to form a 32-bit signed integer
-        combined_value = (high_word << 16) | (low_word & 0xFFFF)
-        if self._multiplier == 0 or self._multiplier == 1:
-            n_value = round(combined_value)
-        else:
-            n_value = combined_value * self._multiplier
-    else:
-        # Treat it as a single register (U16)
-        if self._multiplier == 0:
-            n_value = round(cache_get(self._hass, self._register[0]))
-        else:
-            n_value = cache_get(self._hass, self._register[0]) * self._multiplier
-
-    return n_value
-
-
 def hex_to_ascii(hex_value):
     # Convert hexadecimal to decimal
     decimal_value = hex_value

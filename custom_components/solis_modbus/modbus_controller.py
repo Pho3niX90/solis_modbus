@@ -5,7 +5,7 @@ import time
 from pymodbus.client import AsyncModbusTcpClient
 from typing import List, Dict
 
-from custom_components.solis_modbus.const import MODEL, DOMAIN, REGISTER, VALUE, CONTROLLER
+from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.helpers import cache_save

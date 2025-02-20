@@ -8,7 +8,7 @@ from homeassistant.components.sensor import RestoreSensor, SensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
-from custom_components.solis_modbus.helpers import get_value, decode_inverter_model
+from custom_components.solis_modbus.helpers import decode_inverter_model
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
@@ -76,7 +76,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             ## start
 
             if 33095 in self._register:
-                new_value = round(get_value(self))
+                new_value = round(self.base_sensor.get_value)
                 new_value = STATUS_MAPPING.get(new_value, "Unknown")
 
             if 33049 in self._register or 33051 in self._register or 33053 in self._register or 33055 in self._register:
@@ -88,7 +88,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 registers = self._register.copy()
                 self._register = registers[:2]
 
-                p_value = get_value(self)
+                p_value = self.base_sensor.convert_value([self._received_values[reg] for reg in filtered_registers])
                 d_w_value = registers[3]
                 d_value = self._received_values[registers[2]]
 
