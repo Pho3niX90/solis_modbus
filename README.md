@@ -1,5 +1,5 @@
 # Solis Modbus Integration for Home Assistant
-
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3J41AVNBV)
 ## Description
 
 The Solis Modbus Integration for Home Assistant is a streamlined solution to connect your Solis inverter with Home Assistant. This integration was inspired by [fboundy's ha_solis_modbus](https://github.com/fboundy/ha_solis_modbus/tree/main). However, it enhances the native Modbus integration in Home Assistant by consolidating multiple register queries into single calls, eliminating unnecessary overhead.
