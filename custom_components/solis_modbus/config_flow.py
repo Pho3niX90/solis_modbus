@@ -89,7 +89,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             await modbus_controller.connect()
             if inverter_config.type in [InverterType.GRID, InverterType.STRING]:
-                await modbus_controller.async_read_input_register(3262)
+                await modbus_controller.async_read_input_register(3041)
             else:
                 await modbus_controller.async_read_input_register(33263)
             return True
