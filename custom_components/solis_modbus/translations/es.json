@@ -67,7 +67,8 @@
       "description": "Establece la hora de la entidad a la proporcionada",
       "fields": {
         "entity_id": {
-          "name": "ID de la Entidad"
+          "name": "ID de la Entidad",
+          "description": "ID de la entidad de tiempo que desea cambiar"
         },
         "time": {
           "name": "Hora Deseada",

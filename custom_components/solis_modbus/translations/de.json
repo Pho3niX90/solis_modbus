@@ -67,7 +67,8 @@
       "description": "Setzt die Zeit der Entität auf die angegebene",
       "fields": {
         "entity_id": {
-          "name": "Entitäts-ID"
+          "name": "Entitäts-ID",
+          "description": "Entitäts-ID der Zeiteinheit, die Sie ändern möchten"
         },
         "time": {
           "name": "Gewünschte Zeit",
