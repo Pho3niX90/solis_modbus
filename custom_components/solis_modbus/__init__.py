@@ -7,8 +7,11 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ConfigEntryError
 
 from .const import DOMAIN, CONTROLLER, TIME_ENTITIES
+from .data.enums import InverterFeature
+from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
@@ -86,16 +89,19 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
     return True
 
+
 async def async_update_options(entry):
     """Handle options updates."""
     hass = entry.hass
     hass.config_entries.async_update_entry(entry, options=entry.options)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Modbus from a config entry."""
 
     # Merge data and options (options take priority)
     config = {**entry.data, **entry.options}
+    _LOGGER.debug(config)
 
     # Initialize storage for controllers
     hass.data.setdefault(DOMAIN, {})
@@ -108,15 +114,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
-    inverter_type = config.get("type", "hybrid")
+    inverter_model = config.get("model")
+    inverter_config: InverterConfig = next(
+        (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
+    )
+
+    # defaulting
+    if inverter_config is None:
+        hass.components.persistent_notification.async_create(
+            f"Your Solis Modbus configuration is invalid. Please reconfigure the integration.",
+            title="Solis Modbus Configuration Issue",
+            notification_id="solis_modbus_invalid_config",
+        )
+        raise ConfigEntryError
+
+    inverter_config.options = {
+        "v2": config.get("has_v2", True),
+        "pv": config.get("has_pv",
+                         inverter_config.type in [InverterType.HYBRID, InverterType.GRID, InverterType.WAVESHARE]),
+        "generator": config.get("has_generator", True),
+        "battery": config.get("has_battery", True),
+    }
 
     # Load correct sensor data based on inverter type
-    if inverter_type in ["string", "grid"]:
+    if inverter_config.type in [InverterType.STRING, InverterType.GRID]:
         from .sensor_data.string_sensors import string_sensors as sensors
         from .sensor_data.string_sensors import string_sensors_derived as sensors_derived
-    elif inverter_type == "hybrid-waveshare":
-        from .sensor_data.hybrid_waveshare_sensors import hybrid_waveshare as sensors
-        from .sensor_data.hybrid_waveshare_sensors import hybrid_waveshare_sensors_derived as sensors_derived
     else:
         from .sensor_data.hybrid_sensors import hybrid_sensors as sensors
         from .sensor_data.hybrid_sensors import hybrid_sensors_derived as sensors_derived
@@ -129,12 +152,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         fast_poll=poll_interval_fast,
         normal_poll=poll_interval_normal,
         slow_poll=poll_interval_slow,
+        inverter_config=inverter_config
     )
 
-    controller._sensor_groups = [
-        SolisSensorGroup(hass=hass, definition=group, controller=controller)
-        for group in sensors
-    ]
+    controller._sensor_groups = []
+    for group in sensors:
+        feature_requirement = group.get("feature_requirement", [])
+
+        # If there are feature requirements, check if they exist in inverter_config.features
+        if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
+            _LOGGER.warning(
+                f"Skipping sensor group '{group.get('name', 'Unnamed')}' due to missing required features: {feature_requirement}"
+            )
+            continue  # Skip this group
+
+        # If it passes the check, add to sensor groups
+        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller))
 
     controller._derived_sensors = [
         SolisBaseSensor(

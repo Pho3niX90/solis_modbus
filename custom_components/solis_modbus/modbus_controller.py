@@ -3,10 +3,11 @@ import logging
 import time
 
 from pymodbus.client import AsyncModbusTcpClient
-from typing import List
+from typing import List, Dict
 
 from custom_components.solis_modbus.const import MODEL, DOMAIN, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import PollSpeed
+from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.helpers import cache_save
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
@@ -14,7 +15,7 @@ from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDer
 _LOGGER = logging.getLogger(__name__)
 
 class ModbusController:
-    def __init__(self, hass, host, sensor_groups: List[SolisSensorGroup] = None, derived_sensors: List[SolisDerivedSensor] = None, port=502, fast_poll=5, normal_poll=15, slow_poll=30):
+    def __init__(self, hass, host, inverter_config: InverterConfig,sensor_groups: List[SolisSensorGroup] = None, derived_sensors: List[SolisDerivedSensor] = None, port=502, fast_poll=5, normal_poll=15, slow_poll=30):
         self.hass = hass
         self.host = host
         self.port = port
@@ -24,7 +25,8 @@ class ModbusController:
         self._poll_interval_fast = fast_poll
         self._poll_interval_normal = normal_poll
         self._poll_interval_slow = slow_poll
-        self._model = MODEL
+        self._model = inverter_config.model
+        self.inverter_config = inverter_config
         self._sw_version = "N/A"
         self.enabled = True
         self._last_attempt = 0  # Track last connection attempt time
@@ -34,6 +36,16 @@ class ModbusController:
 
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
+
+    @property
+    def pv(self):
+        return self.config.get("has_pv")
+    @property
+    def battery(self):
+        return self.config.get("has_battery")
+    @property
+    def generator(self):
+        return self.config.get("has_generator")
 
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially."""

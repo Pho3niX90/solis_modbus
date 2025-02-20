@@ -11,34 +11,42 @@
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
-          "model": "Wechselrichtermodell"
+          "model": "Wechselrichtermodell",
+          "has_v2": "Auf Firmware V2 aktualisiert",
+          "has_pv": "Hat Photovoltaik (Solarpaneele)",
+          "has_battery": "Hat Batteriespeicher",
+          "has_generator": "Hat Generator",
+          "phases": "Phasen"
         }
       }
     },
     "error": {
-      "base": "Verbindung zum Wechselrichter fehlgeschlagen. Überprüfen Sie Ihre Einstellungen."
+      "base": "Verbindung zum Wechselrichter nicht möglich. Überprüfen Sie Ihre Einstellungen."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Solis Modbus-Einstellungen ändern",
-        "description": "Ändern Sie die Einstellungen für Ihren Solis-Wechselrichter.",
+        "description": "Ändern Sie die Einstellungen für Ihren Solis-Wechselrichter. (Neustart empfohlen)",
         "data": {
-          "host": "IP-Adresse des Solis-Wechselrichters",
-          "port": "Port (Standard: 502)",
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
-          "model": "Wechselrichtermodell"
+          "model": "Wechselrichtermodell",
+          "has_v2": "Auf Firmware V2 aktualisiert",
+          "has_pv": "Hat Photovoltaik (Solarpaneele)",
+          "has_battery": "Hat Batteriespeicher",
+          "has_generator": "Hat Generator",
+          "phases": "Phasen"
         }
       }
     }
   },
   "services": {
     "solis_write_holding_register": {
-      "name": "Halteregister schreiben",
-      "description": "Schreibt einen Wert in ein Halteregister",
+      "name": "Register schreiben",
+      "description": "Schreibt einen Wert in ein Register",
       "fields": {
         "address": {
           "name": "Adresse",
@@ -46,11 +54,24 @@
         },
         "value": {
           "name": "Wert",
-          "description": "Zu schreibender Wert"
+          "description": "Wert zum Schreiben"
         },
         "host": {
           "name": "Wechselrichter",
-          "description": "IP des Wechselrichters (nur erforderlich, wenn mehrere Wechselrichter vorhanden sind)"
+          "description": "IP-Adresse des Wechselrichters (nur erforderlich, wenn mehrere Wechselrichter vorhanden sind)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Zeit einer Entität ändern",
+      "description": "Setzt die Zeit der Entität auf die angegebene",
+      "fields": {
+        "entity_id": {
+          "name": "Entitäts-ID"
+        },
+        "time": {
+          "name": "Gewünschte Zeit",
+          "description": "Zeit im Format HH:MM oder HH:MM:SS"
         }
       }
     }

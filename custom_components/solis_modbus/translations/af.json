@@ -11,7 +11,12 @@
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
-          "model": "Omsettermodel"
+          "model": "Omsettermodel",
+          "has_v2": "Opgedateer na V2 Firmware",
+          "has_pv": "Het sonkrag (PV)",
+          "has_battery": "Het batteryberging",
+          "has_generator": "Het kragopwekker",
+          "phases": "Fases"
         }
       }
     },
@@ -23,34 +28,17 @@
     "step": {
       "init": {
         "title": "Wysig Solis Modbus-instellings",
-        "description": "Verander die instellings vir jou Solis-omsetter.",
+        "description": "Verander die instellings vir jou Solis-omsetter. (herbegin word aanbeveel)",
         "data": {
-          "host": "IP-adres van Solis-omsetter",
-          "port": "Poort (verstek: 502)",
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
-          "model": "Omsettermodel"
-        }
-      }
-    }
-  },
-  "services": {
-    "solis_write_holding_register": {
-      "name": "Skryf houerregister",
-      "description": "Skryf 'n waarde na 'n houerregister",
-      "fields": {
-        "address": {
-          "name": "Adres",
-          "description": "Adres om na te skryf"
-        },
-        "value": {
-          "name": "Waarde",
-          "description": "Waarde om te skryf"
-        },
-        "host": {
-          "name": "Omsetter",
-          "description": "IP van die omsetter (slegs nodig as jy verskeie omsetters het)"
+          "model": "Omsettermodel",
+          "has_v2": "Opgedateer na V2 Firmware",
+          "has_pv": "Het sonkrag (PV)",
+          "has_battery": "Het batteryberging",
+          "has_generator": "Het kragopwekker",
+          "phases": "Fases"
         }
       }
     }

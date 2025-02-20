@@ -11,13 +11,14 @@ from typing_extensions import List
 from .data.enums import PollSpeed
 from .modbus_controller import ModbusController
 from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER
-from custom_components.solis_modbus.helpers import cache_save
+from custom_components.solis_modbus.helpers import cache_save, cache_get
 from .sensors.solis_base_sensor import SolisSensorGroup
 
 _LOGGER = logging.getLogger(__name__)
 
 class DataRetrieval:
     def __init__(self, hass: HomeAssistant, controller: ModbusController):
+        self._spike_counter = {}
         self.controller: ModbusController = controller
         self.hass = hass
         self.poll_lock = asyncio.Lock()
@@ -113,8 +114,9 @@ class DataRetrieval:
                     for i, value in enumerate(values):
                         reg = start_register + i
                         _LOGGER.debug(f"register {reg} has value {value}")
-                        cache_save(self.hass, reg, value)
-                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: value, CONTROLLER: self.controller.host})
+                        corrected_value = self.spike_filtering(reg, value)
+                        cache_save(self.hass, reg, corrected_value)
+                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
 
                     if sensor_group.poll_speed == PollSpeed.ONCE:
                         marked_for_removal.append(sensor_group)
@@ -129,3 +131,39 @@ class DataRetrieval:
 
         finally:
             del self.poll_updating[speed][group_hash]  # ✅ Reset only this group set
+
+    # https://github.com/Pho3niX90/solis_modbus/issues/138
+    async def spike_filtering(self, register: int, value: int):
+        """Filters out short-lived spikes in battery SOC sensor readings.
+
+        Readings between 0 and 100 (exclusive) are considered normal.
+        Only values that are exactly 0 or exactly 100 are treated as potential spikes.
+        """
+        if register != 33139:
+            return value  # Only filter for register 33139
+
+        cached_value = cache_get(self.hass, register)
+
+        if register not in self._spike_counter:
+            self._spike_counter[register] = 0
+
+        # If the reading is strictly between 0 and 100, it's valid.
+        if value not in (0,100):
+            self._spike_counter[register] = 0  # Reset the counter on a normal reading
+        else:
+            # The reading is either 0 or 100 (extreme values)
+            self._spike_counter[register] += 1
+            if self._spike_counter[register] < 3:
+                _LOGGER.debug(
+                    f"Ignoring short spike value {value} for battery SOC sensor; "
+                    f"retaining previous value {cached_value} (counter={self._spike_counter[register]})"
+                )
+                return cached_value if cached_value is not None else value
+            else:
+                _LOGGER.debug(
+                    f"Accepting persistent spike value {value} for battery SOC sensor after {self._spike_counter[register]} cycles"
+                )
+                self._spike_counter[register] = 0
+
+        return value
+

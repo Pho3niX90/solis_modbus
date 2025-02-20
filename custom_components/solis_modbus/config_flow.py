@@ -4,22 +4,42 @@ from homeassistant import config_entries
 
 from . import ModbusController
 from .const import DOMAIN
-from .data.solis_config import SOLIS_INVERTERS
+from .data.enums import InverterType
+from .data.solis_config import SOLIS_INVERTERS, InverterConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 # Extract model names for dropdown selection
-SOLIS_MODELS = {inverter["model"]: inverter["model"] for inverter in SOLIS_INVERTERS}
+SOLIS_MODELS = {inverter.model: inverter.model for inverter in SOLIS_INVERTERS}
 
 CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required("host", default=""): str,
         vol.Required("port", default=502): int,
-        vol.Optional("poll_interval_fast", default=10): vol.All(int, vol.Range(min=5)),
-        vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=5)),
-        vol.Optional("poll_interval_slow", default=15): vol.All(int, vol.Range(min=5)),
+        vol.Optional("poll_interval_fast", default=10): vol.All(int, vol.Range(min=10)),
+        vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=15)),
+        vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
         vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),  # Model dropdown
-        vol.Optional("type", default="hybrid"): vol.In(["hybrid", "hybrid-waveshare", "string", "grid"]),
+
+        # Boolean options (Yes/No toggle)
+        vol.Required("has_v2", default=True): vol.Coerce(bool),
+        vol.Required("has_pv", default=True): vol.Coerce(bool),
+        vol.Required("has_battery", default=True): vol.Coerce(bool),
+        vol.Required("has_generator", default=True): vol.Coerce(bool),
+    }
+)
+OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Required("poll_interval_fast"): vol.All(int, vol.Range(min=10)),
+        vol.Required("poll_interval_normal"): vol.All(int, vol.Range(min=15)),
+        vol.Required("poll_interval_slow"): vol.All(int, vol.Range(min=30)),
+        vol.Required("model"): vol.In(SOLIS_MODELS),
+
+        # Boolean options (Yes/No toggle)
+        vol.Required("has_v2", default=True): vol.Coerce(bool),
+        vol.Required("has_pv", default=True): vol.Coerce(bool),
+        vol.Required("has_battery", default=True): vol.Coerce(bool),
+        vol.Required("has_generator", default=True): vol.Coerce(bool),
     }
 )
 
@@ -44,16 +64,31 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device."""
+        inverter_model = user_input.get("model")
+        inverter_config: InverterConfig = next(
+            (inv for inv in SOLIS_INVERTERS if inv["model"] == inverter_model), None
+        )
+
+        inverter_config.options = {
+            "v2": user_input.get("has_v2", True),
+            "pv": user_input.get("has_pv", True),
+            "generator": user_input.get("has_generator", True),
+            "battery": user_input.get("has_battery", True),
+        }
+
         modbus_controller = ModbusController(
-            user_input["host"], user_input.get("port", 502),
+            hass=self.hass,
+            host=user_input["host"],
+            port=user_input.get("port", 502),
             fast_poll=user_input.get("poll_interval_fast", 10),
             normal_poll=user_input.get("poll_interval_normal", 15),
-            slow_poll=user_input.get("poll_interval_slow", 15)
+            slow_poll=user_input.get("poll_interval_slow", 15),
+            inverter_config=inverter_config
         )
 
         try:
             await modbus_controller.connect()
-            if user_input["type"] == "string":
+            if inverter_config.type in [InverterType.GRID, InverterType.STRING]:
                 await modbus_controller.async_read_input_register(3262)
             else:
                 await modbus_controller.async_read_input_register(33263)
@@ -89,18 +124,6 @@ class ModbusOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current_options = self.config_entry.options or self.config_entry.data
-
-        options_schema = vol.Schema(
-            {
-                vol.Required("host", default=current_options.get("host", "")): str,
-                vol.Required("port", default=current_options.get("port", 502)): int,
-                vol.Required("poll_interval_fast", default=current_options.get("poll_interval_fast", 10)): vol.All(int, vol.Range(min=5)),
-                vol.Required("poll_interval_normal", default=current_options.get("poll_interval_normal", 15)): vol.All(int, vol.Range(min=5)),
-                vol.Required("poll_interval_slow", default=current_options.get("poll_interval_slow", 15)): vol.All(int, vol.Range(min=5)),
-                vol.Required("model", default=current_options.get("model", list(SOLIS_MODELS.keys())[0])): vol.In(SOLIS_MODELS),
-                vol.Required("type", default=current_options.get("type", "hybrid")): vol.In(["hybrid", "hybrid-waveshare", "string", "grid"]),
-            }
-        )
-
-        return self.async_show_form(step_id="init", data_schema=options_schema, errors=errors)
+        return self.async_show_form(step_id="init", data_schema=self.add_suggested_values_to_schema(
+            OPTIONS_SCHEMA, self.config_entry.options
+        ), errors=errors)

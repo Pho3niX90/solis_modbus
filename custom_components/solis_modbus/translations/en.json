@@ -11,7 +11,12 @@
           "poll_interval_fast": "Fast Poll Interval (seconds)",
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
-          "model": "Inverter Model"
+          "model": "Inverter Model",
+          "has_v2": "Updated to V2 Firmware",
+          "has_pv": "Has PV (Solar Panels)",
+          "has_battery": "Has Battery Storage",
+          "has_generator": "Has Generator",
+          "phases": "Phases"
         }
       }
     },
@@ -23,14 +28,17 @@
     "step": {
       "init": {
         "title": "Modify Solis Modbus Settings",
-        "description": "Change the settings for your Solis inverter.",
+        "description": "Change the settings for your Solis inverter. (restart recommended)",
         "data": {
-          "host": "IP address of Solis Inverter",
-          "port": "Port (default: 502)",
           "poll_interval_fast": "Fast Poll Interval (seconds)",
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
-          "model": "Inverter Model"
+          "model": "Inverter Model",
+          "has_v2": "Updated to V2 Firmware",
+          "has_pv": "Has PV (Solar Panels)",
+          "has_battery": "Has Battery Storage",
+          "has_generator": "Has Generator",
+          "phases": "Phases"
         }
       }
     }
@@ -51,6 +59,19 @@
         "host": {
           "name": "Inverter",
           "description": "Inverter IP (only required if you have multiple inverters)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Change the time of a entity",
+      "description": "Sets the time of the entity to the provided one",
+      "fields": {
+        "entity_id": {
+          "name": "Entity ID"
+        },
+        "time": {
+          "name": "Desired Time",
+          "description": "Time in HH:MM or HH:MM:SS"
         }
       }
     }

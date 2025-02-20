@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, VALUES, SENSOR_DERIVED_ENTITIES, \
-    SENSOR_ENTITIES, NUMBER_ENTITIES
+    SENSOR_ENTITIES
 from custom_components.solis_modbus.helpers import get_controller
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 from custom_components.solis_modbus.sensors.solis_sensor import SolisSensor

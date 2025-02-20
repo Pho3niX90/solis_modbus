@@ -4,14 +4,19 @@
     "step": {
       "user": {
         "title": "Configurer Solis Modbus",
-        "description": "Entrez les détails de connexion de votre onduleur Solis.",
+        "description": "Saisissez les détails de connexion de votre onduleur Solis.",
         "data": {
           "host": "Adresse IP de l'onduleur Solis",
-          "port": "Port (par défaut: 502)",
+          "port": "Port (par défaut : 502)",
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
-          "model": "Modèle de l'onduleur"
+          "model": "Modèle d'onduleur",
+          "has_v2": "Mise à jour vers le firmware V2",
+          "has_pv": "Possède un panneau solaire (PV)",
+          "has_battery": "Possède un stockage de batterie",
+          "has_generator": "Possède un générateur",
+          "phases": "Phases"
         }
       }
     },
@@ -23,22 +28,25 @@
     "step": {
       "init": {
         "title": "Modifier les paramètres de Solis Modbus",
-        "description": "Modifiez les paramètres de votre onduleur Solis.",
+        "description": "Modifiez les paramètres de votre onduleur Solis. (redémarrage recommandé)",
         "data": {
-          "host": "Adresse IP de l'onduleur Solis",
-          "port": "Port (par défaut: 502)",
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
-          "model": "Modèle de l'onduleur"
+          "model": "Modèle d'onduleur",
+          "has_v2": "Mise à jour vers le firmware V2",
+          "has_pv": "Possède un panneau solaire (PV)",
+          "has_battery": "Possède un stockage de batterie",
+          "has_generator": "Possède un générateur",
+          "phases": "Phases"
         }
       }
     }
   },
   "services": {
     "solis_write_holding_register": {
-      "name": "Écrire un registre de maintien",
-      "description": "Écrit une valeur dans un registre de maintien",
+      "name": "Écrire un registre",
+      "description": "Écrit une valeur dans un registre",
       "fields": {
         "address": {
           "name": "Adresse",
@@ -51,6 +59,19 @@
         "host": {
           "name": "Onduleur",
           "description": "IP de l'onduleur (nécessaire uniquement si plusieurs onduleurs sont présents)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Modifier l'heure d'une entité",
+      "description": "Définit l'heure de l'entité sur celle fournie",
+      "fields": {
+        "entity_id": {
+          "name": "ID de l'entité"
+        },
+        "time": {
+          "name": "Heure souhaitée",
+          "description": "Heure au format HH:MM ou HH:MM:SS"
         }
       }
     }
