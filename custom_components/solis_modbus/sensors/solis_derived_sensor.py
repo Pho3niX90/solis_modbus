@@ -66,7 +66,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             self._received_values[updated_register] = updated_value
 
             # If we haven't received all registers yet, wait
-            if not all(reg in self._received_values for reg in self._register):
+            filtered_registers = {reg for reg in self._register if reg not in (0, 1)}
+            if not all(reg in self._received_values for reg in filtered_registers):
                 _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return  # Wait until all registers are received
 
