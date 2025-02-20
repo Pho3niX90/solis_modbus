@@ -72,14 +72,14 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
                 _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return
 
-            new_value = self.base_sensor.get_value
+            new_value = self.base_sensor.convert_value([updated_value])
 
             # Clear received values after update
             self._received_values.clear()
 
             # Update state if valid value exists
             if new_value is not None:
-                self._attr_native_value = round(new_value / self._multiplier)
+                self._attr_native_value = new_value
                 self.schedule_update_ha_state()
 
     def set_native_value(self, value):
@@ -88,15 +88,10 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
             return
 
         # 🔹 Handle multi-register writing
-        if len(self._register) == 1:
-            register_value = round(value * self._multiplier)
-        elif len(self._register) == 2:
-            # Convert the value into two 16-bit registers
-            int_value = round(value * self._multiplier)
-            register_value = [(int_value >> 16) & 0xFFFF, int_value & 0xFFFF]
-        else:
-            _LOGGER.warning("More than 2 registers not yet supported for writing.")
+        if len(self._register) != 1:
             return
+
+        register_value = round(value / self._multiplier)
 
         # Write to Modbus controller
         self.hass.create_task(

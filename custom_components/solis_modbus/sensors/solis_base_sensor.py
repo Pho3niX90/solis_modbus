@@ -90,11 +90,12 @@ class SolisBaseSensor:
 
     @property
     def get_value(self):
-        return self._convert_raw_value()
+        return self._convert_raw_value(self.get_raw_values)
 
-    def _convert_raw_value(self):
-        values = self.get_raw_values
+    def convert_value(self, value: List[int]):
+        return self._convert_raw_value(value)
 
+    def _convert_raw_value(self, values: List[int]):
         if None in values:
             return None
 

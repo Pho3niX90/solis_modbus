@@ -82,7 +82,7 @@ class ModbusController:
                     _LOGGER.error(f"Failed to write holding register {register} with value {value}, int_value = {int_value}: {result}")
                     return None
 
-                cache_save(self.hass, int_register, int_value)
+                cache_save(self.hass, int_register, result.registers[0])
                 self.hass.bus.async_fire(DOMAIN, {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host})
 
                 return result
