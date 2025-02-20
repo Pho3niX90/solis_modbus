@@ -133,7 +133,7 @@ class DataRetrieval:
             del self.poll_updating[speed][group_hash]  # ✅ Reset only this group set
 
     # https://github.com/Pho3niX90/solis_modbus/issues/138
-    async def spike_filtering(self, register: int, value: int):
+    def spike_filtering(self, register: int, value: int):
         """Filters out short-lived spikes in battery SOC sensor readings.
 
         Readings between 0 and 100 (exclusive) are considered normal.
