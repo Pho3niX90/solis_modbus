@@ -35,6 +35,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33025,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
 
             {"name": "Clock (Hours)",
@@ -302,6 +303,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33161,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Total Battery Charge Energy",
              "unique": "solis_modbus_inverter_total_battery_charge_energy",
@@ -372,6 +374,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33243,
+        "poll_speed": PollSpeed.NORMAL,
         "entities": [
             {"name": "Parallel Inverter AC Current",
              "unique": "solis_modbus_inverter_parallel_inverter_ac_current",
@@ -577,6 +580,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43135,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "RC Force Battery Charge/discharge",
              "unique": "solis_modbus_inverter_rc_force_charge_discharge", "hidden": True,
@@ -594,7 +598,8 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43141, #
+        "register_start": 43141,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Time-Charging Charge Current",
              "unique": "solis_modbus_inverter_time_charging_charge_current",
@@ -711,7 +716,8 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43173, #
+        "register_start": 43173,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Time-Charging Charge Start Hour (Slot 4)",
              "unique": "solis_modbus_inverter_time_charging_start_hour_slot4",
@@ -785,6 +791,7 @@ hybrid_sensors = [
         ]
     }, {
         "register_start": 43363,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Forced Start of Generator",
              "unique": "solis_modbus_inverter_generator_forced_start", "register": ['43363'], "multiplier": 1,
@@ -815,6 +822,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43707,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Time of Use V2 Switch", "register": ['43707'],
              "unique": "solis_modbus_inverter_tou_v2_switch"},
@@ -977,6 +985,7 @@ hybrid_sensors = [
     }, {
 
         "register_start": 43750,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Grid Time of Use Discharge cut off SOC (Slot 1)", "register": ['43750'],
              "unique": "solis_modbus_inverter_tou_charge_cutoff_discharge_1", "multiplier": 1,
@@ -1136,6 +1145,7 @@ hybrid_sensors = [
         ]
     }, {
         "register_start": 43815,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [{"name": "Generator charging switch",
                       "unique": "solis_modbus_inverter_generator_chargin_switch", "register": ['43815'],
                       "multiplier": 1, "hidden": True,
@@ -1157,6 +1167,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43487,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Peak Baseline SOC",
              "unique": "solis_modbus_inverter_peak_baseline_soc", "register": ['43487'], "multiplier": 1,
@@ -1170,6 +1181,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43249,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [{"name": "Special Settings",
                       "unique": "solis_modbus_inverter_special_settings", "register": ['43249'], "multiplier": 1,
                       "hidden": True,
@@ -1177,6 +1189,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 43110,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [{"name": "Storage control Switch value",
                       "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'],
                       "multiplier": 1,

@@ -12,32 +12,32 @@ from custom_components.solis_modbus.helpers import get_value, decode_inverter_mo
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
 
-from homeassistant.core import callback
+from homeassistant.core import callback, HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
 
-    def __init__(self, hass, sensor: SolisBaseSensor):
+    def __init__(self, hass: HomeAssistant, sensor: SolisBaseSensor):
         self._hass = hass if hass else sensor.hass
+        self.base_sensor = sensor
+
         self._attr_name = sensor.name
         self._attr_has_entity_name = True
         self._attr_unique_id = sensor.unique_id
-        self.base_sensor = sensor
+
+        self._register: List[int] = sensor.registrars
 
         self._device_class = sensor.device_class
         self._unit_of_measurement  = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
+        self._attr_available = not sensor.hidden
 
-        self._register: List[int] = sensor.registrars
-        self._state = None
-
-        # Visible Instance Attributes Outside Class
         self.is_added_to_hass = False
-        self._multiplier = sensor.multiplier
+        self._state = None
         self._received_values = {}
 
     async def async_added_to_hass(self) -> None:
@@ -79,8 +79,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 new_value = STATUS_MAPPING.get(new_value, "Unknown")
 
             if 33049 in self._register or 33051 in self._register or 33053 in self._register or 33055 in self._register:
-                r1_value = self._received_values[self._register[0]] * self._multiplier
-                r2_value = self._received_values[self._register[1]] * self._multiplier
+                r1_value = self._received_values[self._register[0]] * self.base_sensor.multiplier
+                r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = round(r1_value * r2_value)
 
             if 33135 in self._register and len(self._register) == 4:
