@@ -34,10 +34,21 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
         self._attr_available = not sensor.hidden
+        self._attr_suggested_display_precision = self.decimal_count(sensor.multiplier)
 
         self.is_added_to_hass = False
         self._state = None
         self._received_values = {}
+
+    def decimal_count(self, number: float) -> int:
+        """Returns the number of decimal places in a given number."""
+        if number == int(number):  # Whole number
+            return 0
+
+        str_number = str(number).rstrip('0')  # Convert to string and remove trailing zeros
+        decimal_part = str_number.split('.')[-1]  # Get the decimal part
+
+        return len(decimal_part)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
