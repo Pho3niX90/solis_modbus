@@ -66,7 +66,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate the configuration by trying to connect to the Modbus device."""
         inverter_model = user_input.get("model")
         inverter_config: InverterConfig = next(
-            (inv for inv in SOLIS_INVERTERS if inv["model"] == inverter_model), None
+            (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
         )
 
         inverter_config.options = {

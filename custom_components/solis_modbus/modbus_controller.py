@@ -37,16 +37,6 @@ class ModbusController:
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
 
-    @property
-    def pv(self):
-        return self.config.get("has_pv")
-    @property
-    def battery(self):
-        return self.config.get("has_battery")
-    @property
-    def generator(self):
-        return self.config.get("has_generator")
-
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially."""
         while True:
