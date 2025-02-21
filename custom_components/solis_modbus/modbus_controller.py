@@ -1,9 +1,9 @@
 import asyncio
 import logging
 import time
+from typing import List
 
 from pymodbus.client import AsyncModbusTcpClient
-from typing import List, Dict
 
 from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import PollSpeed
@@ -14,8 +14,10 @@ from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDer
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class ModbusController:
-    def __init__(self, hass, host, inverter_config: InverterConfig,sensor_groups: List[SolisSensorGroup] = None, derived_sensors: List[SolisDerivedSensor] = None, port=502, fast_poll=5, normal_poll=15, slow_poll=30):
+    def __init__(self, hass, host, inverter_config: InverterConfig, sensor_groups: List[SolisSensorGroup] = None,
+                 derived_sensors: List[SolisDerivedSensor] = None, port=502, fast_poll=5, normal_poll=15, slow_poll=30):
         self.hass = hass
         self.host = host
         self.port = port
@@ -36,6 +38,7 @@ class ModbusController:
 
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
+        self._last_modbus_request = 0
 
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially."""
@@ -59,25 +62,28 @@ class ModbusController:
             self.write_queue.task_done()
 
     async def _execute_write_holding_register(self, register, value):
-        """Executes a single register write."""
+        """Executes a single register write with interframe delay."""
         try:
             await self.connect()
             async with self.poll_lock:
+                await self.inter_frame_wait(is_write=True)  # Delay before write
                 int_value = int(value)
                 int_register = int(register)
                 result = await self.client.write_register(address=int_register, value=int_value, slave=1)
-                _LOGGER.debug(f"Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
+                _LOGGER.debug(
+                    f"Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
 
                 if result.isError():
-                    _LOGGER.error(f"Failed to write holding register {register} with value {value}, int_value = {int_value}: {result}")
+                    _LOGGER.error(f"Failed to write holding register {register} with value {value}: {result}")
                     return None
 
                 cache_save(self.hass, int_register, result.registers[0])
-                self.hass.bus.async_fire(DOMAIN, {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host})
+                self.hass.bus.async_fire(DOMAIN,
+                                         {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host})
 
                 return result
         except Exception as e:
-            _LOGGER.error(f"Failed to write holding register {register} with value {value}, int_value = {int_value}: {str(e)}")
+            _LOGGER.error(f"Failed to write holding register {register}: {str(e)}")
             return None
 
     async def _execute_write_holding_registers(self, start_register, values):
@@ -85,6 +91,7 @@ class ModbusController:
         try:
             await self.connect()
             async with self.poll_lock:
+                await self.inter_frame_wait(is_write=True)
                 result = await self.client.write_registers(address=start_register, values=values, slave=1)
                 _LOGGER.debug(f"Write Holding Registers register = {start_register}, values = {values}: {result}")
 
@@ -119,6 +126,7 @@ class ModbusController:
             await self.connect()
             result = await self.client.read_input_registers(address=register, count=count, slave=1)
             _LOGGER.debug(f"Register {register}: {result.registers}")
+            await self.inter_frame_wait()
             return result.registers
         except Exception as e:
             _LOGGER.error(f"Failed to read input register {register}: {str(e)}")
@@ -130,10 +138,26 @@ class ModbusController:
             await self.connect()
             result = await self.client.read_holding_registers(address=register, count=count, slave=1)
             _LOGGER.debug(f"Holding Register {register}: {result.registers}")
+            await self.inter_frame_wait()
             return result.registers
         except Exception as e:
             _LOGGER.error(f"Failed to read holding register {register}: {str(e)}")
             return None
+
+    async def inter_frame_wait(self, read_delay=0.3, write_delay=0.7, is_write=False):
+        """Ensures the Modbus interframe delay is respected before the next request."""
+        required_delay = write_delay if is_write else read_delay
+        elapsed_time = time.monotonic() - self._last_modbus_request
+
+        # Calculate remaining delay (if any)
+        remaining_delay = max(0.0, required_delay - elapsed_time)
+        _LOGGER.debug(f"inter_frame elapsed = {elapsed_time}, remaining_wait = {remaining_delay}")
+
+        if remaining_delay > 0:
+            await asyncio.sleep(remaining_delay)
+
+        self._last_modbus_request = time.monotonic()  # Update last request time
+
 
     async def connect(self):
         """Ensure the Modbus TCP connection is active."""
@@ -176,7 +200,8 @@ class ModbusController:
 
     @property
     def poll_speed(self):
-        return {PollSpeed.FAST: self._poll_interval_fast, PollSpeed.NORMAL: self._poll_interval_normal, PollSpeed.SLOW: self._poll_interval_slow}
+        return {PollSpeed.FAST: self._poll_interval_fast, PollSpeed.NORMAL: self._poll_interval_normal,
+                PollSpeed.SLOW: self._poll_interval_slow}
 
     @property
     def model(self):
