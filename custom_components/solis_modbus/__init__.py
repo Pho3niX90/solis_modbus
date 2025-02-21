@@ -93,7 +93,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 async def async_update_options(entry):
     """Handle options updates."""
     hass = entry.hass
-    hass.config_entries.async_update_entry(entry, options=entry.options)
+    await hass.config_entries.async_update_entry(entry, options=entry.options)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):

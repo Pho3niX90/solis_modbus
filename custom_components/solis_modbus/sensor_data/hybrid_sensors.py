@@ -535,7 +535,7 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43011,
+        "register_start": 43010,
         "poll_speed": PollSpeed.NORMAL,
         "entities": [
 
@@ -592,7 +592,7 @@ hybrid_sensors = [
              "register": ['43136'], "multiplier": 10},
             {"name": "Off-Grid Overdischarge SOC",
              "unique": "solis_modbus_inverter_overdischarge_offgrid_soc",
-             "register": ['43137'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 1,
+             "register": ['43137'], "device_class": SensorDeviceClass.BATTERY, "multiplier": 1,
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT,
              "editable": True, "min": 10, "max": 100, "default": 10}
         ]

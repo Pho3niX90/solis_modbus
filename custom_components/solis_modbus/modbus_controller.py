@@ -152,6 +152,7 @@ class ModbusController:
                 self.connect_failures += 1
                 _LOGGER.debug(f"Failed to connect (Attempt {self.connect_failures})")
                 return False
+            self.connect_failures = 0
             return True
 
         except Exception as e:

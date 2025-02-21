@@ -67,7 +67,15 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return
 
-            new_value = self.base_sensor.get_value
+            values = [self._received_values[reg] for reg in self._register]
+
+            if None in values:
+                problematic_regs = {reg: self._received_values.get(reg) for reg in self._register if self._received_values.get(reg) is None}
+                if problematic_regs:
+                    _LOGGER.debug(f"⚠️ Problematic values received in registrars: {problematic_regs}, skipping update")
+                    return
+
+            new_value = self.base_sensor.convert_value([self._received_values[reg] for reg in self._register])
 
             # Clear received values after update
             self._received_values.clear()
