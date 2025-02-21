@@ -59,7 +59,7 @@ class DataRetrieval:
         await self.check_connection()
 
         # Start periodic polling
-        async_track_time_interval(self.hass, self.check_connection, timedelta(seconds=60))
+        async_track_time_interval(self.hass, self.check_connection, timedelta(minutes=5))
         async_track_time_interval(self.hass, self.modbus_update_fast, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.FAST, 5)))
         async_track_time_interval(self.hass, self.modbus_update_normal, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15)))
         async_track_time_interval(self.hass, self.modbus_update_slow, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30)))
