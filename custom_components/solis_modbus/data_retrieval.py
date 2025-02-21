@@ -22,6 +22,7 @@ class DataRetrieval:
         self.controller: ModbusController = controller
         self.hass = hass
         self.poll_lock = asyncio.Lock()
+        self.connection_check = False
         self.poll_updating = {
             PollSpeed.FAST: {},
             PollSpeed.NORMAL: {},
@@ -35,6 +36,11 @@ class DataRetrieval:
 
     async def check_connection(self, now=None):
         """Ensure the Modbus controller is connected, retrying on failure."""
+        if self.connection_check:
+            return
+
+        self.connection_check = True
+
         # Emit controller status
         self.hass.bus.async_fire(DOMAIN, {REGISTER: 5, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
 
@@ -54,12 +60,14 @@ class DataRetrieval:
             await asyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, 30)  # ✅ Proper exponential backoff
 
+        self.connection_check = False
+
     async def poll_controller(self, event=None):
         """Poll the Modbus controller for data, retrying until success."""
         await self.check_connection()
 
         # Start periodic polling
-        async_track_time_interval(self.hass, self.check_connection, timedelta(minutes=5))
+        async_track_time_interval(self.hass, self.check_connection, timedelta(minutes=2))
         async_track_time_interval(self.hass, self.modbus_update_fast, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.FAST, 5)))
         async_track_time_interval(self.hass, self.modbus_update_normal, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15)))
         async_track_time_interval(self.hass, self.modbus_update_slow, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30)))
