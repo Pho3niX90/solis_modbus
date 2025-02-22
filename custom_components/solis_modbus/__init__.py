@@ -114,7 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
-    inverter_model = config.get("model")
+    inverter_model = config.get("model", "S6-EH1P")
     inverter_config: InverterConfig = next(
         (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
     )
@@ -199,7 +199,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     DataRetrieval(hass, controller)
 
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""
