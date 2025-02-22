@@ -1,28 +1,78 @@
 {
+  "title": "Solis Modbus",
   "config": {
     "step": {
       "user": {
-        "title": "Solis",
-        "description": "Configuração da integração para Inversores Solis",
+        "title": "Configurar Solis Modbus",
+        "description": "Insira os detalhes de conexão do seu inversor Solis.",
         "data": {
           "host": "Endereço IP do Inversor Solis",
-          "port": "Porta TCP do Inversor"
+          "port": "Porta (padrão: 502)",
+          "poll_interval_fast": "Intervalo de pesquisa rápida (segundos)",
+          "poll_interval_normal": "Intervalo de pesquisa normal (segundos)",
+          "poll_interval_slow": "Intervalo de pesquisa lenta (segundos)",
+          "model": "Modelo do Inversor",
+          "has_v2": "Atualizado para Firmware V2",
+          "has_pv": "Possui energia solar (PV)",
+          "has_battery": "Possui armazenamento de bateria",
+          "has_generator": "Possui gerador",
+          "phases": "Fases"
+        }
+      }
+    },
+    "error": {
+      "base": "Não foi possível conectar ao inversor. Verifique suas configurações."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modificar configurações do Solis Modbus",
+        "description": "Altere as configurações do seu inversor Solis. (reinicialização recomendada)",
+        "data": {
+          "poll_interval_fast": "Intervalo de pesquisa rápida (segundos)",
+          "poll_interval_normal": "Intervalo de pesquisa normal (segundos)",
+          "poll_interval_slow": "Intervalo de pesquisa lenta (segundos)",
+          "model": "Modelo do Inversor",
+          "has_v2": "Atualizado para Firmware V2",
+          "has_pv": "Possui energia solar (PV)",
+          "has_battery": "Possui armazenamento de bateria",
+          "has_generator": "Possui gerador",
+          "phases": "Fases"
         }
       }
     }
   },
   "services": {
     "solis_write_holding_register": {
-      "name": "Escrever no registo de manutenção",
-      "description": "Escreve um valor num registo de manutenção",
+      "name": "Escrever no registro",
+      "description": "Escreve um valor em um registro",
       "fields": {
         "address": {
           "name": "Endereço",
-          "description": "Endereço para onde escrever"
+          "description": "Endereço para escrever"
         },
         "value": {
           "name": "Valor",
-          "description": "Valor a escrever"
+          "description": "Valor a ser escrito"
+        },
+        "host": {
+          "name": "Inversor",
+          "description": "IP do inversor (necessário apenas se você tiver vários inversores)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Alterar a hora de uma entidade",
+      "description": "Define a hora da entidade para a fornecida",
+      "fields": {
+        "entity_id": {
+          "name": "ID da Entidade",
+          "description": "ID da entidade de tempo que você deseja alterar"
+        },
+        "time": {
+          "name": "Hora Desejada",
+          "description": "Hora no formato HH:MM ou HH:MM:SS"
         }
       }
     }

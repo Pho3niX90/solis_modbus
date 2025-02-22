@@ -9,3 +9,18 @@ solis_write_holding_register:
       description: Value to write
       default: ''
       example: 500
+    host:
+      description: IP of the inverter, only required when running multiple inverters
+      default: ''
+      example: 192.168.1.75
+solis_write_time:
+  description: Writes a time string to an entity
+  fields:
+    entity_id:
+      description: Value to write
+      default: ''
+      example: 'sensor.solis_time_charging_charge_start_hour_slot_1'
+    time:
+      description: Time string in HH:MM or HH:MM:SS
+      default: ''
+      example: '14:50'

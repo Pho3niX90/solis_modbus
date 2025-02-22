@@ -5,6 +5,8 @@ MANUFACTURER = "Solis"
 MODEL = "S6"
 
 VALUES = 'values'
+VALUE = 'value'
+REGISTER = 'register'
 SENSOR_ENTITIES = 'sensor_entities'
 TIME_ENTITIES = 'time_entities'
 SWITCH_ENTITIES = 'switch_entities'

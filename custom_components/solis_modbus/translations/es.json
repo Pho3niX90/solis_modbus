@@ -1,0 +1,80 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Solis Modbus",
+        "description": "Ingrese los detalles de conexión de su inversor Solis.",
+        "data": {
+          "host": "Dirección IP del inversor Solis",
+          "port": "Puerto (predeterminado: 502)",
+          "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
+          "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
+          "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
+          "model": "Modelo del inversor",
+          "has_v2": "Actualizado al Firmware V2",
+          "has_pv": "Tiene energía solar (PV)",
+          "has_battery": "Tiene almacenamiento de batería",
+          "has_generator": "Tiene generador",
+          "phases": "Fases"
+        }
+      }
+    },
+    "error": {
+      "base": "No se puede conectar al inversor. Verifique su configuración."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modificar configuración de Solis Modbus",
+        "description": "Cambie la configuración de su inversor Solis. (reinicio recomendado)",
+        "data": {
+          "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
+          "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
+          "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
+          "model": "Modelo del inversor",
+          "has_v2": "Actualizado al Firmware V2",
+          "has_pv": "Tiene energía solar (PV)",
+          "has_battery": "Tiene almacenamiento de batería",
+          "has_generator": "Tiene generador",
+          "phases": "Fases"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Escribir en el registro",
+      "description": "Escribe un valor en un registro",
+      "fields": {
+        "address": {
+          "name": "Dirección",
+          "description": "Dirección a escribir"
+        },
+        "value": {
+          "name": "Valor",
+          "description": "Valor a escribir"
+        },
+        "host": {
+          "name": "Inversor",
+          "description": "IP del inversor (solo necesario si tiene varios inversores)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Cambiar la hora de una entidad",
+      "description": "Establece la hora de la entidad a la proporcionada",
+      "fields": {
+        "entity_id": {
+          "name": "ID de la Entidad",
+          "description": "ID de la entidad de tiempo que desea cambiar"
+        },
+        "time": {
+          "name": "Hora Deseada",
+          "description": "Hora en formato HH:MM o HH:MM:SS"
+        }
+      }
+    }
+  }
+}
