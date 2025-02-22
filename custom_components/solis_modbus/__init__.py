@@ -114,7 +114,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
-    inverter_model = config.get("model", "S6-EH1P")
+    inverter_model = config.get("model")
+
+    if inverter_model is None:
+        old_type = config.get("type", "hybrid")
+        inverter_model = "S6-EH3P" if old_type == "hybrid" else ("WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
+
     inverter_config: InverterConfig = next(
         (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
     )
