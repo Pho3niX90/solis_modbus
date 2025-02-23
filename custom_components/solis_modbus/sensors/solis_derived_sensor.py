@@ -10,7 +10,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.helpers import decode_inverter_model
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
-from custom_components.solis_modbus.status_mapping import STATUS_MAPPING
+from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
 
 from homeassistant.core import callback, HomeAssistant
 

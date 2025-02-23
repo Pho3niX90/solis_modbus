@@ -790,9 +790,17 @@ hybrid_sensors = [
              "unit_of_measurement": UnitOfTime.MINUTES, "state_class": SensorStateClass.MEASUREMENT},
         ]
     }, {
-        "register_start": 43363,
+        "register_start": 43361,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
+            {"name": "MPPT Scanning Interval",
+             "unique": "solis_modbus_inverter_mppt_scanning_interval",
+             "register": ['43361'], "multiplier": 1, "unit_of_measurement": UnitOfTime.SECONDS, "state_class": SensorStateClass.MEASUREMENT,
+             "editable": True, "min": 600, "max": 10800
+            },
+
+            {"type": "reserve", "register": ['43362']},
+
             {"name": "Forced Start of Generator",
              "unique": "solis_modbus_inverter_generator_forced_start", "register": ['43363'], "multiplier": 1,
              "state_class": SensorStateClass.MEASUREMENT, "switch": True},

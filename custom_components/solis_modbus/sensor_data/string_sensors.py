@@ -75,6 +75,20 @@ string_sensors = [
         ]
     },
     {
+        "register_start": 3179,
+        "poll_speed": PollSpeed.FAST,
+        "entities": [
+            {"name": "Shading MPPT Scan Enable", "unique": "solis_modbus_shading_mppt_scan_enable",
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3179'], "multiplier": 0.1},
+            {"name": "Shading MPPT Scan Time Interval", "unique": "solis_modbus_shading_mppt_scan_interval",
+             "unit_of_measurement": UnitOfTime.MINUTES,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3180'], "multiplier": 1, "editable": True, "min": 10, "max": 180},
+        ]
+    },
+    {
         "register_start": 3250,
         "poll_speed": PollSpeed.FAST,
         "entities": [
