@@ -142,7 +142,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
                 hour = cache_get(self.hass, self._register)
                 minute = cache_get(self.hass, self._register + 1)
                 if hour is None or minute is None or minute > 59 or hour > 23:
-                    _LOGGER.warning(f"time issue {hour}:{minute}, regs = {self._register}:{self._register + 1}")
+                    _LOGGER.debug(f"time issue {hour}:{minute}, regs = {self._register}:{self._register + 1}")
                 if hour is not None and minute is not None:
                     _LOGGER.debug(f"time updated to {hour}:{minute}, regs = {self._register}:{self._register + 1}")
                     self._attr_native_value = datetime.time(hour=int(hour), minute=int(minute))
