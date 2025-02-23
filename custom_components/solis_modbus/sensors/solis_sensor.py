@@ -40,8 +40,10 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._state = None
         self._received_values = {}
 
-    def decimal_count(self, number: float) -> int:
+    def decimal_count(self, number: float) -> int | None:
         """Returns the number of decimal places in a given number."""
+        if self.device_class is None:
+            return None
         if number == int(number):  # Whole number
             return 0
 
