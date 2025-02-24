@@ -1,9 +1,10 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential
+from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential, \
+    UnitOfTemperature, UnitOfFrequency, UnitOfApparentPower, UnitOfReactivePower
 
 from custom_components.solis_modbus.data.enums import PollSpeed
 
-# base on RS485_MODBUS Communication Protocol Ver18
+# base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [
     # offset by -1
     {
@@ -33,13 +34,37 @@ string_sensors = [
              "unit_of_measurement": UnitOfPower.WATT, "device_class": SensorDeviceClass.POWER,
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3006','3007'], "multiplier": 1},
-        ]
-    },
-    # offset by -1
-    {
-        "register_start": 3021,
-        "poll_speed": PollSpeed.FAST,
-        "entities": [
+            {"name": "Total Energy", "unique": "solis_modbus_total_energy",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3008', '3009'], "multiplier": 1},
+            {"name": "Energy This Month", "unique": "solis_modbus_energy_this_month",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3010', '3011'], "multiplier": 1},
+            {"name": "Energy Last Month", "unique": "solis_modbus_energy_last_month",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3012', '3013'], "multiplier": 1},
+            {"name": "Energy Today", "unique": "solis_modbus_energy_today",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3014'], "multiplier": 0.1},
+            {"name": "Energy Yesterday", "unique": "solis_modbus_energy_yesterday",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3015'], "multiplier": 0.1},
+            {"name": "Energy This Year", "unique": "solis_modbus_energy_this_year",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3016','3017'], "multiplier": 1},
+            {"name": "Energy Last Year", "unique": "solis_modbus_energy_last_year",
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3018','3019'], "multiplier": 1},
+
+            {"type": "reserve", "register": ['3020']},
+
             {"name": "DC Voltage 1", "unique": "solis_modbus_dc_voltage_1",
              "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE,
              "state_class": SensorStateClass.MEASUREMENT,
@@ -71,12 +96,66 @@ string_sensors = [
             {"name": "DC Current 4", "unique": "solis_modbus_dc_current_4",
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "device_class": SensorDeviceClass.CURRENT,
              "state_class": SensorStateClass.MEASUREMENT,
-             "register": ['3028'], "multiplier": 0.1},
+             "register": ['3028'], "multiplier": 0.1}, #30
+        ]
+    },
+    {
+        "register_start": 3033,
+        "poll_speed": PollSpeed.FAST,
+        "entities": [
+
+            {"name": "A Phase Voltage", "unique": "solis_modbus_inverter_a_phase_voltage",
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3033'], "multiplier": 0.1},
+            {"name": "B Phase Voltage", "unique": "solis_modbus_inverter_b_phase_voltage",
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3034'], "multiplier": 0.1},
+            {"name": "C Phase Voltage", "unique": "solis_modbus_inverter_c_phase_voltage",
+             "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3035'], "multiplier": 0.1},
+
+            {"name": "A Phase Current", "unique": "solis_modbus_inverter_a_phase_current",
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "device_class": SensorDeviceClass.CURRENT,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3036'], "multiplier": 0.1},
+            {"name": "B Phase Current", "unique": "solis_modbus_inverter_b_phase_current",
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "device_class": SensorDeviceClass.CURRENT,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3037'], "multiplier": 0.1},
+            {"name": "C Phase Current", "unique": "solis_modbus_inverter_c_phase_current",
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "device_class": SensorDeviceClass.CURRENT,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3038'], "multiplier": 0.1},
+
+            {"type": "reserve", "register": ['3039', '3040']},
+
+            {"name": "Inverter Temperature", "unique": "solis_modbus_inverter_temperature",
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "device_class": SensorDeviceClass.TEMPERATURE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3041'], "multiplier": 0.1},
+            {"name": "Grid Frequency", "unique": "solis_modbus_grid_frequency",
+             "unit_of_measurement": UnitOfFrequency.HERTZ, "device_class": SensorDeviceClass.FREQUENCY,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3042'], "multiplier": 0.01},
+            {"name": "Inverter Status", "unique": "solis_modbus_inverter_status",
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3043'], "multiplier": 1},
+            {"name": "Limited active power adjustment rated power output value", "unique": "solis_modbus_inverter_limited_active_power_output_value",
+             "unit_of_measurement": UnitOfPower.WATT, "device_class": SensorDeviceClass.POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3044', '3045'], "multiplier": 1},
+            {"name": "Reactive power regulation rated power output value", "unique": "solis_modbus_inverter_reactive_power_regulation_rated_power_output_value",
+             "unit_of_measurement": UnitOfReactivePower.VOLT_AMPERE_REACTIVE, "device_class": SensorDeviceClass.REACTIVE_POWER,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3046', '3047'], "multiplier": 1},
         ]
     },
     {
         "register_start": 3179,
-        "poll_speed": PollSpeed.FAST,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {"name": "Shading MPPT Scan Enable", "unique": "solis_modbus_shading_mppt_scan_enable",
              "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE,
