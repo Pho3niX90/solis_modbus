@@ -16,7 +16,6 @@ from .sensors.solis_base_sensor import SolisSensorGroup
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class DataRetrieval:
     def __init__(self, hass: HomeAssistant, controller: ModbusController):
         self._spike_counter = {}
@@ -60,7 +59,7 @@ class DataRetrieval:
                 _LOGGER.error(f"❌ Connection error: {e}")
 
             await asyncio.sleep(retry_delay)
-            retry_delay = min(retry_delay * 2, 30)  # ✅ Proper exponential backoff
+            retry_delay = min(retry_delay * 2, 30)
 
         self.connection_check = False
 
@@ -128,13 +127,12 @@ class DataRetrieval:
                         )
                         continue
 
-                for i, value in enumerate(values):
-                    reg = start_register + i
-                    _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
-                    corrected_value = self.spike_filtering(reg, value)
-                    cache_save(self.hass, reg, corrected_value)
-                    self.hass.bus.async_fire(DOMAIN,
-                                             {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
+                    for i, value in enumerate(values):
+                        reg = start_register + i
+                        _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
+                        corrected_value = self.spike_filtering(reg, value)
+                        cache_save(self.hass, reg, corrected_value)
+                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
 
                 if sensor_group.poll_speed == PollSpeed.ONCE:
                     marked_for_removal.append(sensor_group)
