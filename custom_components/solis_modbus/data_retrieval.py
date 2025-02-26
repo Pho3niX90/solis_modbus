@@ -1,20 +1,21 @@
 import asyncio
 import logging
-from datetime import timedelta
 import time
+from datetime import timedelta
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from typing_extensions import List
 
-from .data.enums import PollSpeed
-from .modbus_controller import ModbusController
 from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER
 from custom_components.solis_modbus.helpers import cache_save, cache_get
+from .data.enums import PollSpeed
+from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class DataRetrieval:
     def __init__(self, hass: HomeAssistant, controller: ModbusController):
@@ -42,7 +43,8 @@ class DataRetrieval:
         self.connection_check = True
 
         # Emit controller status
-        self.hass.bus.async_fire(DOMAIN, {REGISTER: 5, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
+        self.hass.bus.async_fire(DOMAIN,
+                                 {REGISTER: 5, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
 
         if self.controller.connected():
             return
@@ -117,22 +119,31 @@ class DataRetrieval:
                     )
 
                     if values is None:
+                        _LOGGER.debug(f"⚠️ Received None for register {start_register} - {start_register + count - 1}, skipping.")
+                        continue
+                    if len(values) != count:
+                        _LOGGER.debug(
+                            f"⚠️ Modbus read mismatch: Received {len(values)} values, expected {count} "
+                            f"for register {start_register} - {start_register + count - 1}. Skipping because linking them is uncertain."
+                        )
                         continue
 
-                    for i, value in enumerate(values):
-                        reg = start_register + i
-                        _LOGGER.debug(f"register {reg} has value {value}")
-                        corrected_value = self.spike_filtering(reg, value)
-                        cache_save(self.hass, reg, corrected_value)
-                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
+                for i, value in enumerate(values):
+                    reg = start_register + i
+                    _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
+                    corrected_value = self.spike_filtering(reg, value)
+                    cache_save(self.hass, reg, corrected_value)
+                    self.hass.bus.async_fire(DOMAIN,
+                                             {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
 
-                    if sensor_group.poll_speed == PollSpeed.ONCE:
-                        marked_for_removal.append(sensor_group)
+                if sensor_group.poll_speed == PollSpeed.ONCE:
+                    marked_for_removal.append(sensor_group)
 
-                    self.controller._data_received = True
+                self.controller._data_received = True
 
                 # Remove "ONCE" poll speed groups
-                self.controller._sensor_groups = [g for g in self.controller.sensor_groups if g not in marked_for_removal]
+                self.controller._sensor_groups = [g for g in self.controller.sensor_groups if
+                                                  g not in marked_for_removal]
 
                 total_duration = time.perf_counter() - total_start_time
                 _LOGGER.debug(f"✅ {speed.name} update completed in {total_duration:.4f}s")
@@ -156,7 +167,7 @@ class DataRetrieval:
             self._spike_counter[register] = 0
 
         # If the reading is strictly between 0 and 100, it's valid.
-        if value not in (0,100):
+        if value not in (0, 100):
             self._spike_counter[register] = 0  # Reset the counter on a normal reading
         else:
             # The reading is either 0 or 100 (extreme values)
@@ -174,4 +185,3 @@ class DataRetrieval:
                 self._spike_counter[register] = 0
 
         return value
-
