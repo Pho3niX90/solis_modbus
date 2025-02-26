@@ -1,10 +1,3 @@
-"""
-
-This is a docstring placeholder.
-
-This is where we will describe what this module does
-
-"""
 import logging
 from typing import List
 

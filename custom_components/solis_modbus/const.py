@@ -1,8 +1,6 @@
 DOMAIN = "solis_modbus"
 CONTROLLER = "modbus_controller"
-VERSION = "1.5.5"
 MANUFACTURER = "Solis"
-MODEL = "S6"
 
 VALUES = 'values'
 VALUE = 'value'
