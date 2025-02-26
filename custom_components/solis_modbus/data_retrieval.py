@@ -134,8 +134,8 @@ class DataRetrieval:
                         cache_save(self.hass, reg, corrected_value)
                         self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
 
-                if sensor_group.poll_speed == PollSpeed.ONCE:
-                    marked_for_removal.append(sensor_group)
+                    if sensor_group.poll_speed == PollSpeed.ONCE:
+                        marked_for_removal.append(sensor_group)
 
                 self.controller._data_received = True
 
