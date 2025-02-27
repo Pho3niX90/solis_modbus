@@ -137,7 +137,7 @@ class DataRetrieval:
                     if sensor_group.poll_speed == PollSpeed.ONCE:
                         marked_for_removal.append(sensor_group)
 
-                self.controller._data_received = True
+                    self.controller._data_received = True
 
                 # Remove "ONCE" poll speed groups
                 self.controller._sensor_groups = [g for g in self.controller.sensor_groups if
