@@ -28,7 +28,8 @@ string_sensors = [
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3003'], "multiplier": 1},
             {"name": "Active Power", "unique": "solis_modbus_active_power",
-             "state_class": SensorStateClass.MEASUREMENT,
+             "state_class": SensorStateClass.MEASUREMENT, "device_class": SensorDeviceClass.POWER,
+             "unit_of_measurement": UnitOfPower.WATT,
              "register": ['3004','3005'], "multiplier": 1},
             {"name": "Total DC Output Power", "unique": "solis_modbus_total_dc_output_power",
              "unit_of_measurement": UnitOfPower.WATT, "device_class": SensorDeviceClass.POWER,
@@ -276,57 +277,8 @@ string_sensors = [
              "register": ['36056', '36057'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.01,
              "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
         ]
-    },
-    {
-        "register_start": 33005,
-        "poll_speed": PollSpeed.FAST,
-        "entities": [
-            {"name": "Active Power",
-             "unique": "solis_modbus_inverter_active_power",
-             "register": ['33005', '33006'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
-             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
-
-            {"name": "Total DC Output Power",
-             "unique": "solis_modbus_inverter_total_dc_output_power",
-             "register": ['33007', '33008'], "device_class": SensorDeviceClass.POWER, "multiplier": 1,
-             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
-        ]
-    },
+    }
 ]
 
 string_sensors_derived = [
-    {"type": "SDS", "name": "Status String",
-     "unique": "solis_modbus_inverter_current_status_string", "multiplier": 0,
-     "register": ['33095']},
-
-    {"type": "SDS", "name": "PV Power 1",
-     "unique": "solis_modbus_inverter_dc_power_1", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
-     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33049', '33050']},
-
-    {"type": "SDS", "name": "PV Power 2",
-     "unique": "solis_modbus_inverter_dc_power_2", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
-     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33051', '33052']},
-
-    {"type": "SDS", "name": "PV Power 3",
-     "unique": "solis_modbus_inverter_dc_power_3", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
-     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33053', '33054']},
-
-    {"type": "SDS", "name": "PV Power 4",
-     "unique": "solis_modbus_inverter_dc_power_4", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
-     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33055', '33056']},
-
-    {"type": "SDS", "name": "Battery Charge Power",
-     "unique": "solis_modbus_inverter_battery_charge_power", "device_class": SensorDeviceClass.POWER,
-     "multiplier": 0.1,
-     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33149', '33150', '33135', '0']},
-    {"type": "SDS", "name": "Battery Discharge Power",
-     "unique": "solis_modbus_inverter_battery_discharge_power", "device_class": SensorDeviceClass.POWER,
-     "multiplier": 0.1,
-     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33149', '33150', '33135', '1']}
 ]
