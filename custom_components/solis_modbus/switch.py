@@ -96,6 +96,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                     {"type": "SBS", "name": "Solis RC Force Battery Discharge", "on_value": 1},
                     {"type": "SBS", "name": "Solis RC Force Battery Charge",  "on_value": 2}
                 ]
+            },{
+                "register": 43363,
+                "entities": [
+                    {"type": "SBS", "name": "Solis Force Start Generator", "on_value": 1},
+                ]
             }, {
                 "register": 43707,
                 "entities": [
