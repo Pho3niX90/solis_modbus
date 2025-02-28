@@ -9,6 +9,10 @@ The Solis Modbus Integration for Home Assistant is a streamlined solution to con
 ## Documentation
 https://solis-modbus.readthedocs.io/
 
+## Solis cloud
+You will lose access, unless you use a waveshare device. You will still have the option to disable the modbus, when updates are required.
+https://github.com/Pho3niX90/solis_modbus/discussions/154
+
 ## Installation
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Pho3niX90&repository=solis_modbus&category=integration)
 
