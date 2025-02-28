@@ -93,10 +93,11 @@ class SolisBinaryEntity(SwitchEntity):
             if value is True and self._work_mode is not None:
                 for wbit in self._work_mode:
                     current_register_value = set_bit(current_register_value, wbit, False)
+
             new_register_value: int = set_bit(current_register_value, self._bit_position, value)
 
         else:
-            new_register_value: int = value
+            new_register_value: int = self._on_value if value is True else value
 
         _LOGGER.debug(
             f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
