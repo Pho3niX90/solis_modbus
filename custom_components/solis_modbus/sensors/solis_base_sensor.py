@@ -1,4 +1,3 @@
-# solis_base.py
 import logging
 from typing import Union
 
@@ -33,6 +32,7 @@ class SolisBaseSensor:
                  step = 0.1,
                  hidden = False,
                  enabled = True,
+                 options: list[str] = None,
                  min_value: Optional[int] = None, max_value: Optional[int] = None):
         """
         :param name: Sensor name
@@ -54,6 +54,7 @@ class SolisBaseSensor:
         self.step = self.get_step(step)
         self.enabled = enabled
         self.min_value = min_value
+        self.options = options
 
         self.waveshare_adjustment()
 

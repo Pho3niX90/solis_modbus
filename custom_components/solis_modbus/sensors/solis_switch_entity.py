@@ -10,7 +10,7 @@ from custom_components.solis_modbus import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-class SolisBinaryEntity(SwitchEntity):
+class SolisSwitchEntity(SwitchEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
