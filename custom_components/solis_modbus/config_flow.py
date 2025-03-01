@@ -5,7 +5,7 @@ from homeassistant import config_entries
 from . import ModbusController
 from .const import DOMAIN
 from .data.enums import InverterType
-from .data.solis_config import SOLIS_INVERTERS, InverterConfig
+from .data.solis_config import SOLIS_INVERTERS, InverterConfig, CONNECTION_METHOD
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ CONFIG_SCHEMA = vol.Schema(
         vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=15)),
         vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
         vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),  # Model dropdown
+        vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
 
         # Boolean options (Yes/No toggle)
         vol.Required("has_v2", default=True): vol.Coerce(bool),
@@ -34,6 +35,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("poll_interval_normal"): vol.All(int, vol.Range(min=15)),
         vol.Required("poll_interval_slow"): vol.All(int, vol.Range(min=30)),
         vol.Required("model"): vol.In(SOLIS_MODELS),
+        vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
 
         # Boolean options (Yes/No toggle)
         vol.Required("has_v2", default=True): vol.Coerce(bool),
@@ -75,6 +77,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "generator": user_input.get("has_generator", True),
             "battery": user_input.get("has_battery", True),
         }
+        inverter_config.connection = user_input.get("connection", "S2_WL_ST")
 
         modbus_controller = ModbusController(
             hass=self.hass,

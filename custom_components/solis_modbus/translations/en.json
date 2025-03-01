@@ -16,7 +16,8 @@
           "has_pv": "Has PV (Solar Panels)",
           "has_battery": "Has Battery Storage",
           "has_generator": "Has Generator",
-          "phases": "Phases"
+          "phases": "Phases",
+          "connection": "Connection Type"
         }
       }
     },
@@ -38,7 +39,8 @@
           "has_pv": "Has PV (Solar Panels)",
           "has_battery": "Has Battery Storage",
           "has_generator": "Has Generator",
-          "phases": "Phases"
+          "phases": "Phases",
+          "connection": "Connection Type"
         }
       }
     }

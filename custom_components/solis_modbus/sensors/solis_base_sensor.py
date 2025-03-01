@@ -59,7 +59,7 @@ class SolisBaseSensor:
 
     def waveshare_adjustment(self):
         """Adjust multiplier if using WAVESHARE and relevant registers are present."""
-        if self.controller.inverter_config.type == InverterType.WAVESHARE:
+        if self.controller.inverter_config.type == InverterType.WAVESHARE or self.controller.inverter_config.connection == "WAVESHARE":
             waveshare_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
             if waveshare_registers.intersection(self.registrars):
                 self.multiplier = 0.01

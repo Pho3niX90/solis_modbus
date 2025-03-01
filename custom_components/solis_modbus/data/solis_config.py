@@ -10,12 +10,13 @@ class InverterOptions:
         self.v2 = v2
 
 class InverterConfig:
-    def __init__(self, model: str, wattage: List[int], phases: int, type: InverterType, options: InverterOptions = InverterOptions()):
+    def __init__(self, model: str, wattage: List[int], phases: int, type: InverterType, options: InverterOptions = InverterOptions(), connection = "S2_WL_ST"):
         self.model = model
         self.wattage = wattage
         self.phases = phases
         self.type = type
         self.options = options
+        self.connection = connection
         self.features: [InverterFeature] = []
 
         if options.pv:
@@ -39,5 +40,10 @@ SOLIS_INVERTERS = [
     InverterConfig(model="S5-GR3P", wattage=[5000, 10000], phases=3, type=InverterType.GRID),
     InverterConfig(model="RHI-*", wattage=[3000,4000,5000,6000,8000,10000], phases=3, type=InverterType.HYBRID),
     InverterConfig(model="RAI-*", wattage=[3000,4000,5000,6000,8000,10000], phases=3, type=InverterType.ENERGY),
-    InverterConfig(model="WAVESHARE", wattage=[10000], phases=3, type=InverterType.WAVESHARE),
+    InverterConfig(model="WAVESHARE", wattage=[10000], phases=3, type=InverterType.HYBRID),
 ]
+
+CONNECTION_METHOD = {
+    "S2_WL_ST": "S2_WL_ST",
+    "WAVESHARE": "WAVESHARE",
+}
