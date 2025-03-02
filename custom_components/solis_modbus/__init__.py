@@ -111,6 +111,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     host = config.get("host")
     port = config.get("port", 502)
+    slave = config.get("slave", 1)
+
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
@@ -154,6 +156,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass=hass,
         host=host,
         port=port,
+        slave=slave,
         fast_poll=poll_interval_fast,
         normal_poll=poll_interval_normal,
         slow_poll=poll_interval_slow,

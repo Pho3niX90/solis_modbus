@@ -16,6 +16,7 @@ CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required("host", default=""): str,
         vol.Required("port", default=502): int,
+        vol.Required("slave", default=1): int,
         vol.Optional("poll_interval_fast", default=10): vol.All(int, vol.Range(min=10)),
         vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=15)),
         vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
@@ -83,6 +84,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             hass=self.hass,
             host=user_input["host"],
             port=user_input.get("port", 502),
+            slave=user_input.get("slave", 1),
             fast_poll=user_input.get("poll_interval_fast", 10),
             normal_poll=user_input.get("poll_interval_normal", 15),
             slow_poll=user_input.get("poll_interval_slow", 15),
