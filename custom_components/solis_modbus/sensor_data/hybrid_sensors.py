@@ -393,6 +393,7 @@ hybrid_sensors = [
     {
         "register_start": 34328,
         "poll_speed": PollSpeed.FAST,
+        "feature_requirement": [InverterFeature.SMART_PORT],
         "entities": [
             {"name": "SmartPort A Phase Voltage",
              "unique": "solis_modbus_inverter_smartport_a_phase_voltage",
