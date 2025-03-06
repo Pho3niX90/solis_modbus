@@ -540,7 +540,7 @@ hybrid_sensors = [
         "poll_speed": PollSpeed.NORMAL,
         "entities": [
 
-            {"name": "Overcharge SOC",
+            {"name": "Max Charge SOC",
              "unique": "solis_modbus_inverter_overcharge_soc", "register": ['43010'], "multiplier": 1,
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
              "default": 90,
@@ -552,7 +552,19 @@ hybrid_sensors = [
              "unit_of_measurement": PERCENTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
              "default": 20, "min": 5, "max": 40, "step": 1, },
 
-            {"type": "reserve", "register": ['43012', '43013', '43014', '43015', '43016', '43017']},
+            {"name": "Max Charge Current",
+             "unique": "solis_modbus_inverter_max_charge_current", "register": ['43012'],
+             "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
+             "default": 20, "min": 5, "max": 200, "step": 1, },
+
+            {"name": "Max Discharge Current",
+             "unique": "solis_modbus_inverter_max_discharge_current", "register": ['43013'],
+             "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
+             "default": 20, "min": 5, "max": 200, "step": 1, },
+
+            {"type": "reserve", "register": ['43014', '43015', '43016', '43017']},
 
             {"name": "Force Charge SOC",
              "unique": "solis_modbus_inverter_force_charge_soc", "register": ['43018'], "multiplier": 1,
