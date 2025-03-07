@@ -142,6 +142,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "generator": config.get("has_generator", True),
         "battery": config.get("has_battery", True),
     }
+    inverter_config.connection = config.get("connection", "S2_WL_ST")
 
     # Load correct sensor data based on inverter type
     if inverter_config.type in [InverterType.STRING, InverterType.GRID]:
