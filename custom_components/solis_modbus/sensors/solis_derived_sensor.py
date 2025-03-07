@@ -2,9 +2,9 @@ import decimal
 import fractions
 import logging
 import numbers
+from datetime import datetime, UTC
 from typing import List
-
-from homeassistant.components.sensor import RestoreSensor, SensorEntity
+from homeassistant.components.sensor import RestoreSensor, SensorEntity, SensorDeviceClass
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
@@ -44,7 +44,10 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
         if state:
-            self._attr_native_value = state.native_value
+            if self.base_sensor.device_class != SensorDeviceClass.TIMESTAMP:
+                self._attr_native_value = state.native_value
+            else:
+                self._attr_native_value = datetime.now(UTC)
         self.is_added_to_hass = True
 
         # 🔥 Register event listener for real-time updates
@@ -54,7 +57,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
     def handle_modbus_update(self, event):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
-        updated_value = int(event.data.get(VALUE))
         updated_controller = str(event.data.get(CONTROLLER))
 
         if updated_controller != self.base_sensor.controller.host:
@@ -62,8 +64,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
-            # Store received register value temporarily
-            self._received_values[updated_register] = updated_value
+            self._received_values[updated_register] = event.data.get(VALUE)
 
             # If we haven't received all registers yet, wait
             filtered_registers = {reg for reg in self._register if reg not in (0, 1)}
@@ -71,9 +72,18 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return  # Wait until all registers are received
 
-            new_value = self.base_sensor.get_value
-
             ## start
+            if 90006 in self._register:
+                new_value = self.base_sensor.controller.last_modbus_success
+                if new_value == 0 or new_value is None:
+                    return
+                self._attr_available = True
+                self._attr_native_value = new_value
+                self.schedule_update_ha_state()
+                self._received_values.clear()
+                return
+
+            new_value = self.base_sensor.get_value
 
             if 33095 in self._register:
                 new_value = round(self.base_sensor.get_value)
@@ -119,6 +129,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
             # Clear received values after update
             self._received_values.clear()
+
 
     @property
     def device_info(self):

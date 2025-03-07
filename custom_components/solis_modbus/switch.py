@@ -20,7 +20,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     if modbus_controller.inverter_config.type == InverterType.HYBRID:
         switch_sensors.extend([
             {
-                "register": 5,
+                "register": 90005,
                 "entities": [
                     {"type": "SBS", "bit_position": 0, "name": "Solis Modbus Enabled"},
                 ]

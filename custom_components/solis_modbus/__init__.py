@@ -170,7 +170,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # If there are feature requirements, check if they exist in inverter_config.features
         if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
             _LOGGER.warning(
-                f"Skipping sensor group '{group.get('name', 'Unnamed')}' due to missing required features: {feature_requirement}"
+                f"Skipping sensor group '{group.get('name', group.get('register_start', 'Unnamed'))}' due to missing required features: {feature_requirement}"
             )
             continue  # Skip this group
 

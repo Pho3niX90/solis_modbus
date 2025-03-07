@@ -1,9 +1,11 @@
+from datetime import datetime, UTC
+
 import logging
 
 from homeassistant.core import HomeAssistant
 
 from typing import List
-from homeassistant.components.sensor import RestoreSensor, SensorEntity
+from homeassistant.components.sensor import RestoreSensor, SensorEntity, SensorDeviceClass
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
@@ -66,13 +68,14 @@ class SolisSensor(RestoreSensor, SensorEntity):
     def handle_modbus_update(self, event):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
-        updated_value = int(event.data.get(VALUE))
         updated_controller = str(event.data.get(CONTROLLER))
 
         if updated_controller != self.base_sensor.controller.host:
             return # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
+            updated_value = int(event.data.get(VALUE))
+
             self._received_values[updated_register] = updated_value
 
             # If we haven't received all registers yet, wait

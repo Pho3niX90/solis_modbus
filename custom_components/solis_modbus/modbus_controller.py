@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import time
-from typing import List
+from datetime import datetime, UTC
 
+from typing import List
 from pymodbus.client import AsyncModbusTcpClient
 
 from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER
@@ -40,6 +41,7 @@ class ModbusController:
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
         self._last_modbus_request = 0
+        self._last_modbus_success = datetime.now(UTC)
 
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially."""
@@ -118,7 +120,6 @@ class ModbusController:
     async def async_write_holding_registers(self, start_register, values):
         """Queues multiple holding registers write asynchronously."""
         await self.write_queue.put((start_register, values, True))
-
         _LOGGER.debug(f"Queued Write Holding Registers register = {start_register}, values = {values}")
 
     async def async_read_input_register(self, register, count=1):
@@ -128,6 +129,7 @@ class ModbusController:
             result = await self.client.read_input_registers(address=register, count=count, slave=self.slave)
             _LOGGER.debug(f"Register {register}: {result.registers}")
             await self.inter_frame_wait()
+            self._last_modbus_success = datetime.now(UTC)
             return result.registers
         except Exception as e:
             _LOGGER.error(f"Failed to read input register {register}: {str(e)}")
@@ -140,6 +142,7 @@ class ModbusController:
             result = await self.client.read_holding_registers(address=register, count=count, slave=self.slave)
             _LOGGER.debug(f"Holding Register {register}: {result.registers}")
             await self.inter_frame_wait()
+            self._last_modbus_success = datetime.now(UTC)
             return result.registers
         except Exception as e:
             _LOGGER.error(f"Failed to read holding register {register}: {str(e)}")
@@ -158,7 +161,6 @@ class ModbusController:
             await asyncio.sleep(remaining_delay)
 
         self._last_modbus_request = time.monotonic()  # Update last request time
-
 
     async def connect(self):
         """Ensure the Modbus TCP connection is active."""
@@ -223,3 +225,11 @@ class ModbusController:
     @property
     def sensor_derived_groups(self):
         return self._derived_sensors
+
+    @property
+    def last_modbus_request(self):
+        return self._last_modbus_request
+
+    @property
+    def last_modbus_success(self):
+        return self._last_modbus_success

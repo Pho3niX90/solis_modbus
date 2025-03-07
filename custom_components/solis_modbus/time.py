@@ -1,9 +1,7 @@
 import logging
-import datetime
+from datetime import datetime, UTC, time
 from typing import List
-
-from datetime import time
-from homeassistant.components.sensor import RestoreSensor
+from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
@@ -126,13 +124,21 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
     def handle_modbus_update(self, event):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
-        updated_value = int(event.data.get(VALUE))
+
         updated_controller = str(event.data.get(CONTROLLER))
 
         if updated_controller != self._modbus_controller.host:
             return # meant for a different sensor/inverter combo
 
         if updated_register == self._register:
+            value = event.data.get(VALUE)
+            if self._attr_device_class == SensorDeviceClass.TIMESTAMP:
+                if isinstance(value, datetime):
+                    updated_value = value
+                else:
+                    updated_value = datetime.now(UTC)
+            else:
+                updated_value = int(value)
             _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}")
             self._received_values[updated_register] = updated_value
 

@@ -826,9 +826,10 @@ hybrid_sensors = [
         "entities": [
             {"name": "MPPT Scanning Interval",
              "unique": "solis_modbus_inverter_mppt_scanning_interval",
-             "register": ['43361'], "multiplier": 1, "unit_of_measurement": UnitOfTime.SECONDS, "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['43361'], "multiplier": 1, "unit_of_measurement": UnitOfTime.SECONDS,
+             "state_class": SensorStateClass.MEASUREMENT,
              "editable": True, "min": 600, "max": 10800
-            },
+             },
 
             {"type": "reserve", "register": ['43362']},
 
@@ -1229,16 +1230,50 @@ hybrid_sensors = [
     {
         "register_start": 43110,
         "poll_speed": PollSpeed.SLOW,
-        "entities": [{"name": "Storage control Switch value",
-                      "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'],
-                      "multiplier": 1,
-                      "hidden": True,
-                      "state_class": SensorStateClass.MEASUREMENT}]
+        "entities": [
+            {"name": "Storage control Switch value",
+             "unique": "solis_modbus_inverter_storage_control_switch_value", "register": ['43110'],
+             "multiplier": 1,
+             "hidden": True,
+             "state_class": SensorStateClass.MEASUREMENT},
+        ]
+    },
+    {
+        "register_start": 43117,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {"name": "Battery Max Charge Current",
+             "unique": "solis_modbus_inverter_battery_max_charge_current", "register": ['43117'],
+             "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
+             "default": 20, "min": 5, "max": 200, "step": 0.1, },
+            {"name": "Battery Max Discharge Current",
+             "unique": "solis_modbus_inverter_battery_max_discharge_current", "register": ['43118'],
+             "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
+             "default": 20, "min": 5, "max": 200, "step": 0.1, },
+        ]
+    },
+    {
+        "register_start": 43282,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {"name": "RC Timeout",
+             "unique": "solis_modbus_inverter_rc_timeout", "register": ['43282'],
+             "multiplier": 1,
+             "unit_of_measurement": UnitOfTime.MINUTES, "editable": True,
+             "default": 5, "min": 1, "max": 30, "step": 1, },
+        ]
     }
 ]
 ## Remove 33132 in next update if this works (43110)
 
 hybrid_sensors_derived = [
+    {"type": "SDS", "name": "Last Modbus Success",
+     "unique": "solis_modbus_inverter_last_polled", "multiplier": 0,
+     "device_class": SensorDeviceClass.TIMESTAMP,
+     "register": ['90006']},
+
     {"type": "SDS", "name": "Status String",
      "unique": "solis_modbus_inverter_current_status_string", "multiplier": 0,
      "register": ['33095']},

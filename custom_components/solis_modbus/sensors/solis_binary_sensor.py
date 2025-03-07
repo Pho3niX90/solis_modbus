@@ -35,14 +35,14 @@ class SolisBinaryEntity(SwitchEntity):
     def handle_modbus_update(self, event):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
-        updated_value = int(event.data.get(VALUE))
         updated_controller = str(event.data.get(CONTROLLER))
 
         if updated_controller != self._modbus_controller.host:
             return # meant for a different sensor/inverter combo
 
-        # If this register belongs to the sensor, store it temporarily
         if updated_register == self._register:
+            updated_value = int(event.data.get(VALUE))
+
             if self._bit_position is not None:
                 _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, get_bit_bool = {get_bit_bool(updated_value, self._bit_position)}")
             else:

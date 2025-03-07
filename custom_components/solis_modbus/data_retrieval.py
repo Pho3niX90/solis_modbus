@@ -43,7 +43,7 @@ class DataRetrieval:
 
         # Emit controller status
         self.hass.bus.async_fire(DOMAIN,
-                                 {REGISTER: 5, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
+                                 {REGISTER: 90005, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
 
         if self.controller.connected():
             return
@@ -77,6 +77,7 @@ class DataRetrieval:
 
     async def modbus_update_fast(self, now):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
+        self.hass.bus.async_fire(DOMAIN, {REGISTER: 90006, VALUE: self.controller.last_modbus_success, CONTROLLER: self.controller.host})
 
     async def modbus_update_slow(self, now):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.SLOW], PollSpeed.SLOW)
