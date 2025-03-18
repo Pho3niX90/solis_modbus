@@ -326,6 +326,18 @@ The following sensors are provided in the integration.
 | Solis Battery Charge Power                                | POWER          | WATT                       | MEASUREMENT      | if 33135 == 0 then 33149, 33150 else 0 |
 | Solis Battery Discharge Power                             | POWER          | WATT                       | MEASUREMENT      | if 33135 == 1 then 33149, 33150 else 0 |
 
+# Waveshare
+This is only required if your values are higher than expected, if you aren't experiencing this, this should be disabled.
+
+| register | Name                               | Default | Waveshare | Example                 |
+|----------|------------------------------------|---------|-----------|-------------------------|
+| 33142    | Solis Battery Current (BMS)        | 0.1     | 0.01      | Changes 30A to 3A       |
+| 33161    | Total Battery Charge Energy        | 1       | 0.01      | Changes 100kwh to 1kwh  |
+| 33163    | Today Battery Charge Energy        | 0.1     | 0.01      | Changes 100kwh to 10kwh |
+| 33164    | Yesterday Battery Charge Energy    | 0.1     | 0.01      | Changes 100kwh to 10kwh |
+| 33165    | Total Battery Discharge Energy     | 1       | 0.01      | Changes 100kwh to 1kwh  |
+| 33167    | Today Battery Discharge Energy     | 0.1     | 0.01      | Changes 100kwh to 10kwh |
+| 33168    | Yesterday Battery Discharge Energy | 0.1     | 0.01      | Changes 100kwh to 10kwh |
 
 # Solar Inverter Modes in Solis Inverters
 
