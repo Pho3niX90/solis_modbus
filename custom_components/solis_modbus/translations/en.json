@@ -30,7 +30,7 @@
     "step": {
       "init": {
         "title": "Modify Solis Modbus Settings",
-        "description": "Change the settings for your Solis inverter. (restart recommended)",
+        "description": "Change the settings for your Solis inverter. (restart required)",
         "data": {
           "poll_interval_fast": "Fast Poll Interval (seconds)",
           "poll_interval_normal": "Normal Poll Interval (seconds)",

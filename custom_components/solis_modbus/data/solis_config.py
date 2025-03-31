@@ -24,6 +24,7 @@ class InverterConfig:
         self.options = options
         self.connection = connection
         self.features: [InverterFeature] = features
+        self.wattage_chosen = max(wattage)
 
         if options.pv:
             self.features.append(InverterFeature.PV)
@@ -51,6 +52,8 @@ SOLIS_INVERTERS = [
     InverterConfig(model="S5-GR1P", wattage=[7000, 10000, 10000], phases=1, type=InverterType.GRID,
                    features=[]),
     InverterConfig(model="S5-GR3P", wattage=[5000, 10000], phases=3, type=InverterType.GRID,
+                   features=[]),
+    InverterConfig(model="S5-GC", wattage=[25000, 30000, 33000, 36000, 40000, 50000], phases=3, type=InverterType.HYBRID,
                    features=[]),
     InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID,
                    features=[]),

@@ -41,6 +41,8 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 3. Search for "Solis Modbus"
 4. Add in the IP of your inverter in the first box, and port in the second.
 
+`Connection Type`: S2 is the default option, only select waveshare if you are using a waveshare device, and some sensors are higher than normal, see here https://solis-modbus.readthedocs.io/en/latest/sensors.html#waveshare
+
 # [sunsynk solar card setup](https://github.com/slipx06/sunsynk-power-flow-card):
 ![img_3.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_3.png)
 ```yaml

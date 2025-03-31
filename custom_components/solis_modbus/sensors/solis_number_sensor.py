@@ -3,6 +3,7 @@ from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import RestoreSensor
+from homeassistant.const import UnitOfElectricCurrent, UnitOfPower
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 
@@ -40,7 +41,18 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         self._attr_native_value = sensor.default
         self._attr_mode = NumberMode.AUTO
         self._attr_native_min_value = sensor.min_value
+
+
         self._attr_native_max_value = sensor.max_value
+
+        try:
+            if self._unit_of_measurement == UnitOfElectricCurrent.AMPERE:
+                self._attr_native_max_value = round((max(self.base_sensor.controller.inverter_config.wattage_chosen) / 44) / 5 ) * 5
+            elif self._unit_of_measurement == UnitOfPower.WATT:
+                self._attr_native_max_value = max(self.base_sensor.controller.inverter_config.wattage_chosen)
+        except Exception:
+            self._attr_native_max_value = sensor.max_value
+
         self._attr_native_step = sensor.step
         self._attr_should_poll = False
         self._attr_entity_registry_enabled_default = sensor.enabled
