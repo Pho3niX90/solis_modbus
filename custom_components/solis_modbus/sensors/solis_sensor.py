@@ -1,5 +1,3 @@
-from datetime import datetime, UTC
-
 import logging
 
 from homeassistant.core import HomeAssistant
