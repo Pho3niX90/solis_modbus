@@ -1228,6 +1228,21 @@ hybrid_sensors = [
                       "state_class": SensorStateClass.MEASUREMENT}]
     },
     {
+        "register_start": 43291,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {"name": "Flexible Export Backflow Power",
+                      "unique": "solis_modbus_inverter_flexible_export_backflow_power", "register": ['43291'],
+             "multiplier": 100,
+             "device_class": SensorDeviceClass.POWER, "unit_of_measurement": UnitOfPower.WATT,
+             "editable": True, "min": 0, "max": 15000, "default": 0, "state_class": SensorStateClass.MEASUREMENT},
+            {"name": "Flexible Export Enabling Switch",
+                      "unique": "solis_modbus_inverter_flexible_export_enabling_switch", "register": ['43292'], "multiplier": 1,
+                      "hidden": True,
+                      "state_class": SensorStateClass.MEASUREMENT}
+                     ]
+    },
+    {
         "register_start": 43110,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
