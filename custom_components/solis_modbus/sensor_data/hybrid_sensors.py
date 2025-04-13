@@ -592,6 +592,17 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 43074,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {"name": "Backflow Power",
+             "unique": "solis_modbus_inverter_backflow_power", "register": ['43074'],
+             "device_class": SensorDeviceClass.POWER, "multiplier": 100,
+             "unit_of_measurement": UnitOfPower.WATT, "editable": True,
+             "default": 0, "min": 5, "max": 20000, "step": 1, },
+        ]
+    },
+    {
         "register_start": 43129,
         "poll_speed": PollSpeed.SLOW,
         "entities": [

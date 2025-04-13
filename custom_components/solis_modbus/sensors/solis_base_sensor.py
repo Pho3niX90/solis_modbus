@@ -56,6 +56,7 @@ class SolisBaseSensor:
         self.min_value = min_value
 
         self.waveshare_adjustment()
+        self.dynamic_adjustments()
 
     def waveshare_adjustment(self):
         """Adjust multiplier if using WAVESHARE and relevant registers are present."""
@@ -63,6 +64,18 @@ class SolisBaseSensor:
             waveshare_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
             if waveshare_registers.intersection(self.registrars):
                 self.multiplier = 0.01
+
+
+    def dynamic_adjustments(self):
+        #
+        # RHI-(3-6)K-48ES-5G: 1<-->100W, setting range: 0~99;
+        # RHI-1P(5-10)K-HVES-5G/RHI-3P(5-10)K-HVES-5G/RAI-3K-48ES-5G: 1<-->1W, setting range: 0~30000;
+        # S6 model: 1<-->100W,
+        #
+        if 43074 in self.registrars:
+            if self.controller.inverter_config.model in ("RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"):
+                self.multiplier = 1
+
 
     @property
     def min_max(self):
