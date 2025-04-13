@@ -109,6 +109,13 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 else:
                     new_value = 0
 
+            if 33175 in self._register or 33171 in self._register:
+                # 33175 - to grid
+                # 33171 - from grid
+                to_grid = self._received_values[self._register[0]] * self.base_sensor.multiplier
+                from_grid = self._received_values[self._register[1]] * self.base_sensor.multiplier
+                new_value = from_grid - to_grid
+
             # set after
             if 35000 in self._register:
                 protocol_version, model_description = decode_inverter_model(new_value)
