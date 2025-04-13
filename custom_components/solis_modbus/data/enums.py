@@ -3,6 +3,7 @@ from enum import Enum
 
 class PollSpeed(Enum):
     ONCE = "once"
+    STARTUP = "startup"
     FAST = "fast"
     NORMAL = "normal"
     SLOW = "slow"

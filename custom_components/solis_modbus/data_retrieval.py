@@ -80,7 +80,7 @@ class DataRetrieval:
         self.hass.create_task(self.controller.process_write_queue())
 
     async def modbus_update_all(self):
-        await self.get_modbus_updates(self.controller.sensor_groups, PollSpeed.FAST)
+        await self.get_modbus_updates(self.controller.sensor_groups, PollSpeed.STARTUP)
 
     async def modbus_update_fast(self, now):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
