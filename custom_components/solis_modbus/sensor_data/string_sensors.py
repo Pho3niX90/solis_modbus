@@ -1,6 +1,6 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential, \
-    UnitOfTemperature, UnitOfFrequency, UnitOfApparentPower, UnitOfReactivePower
+    UnitOfTemperature, UnitOfFrequency, UnitOfApparentPower, UnitOfReactivePower, PERCENTAGE
 
 from custom_components.solis_modbus.data.enums import PollSpeed
 
@@ -152,6 +152,11 @@ string_sensors = [
              "unit_of_measurement": UnitOfReactivePower.VOLT_AMPERE_REACTIVE, "device_class": SensorDeviceClass.REACTIVE_POWER,
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3046', '3047'], "multiplier": 1},
+            {"type": "reserve", "register": ['3048']},
+            {"name": "Actual Limited Active Power", "unique": "solis_modbus_inverter_actual_limited_active_power",
+             "unit_of_measurement": PERCENTAGE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3049'], "multiplier": 1},
         ]
     },
     {
