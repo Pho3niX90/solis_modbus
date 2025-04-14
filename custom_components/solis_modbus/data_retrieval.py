@@ -27,7 +27,8 @@ class DataRetrieval:
         self.poll_updating = {
             PollSpeed.FAST: {},
             PollSpeed.NORMAL: {},
-            PollSpeed.SLOW: {}
+            PollSpeed.SLOW: {},
+            PollSpeed.STARTUP: {},
         }
 
         if self.hass.is_running:
