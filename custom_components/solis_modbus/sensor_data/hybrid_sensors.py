@@ -1336,7 +1336,7 @@ hybrid_sensors_derived = [
      "register": ['33149', '33150', '33135', '1']},
 
     {"type": "SDS", "name": "Today Net Grid Energy",
-     "unique": "solis_modbus_inverter_today_net_grid_energy", "device_class": SensorDeviceClass.POWER,
+     "unique": "solis_modbus_inverter_today_net_grid_energy", "device_class": SensorDeviceClass.ENERGY,
      "multiplier": 0.1,
      "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33175', '33171']}
