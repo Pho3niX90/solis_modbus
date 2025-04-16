@@ -156,7 +156,7 @@ string_sensors = [
             {"name": "Actual Limited Active Power", "unique": "solis_modbus_inverter_actual_limited_active_power",
              "unit_of_measurement": PERCENTAGE,
              "state_class": SensorStateClass.MEASUREMENT,
-             "register": ['3049'], "multiplier": 0.01},
+             "register": ['3049'], "multiplier": 0.01, "editable": True, "min": 0, "max": 110},
         ]
     },
     {
