@@ -53,11 +53,10 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 33049,
+        "register_start": 33029,
         "poll_speed": PollSpeed.SLOW,
         "feature_requirement": [InverterFeature.PV],
         "entities": [
-
             {"name": "PV Total Energy Generation",
              "unique": "solis_modbus_inverter_pv_total_generation",
              "register": ['33029', '33030'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0,
@@ -86,6 +85,24 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_pv_last_year_generation",
              "register": ['33039', '33040'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 1,
              "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},]
+    },
+    {
+        "register_start": 33041,
+        "poll_speed": PollSpeed.FAST,
+        "feature_requirement": [InverterFeature.BMS],
+        "entities": [
+            {"name": "Max Inverter Current",
+             "unique": "solis_modbus_inverter_dc_current_1",
+             "register": ['33041'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+            {"type": "reserve", "register": ['33042']},
+
+            {"name": "Battery Temperature (BMS)",
+             "unique": "solis_modbus_inverter_battery_temperature_bms",
+             "register": ['33043'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+
+        ]
     },
     {
         "register_start": 33049,
@@ -1329,6 +1346,7 @@ hybrid_sensors_derived = [
      "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33149', '33150', '33135', '0']},
+
     {"type": "SDS", "name": "Battery Discharge Power",
      "unique": "solis_modbus_inverter_battery_discharge_power", "device_class": SensorDeviceClass.POWER,
      "multiplier": 0.1,
@@ -1339,5 +1357,9 @@ hybrid_sensors_derived = [
      "unique": "solis_modbus_inverter_today_net_grid_energy", "device_class": SensorDeviceClass.ENERGY,
      "multiplier": 0.1,
      "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.MEASUREMENT,
-     "register": ['33175', '33171']}
+     "register": ['33175', '33171']},
+
+    {"type": "SDS", "name": "Inverter model definition",
+     "unique": "solis_modbus_inverter_model_definition",  "multiplier": 0,
+     "register": ['35000']},
 ]

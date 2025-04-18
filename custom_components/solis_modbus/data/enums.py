@@ -17,6 +17,7 @@ class InverterType(Enum):
 
 class InverterFeature(Enum):
     PV = "pv",
+    BMS = "bms",
     SMART_PORT = "smart_port",
     BATTERY = "battery",
     GRID = "grid",
