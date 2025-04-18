@@ -92,7 +92,7 @@ hybrid_sensors = [
         "feature_requirement": [InverterFeature.BMS],
         "entities": [
             {"name": "Max Inverter Current",
-             "unique": "solis_modbus_inverter_dc_current_1",
+             "unique": "solis_modbus_inverter_max_current",
              "register": ['33041'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
             {"type": "reserve", "register": ['33042']},
