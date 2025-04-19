@@ -26,6 +26,8 @@ class InverterConfig:
         self.features: [InverterFeature] = features
         self.wattage_chosen = max(wattage)
 
+        self.features.append(InverterFeature.BMS)
+
         if options.pv:
             self.features.append(InverterFeature.PV)
         if options.generator:

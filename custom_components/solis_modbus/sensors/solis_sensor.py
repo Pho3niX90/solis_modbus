@@ -9,6 +9,8 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
 
 from custom_components.solis_modbus.const import REGISTER, VALUE, CONTROLLER
+from custom_components.solis_modbus.data.enums import InverterType
+from custom_components.solis_modbus.helpers import cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 from homeassistant.core import callback
@@ -72,6 +74,13 @@ class SolisSensor(RestoreSensor, SensorEntity):
             return # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
+            # Causes issues with grid inverters going offline, and messing up energy dashboard
+            if self.base_sensor.controller.inverter_config.type == InverterType.GRID and 3014 in updated_register:
+                if cache_get(self.hass, 3043) == 2:
+                    self._attr_native_value = 0
+                    self.schedule_update_ha_state()
+                    return 0
+
             updated_value = int(event.data.get(VALUE))
 
             self._received_values[updated_register] = updated_value
