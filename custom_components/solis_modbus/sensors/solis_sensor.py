@@ -1,21 +1,21 @@
 import logging
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from datetime import datetime, timedelta
 
 from typing import List
 from homeassistant.components.sensor import RestoreSensor, SensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
-
 from custom_components.solis_modbus.const import REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import InverterType
 from custom_components.solis_modbus.helpers import cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
-from homeassistant.core import callback
-
+# define constants
 _LOGGER = logging.getLogger(__name__)
+_WATCHDOG_TIMEOUT_MIN = 10
 
 class SolisSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus sensor."""
@@ -31,7 +31,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._register: List[int] = sensor.registrars
 
         self._device_class = sensor.device_class
-        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._unit_of_measurement = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
@@ -41,6 +41,10 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self.is_added_to_hass = False
         self._state = None
         self._received_values = {}
+
+        # Watchdog parameters
+        self._last_update = datetime.now()
+        self._update_timeout = timedelta(minutes=_WATCHDOG_TIMEOUT_MIN)
 
     def decimal_count(self, number: float) -> int | None:
         """Returns the number of decimal places in a given number."""
@@ -79,10 +83,10 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 if cache_get(self.hass, 3043) == 2:
                     self._attr_native_value = 0
                     self.schedule_update_ha_state()
-                    return 0
+                    self._last_update = datetime.now()
+                    return
 
             updated_value = int(event.data.get(VALUE))
-
             self._received_values[updated_register] = updated_value
 
             # If we haven't received all registers yet, wait
@@ -91,22 +95,31 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 return
 
             values = [self._received_values[reg] for reg in self._register]
-
             if None in values:
                 problematic_regs = {reg: self._received_values.get(reg) for reg in self._register if self._received_values.get(reg) is None}
                 if problematic_regs:
                     _LOGGER.debug(f"⚠️ Problematic values received in registrars: {problematic_regs}, skipping update")
                     return
 
-            new_value = self.base_sensor.convert_value([self._received_values[reg] for reg in self._register])
-
-            # Clear received values after update
+            new_value = self.base_sensor.convert_value(values)
+			# Clear received values after update
             self._received_values.clear()
 
             # Update state if valid value exists
             if new_value is not None:
                 self._attr_native_value = new_value
+                self._attr_available = True
+                self._last_update = datetime.now()
                 self.schedule_update_ha_state()
+
+    async def async_update(self):
+        """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
+        now = datetime.now()
+        if now - self._last_update > self._update_timeout:
+            _LOGGER.warning(f"No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
+            self._attr_native_value = 0
+            self._attr_available = False  # Set attribute unavailable (if desired)
+            self.schedule_update_ha_state()
 
     @property
     def device_info(self):
