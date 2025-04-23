@@ -268,7 +268,7 @@ string_sensors = [
              "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
 
             {"name": "Load Total Consumption Energy",
-             "unique": "solis_modbus_inverter_total_load_power",
+             "unique": "solis_modbus_inverter_load_total_consumption_energy",
              "register": ['36052', '36053'], "device_class": SensorDeviceClass.ENERGY, "multiplier": 0.01,
              "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING},
 
