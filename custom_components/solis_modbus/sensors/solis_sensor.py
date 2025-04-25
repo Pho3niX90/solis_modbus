@@ -83,7 +83,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 if cache_get(self.hass, 3043) == 2:
                     self._attr_native_value = 0
                     self.schedule_update_ha_state()
-                    self._last_update = datetime.now()
+                    self._last_update = datetime.now(timezone.utc).astimezone()
                     return
 
             updated_value = int(event.data.get(VALUE))
