@@ -43,7 +43,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._received_values = {}
 
         # Watchdog parameters
-        self._last_update = datetime.now()
+        self._last_update = datetime.now(timezone.utc).astimezone()
         self._update_timeout = timedelta(minutes=_WATCHDOG_TIMEOUT_MIN)
 
     def decimal_count(self, number: float) -> int | None:
@@ -109,7 +109,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
             if new_value is not None:
                 self._attr_native_value = new_value
                 self._attr_available = True
-                self._last_update = datetime.now()
+                self._last_update = datetime.now(timezone.utc).astimezone()
                 self.schedule_update_ha_state()
 
     async def async_update(self):
@@ -117,7 +117,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         now = datetime.now()
         if now - self._last_update > self._update_timeout:
             _LOGGER.warning(f"No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
-            self._attr_native_value = 0
+            #self._attr_native_value = 0
             self._attr_available = False  # Set attribute unavailable (if desired)
             self.schedule_update_ha_state()
 
