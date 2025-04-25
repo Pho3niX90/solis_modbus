@@ -1,7 +1,7 @@
 import logging
 
 from homeassistant.core import HomeAssistant, callback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from typing import List
 from homeassistant.components.sensor import RestoreSensor, SensorEntity
