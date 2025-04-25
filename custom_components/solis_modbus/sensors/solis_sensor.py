@@ -43,7 +43,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._received_values = {}
 
         # Watchdog parameters
-        self._last_update = .now(timezone.utc).astimezone()
+        self._last_update = datetime.now(timezone.utc).astimezone()
         self._update_timeout = timedelta(minutes=_WATCHDOG_TIMEOUT_MIN)
 
     def decimal_count(self, number: float) -> int | None:
@@ -83,7 +83,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 if cache_get(self.hass, 3043) == 2:
                     self._attr_native_value = 0
                     self.schedule_update_ha_state()
-                    self._last_update = .now(timezone.utc).astimezone()
+                    self._last_update = datetime.now(timezone.utc).astimezone()
                     return
 
             updated_value = int(event.data.get(VALUE))
