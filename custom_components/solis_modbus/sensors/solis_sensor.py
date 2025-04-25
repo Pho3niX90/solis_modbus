@@ -1,6 +1,6 @@
 import logging
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from datetime import datetime, timedelta
 
 from typing import List
