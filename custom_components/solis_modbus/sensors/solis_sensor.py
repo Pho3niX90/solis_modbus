@@ -70,7 +70,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
     @callback
     def handle_modbus_update(self, event):
-        """Callback function that updates sensor when new register data is available."""
+        """Callback function that updates sensor when  register data is available."""
         updated_register = int(event.data.get(REGISTER))
         updated_controller = str(event.data.get(CONTROLLER))
 
@@ -102,7 +102,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
                     return
 
             new_value = self.base_sensor.convert_value(values)
-			# Clear received values after update
+            # Clear received values after update
             self._received_values.clear()
 
             # Update state if valid value exists
