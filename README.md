@@ -246,3 +246,4 @@ Solis and equivalent Axitec, Zonneplan inverters
 
 **Wifi Dongles Tested**
 - S2_WL_ST
+- Waveshare
