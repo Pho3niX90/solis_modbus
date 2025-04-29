@@ -10,7 +10,8 @@ from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
-from custom_components.solis_modbus.data.enums import PollSpeed, InverterType
+from custom_components.solis_modbus.data.enums import PollSpeed, InverterType, InverterFeature
+from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,16 +56,15 @@ class SolisBaseSensor:
         self.enabled = enabled
         self.min_value = min_value
 
-        self.waveshare_adjustment()
+        self.tcp_adjustment()
         self.dynamic_adjustments()
 
-    def waveshare_adjustment(self):
+    def tcp_adjustment(self):
         """Adjust multiplier if using WAVESHARE and relevant registers are present."""
-        if self.controller.inverter_config.type == InverterType.WAVESHARE or self.controller.inverter_config.connection == "WAVESHARE":
+        if InverterFeature.TCP in self.controller.inverter_config.features:
             waveshare_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
             if waveshare_registers.intersection(self.registrars):
                 self.multiplier = 0.01
-
 
     def dynamic_adjustments(self):
         #
