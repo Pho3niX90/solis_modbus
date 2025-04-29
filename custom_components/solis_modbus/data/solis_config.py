@@ -36,6 +36,8 @@ class InverterConfig:
             self.features.append(InverterFeature.BATTERY)
         if options.v2:
             self.features.append(InverterFeature.V2)
+        if self.type == InverterType.WAVESHARE or self.connection == "WAVESHARE":
+            self.features.append(InverterFeature.TCP)
 
 
 SOLIS_INVERTERS = [
@@ -47,6 +49,8 @@ SOLIS_INVERTERS = [
                    features=[InverterFeature.SMART_PORT]),
     InverterConfig(model="S6-GR1P", wattage=[3000, 3600, 4000, 4600, 5000, 6000], phases=1, type=InverterType.GRID,
                    features=[InverterFeature.SMART_PORT]),
+    InverterConfig(model="S6-EH3P10K-H-ZP", wattage=[10000], phases=3, type=InverterType.HYBRID,
+                   features=[InverterFeature.SMART_PORT, InverterFeature.TCP]),
     InverterConfig(model="S5-EH1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID,
                    features=[]),
     InverterConfig(model="S5-EO1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID,

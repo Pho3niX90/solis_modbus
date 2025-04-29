@@ -22,4 +22,5 @@ class InverterFeature(Enum):
     BATTERY = "battery",
     GRID = "grid",
     GENERATOR = "generator",
-    V2 = "v2"
+    V2 = "v2",
+    TCP = "tcp"
