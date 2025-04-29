@@ -13,7 +13,6 @@ from custom_components.solis_modbus.data.enums import InverterType
 from custom_components.solis_modbus.helpers import cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
-# define constants
 _LOGGER = logging.getLogger(__name__)
 _WATCHDOG_TIMEOUT_MIN = 10
 
