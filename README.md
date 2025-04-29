@@ -223,11 +223,26 @@ Card inspiration from https://github.com/slipx06/Sunsynk-Home-Assistant-Dash
 
 ## Tested
 **Inverters Tested**
-- Solis S6 Pro 6kW Advanced Hybrid Inverter
-- Solis S6-EH1P6K-L-PRO
-- Solis RHI-5K @fastsonic
-- Solis S6-EH3P15K-H
-- Solis S6-EH3P(12-20)K-H / Axitec AXIhycon 15H @hbpv
+Solis and equivalent Axitec, Zonneplan inverters
+
+- **S6-EH3P**
+- - S6-EH3P20K-H (https://github.com/Pho3niX90/solis_modbus/issues/93)
+- - S6-EH3P15K-H
+- - S6-EH3P(12-20)K-H
+- - S6-EH1P6K-L-PRO
+- - S6-EH3P10K-H-ZP (https://github.com/Pho3niX90/solis_modbus/issues/191)
+- **S6-GR1P**
+- - S6-GR1P4K (https://github.com/Pho3niX90/solis_modbus/issues/84)
+- **S5-EH1**
+- - S5-EH1(3-6)K-L (https://github.com/Pho3niX90/solis_modbus/issues/89)
+- - S5-EH1P5K-L (https://github.com/Pho3niX90/solis_modbus/issues/94)
+- - S5-EH1P6K-L (https://github.com/Pho3niX90/solis_modbus/issues/94#issuecomment-2656512651)
+- **S5-GC**
+- - S5-GC30K (https://github.com/Pho3niX90/solis_modbus/issues/173)
+- **RAI-***
+- - RAI-3K-48ES-5G (https://github.com/Pho3niX90/solis_modbus/issues/174)
+- **RHI-***
+- - RHI-3K-48ES-5G (https://github.com/Pho3niX90/solis_modbus/issues/97#issuecomment-2639807764)
 
 **Wifi Dongles Tested**
 - S2_WL_ST
