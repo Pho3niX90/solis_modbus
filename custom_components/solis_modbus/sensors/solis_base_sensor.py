@@ -150,7 +150,6 @@ class SolisSensorGroup:
     sensors: List[SolisBaseSensor]
 
     def __init__(self, hass, definition, controller):
-        self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
         self._sensors = list(map(lambda entity: SolisBaseSensor(
             hass=hass,
             name= entity.get("name", "reserve"),
@@ -166,8 +165,9 @@ class SolisSensorGroup:
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
             unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve")),
-            poll_speed=self.poll_speed
+            poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))
+        self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
 
         _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
         self.validate_sequential_registrars()
