@@ -34,7 +34,9 @@ class SolisBaseSensor:
                  step = 0.1,
                  hidden = False,
                  enabled = True,
-                 min_value: Optional[int] = None, max_value: Optional[int] = None):
+                 min_value: Optional[int] = None,
+                 max_value: Optional[int] = None,
+                 poll_speed = PollSpeed.NORMAL):
         """
         :param name: Sensor name
         :param registrars: First register address
@@ -55,6 +57,7 @@ class SolisBaseSensor:
         self.step = self.get_step(step)
         self.enabled = enabled
         self.min_value = min_value
+        self.poll_speed = poll_speed
 
         self.tcp_adjustment()
         self.dynamic_adjustments()
@@ -161,9 +164,9 @@ class SolisSensorGroup:
             min_value=entity.get("min", 0),
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
+            unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve")),
+            poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))
-
         self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
 
         _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")

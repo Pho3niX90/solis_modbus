@@ -9,7 +9,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
 from custom_components.solis_modbus.const import REGISTER, VALUE, CONTROLLER
-from custom_components.solis_modbus.data.enums import InverterType
+from custom_components.solis_modbus.data.enums import InverterType, PollSpeed
 from custom_components.solis_modbus.helpers import cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
@@ -40,6 +40,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self.is_added_to_hass = False
         self._state = None
         self._received_values = {}
+        self.poll_speed = sensor.poll_speed
 
         # Watchdog parameters
         self._last_update = datetime.now(timezone.utc).astimezone()
@@ -114,7 +115,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
     async def async_update(self):
         """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
         now = datetime.now(timezone.utc).astimezone()
-        if now - self._last_update > self._update_timeout:
+        if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
             _LOGGER.warning(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
             #self._attr_native_value = 0
             self._attr_available = False  # Set attribute unavailable (if desired)

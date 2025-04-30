@@ -573,13 +573,13 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_max_charge_current", "register": ['43012'],
              "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
-             "default": 20, "min": 5, "max": 200, "step": 1, },
+             "default": 20, "min": 0, "max": 200, "step": 0.5, },
 
             {"name": "Max Discharge Current",
              "unique": "solis_modbus_inverter_max_discharge_current", "register": ['43013'],
              "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
-             "default": 20, "min": 5, "max": 200, "step": 1, },
+             "default": 20, "min": 0, "max": 200, "step": 0.5, },
 
             {"type": "reserve", "register": ['43014', '43015', '43016', '43017']},
 
@@ -1356,7 +1356,7 @@ hybrid_sensors_derived = [
     {"type": "SDS", "name": "Today Net Grid Energy",
      "unique": "solis_modbus_inverter_today_net_grid_energy", "device_class": SensorDeviceClass.ENERGY,
      "multiplier": 0.1,
-     "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.MEASUREMENT,
+     "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING,
      "register": ['33175', '33171']},
 
     {"type": "SDS", "name": "Inverter model definition",
