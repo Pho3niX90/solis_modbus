@@ -10,8 +10,7 @@ from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
-from custom_components.solis_modbus.data.enums import PollSpeed, InverterType, InverterFeature
-from custom_components.solis_modbus.data.solis_config import InverterConfig
+from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
 
 _LOGGER = logging.getLogger(__name__)

@@ -157,6 +157,13 @@ string_sensors = [
              "unit_of_measurement": PERCENTAGE,
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3049'], "multiplier": 0.01, "editable": True, "min": 0, "max": 110},
+            {"name": "Actual Adjusted Power Factor", "unique": "solis_modbus_inverter_actual_adjusted_power_factor",
+             "unit_of_measurement": PERCENTAGE,
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3050'], "multiplier": 0.01},
+            {"name": "Actual Power Factor Adjustment", "unique": "solis_modbus_inverter_actual_power_factor_adjustment",
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3051'], "multiplier": 0.001, "editable": True, "min": 0, "max": 100},
         ]
     },
     {
