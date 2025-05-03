@@ -52,12 +52,12 @@ OPTIONS_SCHEMA = vol.Schema(
 
 
 def clean_identification(iden: str | None) -> str | None:
-    if iden is None:
+    if not iden or not iden.strip():
         return None
     # Replace spaces and disallowed characters with underscores
-    iden = iden.lower()
+    iden = iden.strip().lower()
     iden = re.sub(r"[^a-z0-9_]", "_", iden)
-    return re.sub(r"_+", "_", iden).strip("_")  # Normalize multiple underscores
+    return re.sub(r"_+", "_", iden).strip("_")
 
 
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

@@ -195,7 +195,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             multiplier=entity.get("multiplier", 1),
             category=entity.get("category", 1),
             identification=entity.get("identification", None),
-            unique_id=f"{DOMAIN}_{entity['unique']}" if identification is None else f"{DOMAIN}_{identification}_{entity['unique']}"
+            unique_id=f"{DOMAIN}_{entity['unique']}" if not identification else f"{DOMAIN}_{identification}_{entity['unique']}"
         )
         for entity in sensors_derived
     ]

@@ -620,7 +620,7 @@ hybrid_sensors = [
             {"name": "Overdischarge Voltage", "category": Category.BATTERY_SETTING,
              "unique": "solis_modbus_inverter_overdischarge_voltage", "register": ['43020'], "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricPotential.VOLT, "device_class": SensorDeviceClass.VOLTAGE, "state_class": SensorStateClass.MEASUREMENT, "editable": True,
-             "default": 56.0, "min": 40, "max": 52, "step": 0.1, },
+             "default": 56.0, "min": 40, "max": 60, "step": 0.1, },
 
             {"name": "Forcecharge Voltage", "category": Category.BATTERY_SETTING,
              "unique": "solis_modbus_inverter_forcecharge_voltage", "register": ['43021'], "multiplier": 0.1,

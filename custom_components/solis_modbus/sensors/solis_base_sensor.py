@@ -60,6 +60,7 @@ class SolisBaseSensor:
         self.min_value = min_value
         self.poll_speed = poll_speed
         self.category = category
+        self.identification = identification
 
         self.tcp_adjustment()
         self.dynamic_adjustments()
@@ -177,6 +178,7 @@ class SolisSensorGroup:
 
         _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
         self.validate_sequential_registrars()
+        self.identification = identification
 
     def validate_sequential_registrars(self):
         """Ensure all registrars increase sequentially without skipping numbers."""
