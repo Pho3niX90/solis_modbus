@@ -563,7 +563,7 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43010,
+        "register_start": 43009,
         "poll_speed": PollSpeed.NORMAL,
         "entities": [
 
