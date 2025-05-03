@@ -10,14 +10,27 @@ def extract_all_entities(sensor_groups):
 class TestSensorDefinitions(unittest.TestCase):
 
     def check_group(self, name, sensor_groups, derived_sensors):
-        # 1. register_start must match the first child register
         for group in sensor_groups:
-            if not group["entities"]:
+            entities = group.get("entities", [])
+            if not entities:
                 continue
-            first_register = int(group["entities"][0]["register"][0])
+
+            # 1. register_start matches first register
+            first_register = int(entities[0]["register"][0])
             self.assertEqual(
                 group["register_start"], first_register,
                 f"{name}: Group starting at {group['register_start']} != first entity register {first_register}"
+            )
+
+            # 4. Ensure register sequence is contiguous
+            all_regs = []
+            for entity in entities:
+                all_regs.extend(int(r) for r in entity["register"])
+            all_regs_sorted = sorted(all_regs)
+            expected_sequence = list(range(min(all_regs_sorted), max(all_regs_sorted) + 1))
+            self.assertEqual(
+                all_regs_sorted, expected_sequence,
+                f"{name}: Registers in group starting at {group['register_start']} are not sequential: {all_regs_sorted}"
             )
 
         # 2. all unique fields must be unique
@@ -36,7 +49,7 @@ class TestSensorDefinitions(unittest.TestCase):
         # 3. no duplicate entity name + register
         seen_keys = set()
         for _, entity in extract_all_entities(sensor_groups):
-            key = (entity.get("name", tuple(entity["register"])), tuple(entity["register"]))
+            key = (entity.get("name", ""), tuple(entity["register"]))
             self.assertNotIn(key, seen_keys, f"{name}: Duplicate entity {key}")
             seen_keys.add(key)
 
