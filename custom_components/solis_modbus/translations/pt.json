@@ -8,8 +8,8 @@
         "data": {
           "host": "Endereço IP do Inversor Solis",
           "port": "Porta (padrão: 502)",
-          "slave": "Slave Address (default: 1)",
-          "identification": "Identification for multi inverters",
+          "slave": "Endereço escravo (padrão: 1)",
+          "identification": "Identificação para vários inversores",
           "poll_interval_fast": "Intervalo de pesquisa rápida (segundos)",
           "poll_interval_normal": "Intervalo de pesquisa normal (segundos)",
           "poll_interval_slow": "Intervalo de pesquisa lenta (segundos)",
@@ -17,7 +17,7 @@
           "has_v2": "Atualizado para Firmware V2",
           "has_pv": "Possui energia solar (PV)",
           "has_battery": "Possui armazenamento de bateria",
-          "has_hv_battery": "Has HV Battery Storage (100v+)",
+          "has_hv_battery": "Armazenamento de bateria HV (100 V+)",
           "has_generator": "Possui gerador",
           "phases": "Fases"
         }
