@@ -9,6 +9,7 @@
           "host": "IP address of Solis Inverter",
           "port": "Port (default: 502)",
           "slave": "Slave Address (default: 1)",
+          "identification": "Identification for multi inverters",
           "poll_interval_fast": "Fast Poll Interval (seconds)",
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
@@ -39,6 +40,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_battery": "Has Battery Storage",
+          "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "phases": "Phases",
           "connection": "Connection Type"

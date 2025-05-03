@@ -1,18 +1,19 @@
 import logging
 from typing import List
 
-from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.components.sensor import RestoreSensor
+from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
 from homeassistant.const import UnitOfElectricCurrent, UnitOfPower
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.template import is_number
 
 from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, MANUFACTURER
+from custom_components.solis_modbus.helpers import cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
 
-class SolisNumberEntity(RestoreSensor, NumberEntity):
+class SolisNumberEntity(RestoreNumber, NumberEntity):
     """Representation of a Number entity."""
 
     def __init__(self, hass, sensor: SolisBaseSensor):
@@ -37,13 +38,15 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         self._multiplier = sensor.multiplier
 
         # Unique ID based on all registers
-        #"{}_{}_{}".format(DOMAIN, self.base_sensor.controller.host, "_".join(map(str, self._register)))
         self._attr_native_value = sensor.default
         self._attr_mode = NumberMode.AUTO
         self._attr_native_min_value = sensor.min_value
-
-
         self._attr_native_max_value = sensor.max_value
+
+        self._attr_native_step = sensor.step
+        self._attr_step = sensor.step
+        self._attr_should_poll = False
+        self._attr_entity_registry_enabled_default = sensor.enabled
 
         try:
             if self._unit_of_measurement == UnitOfElectricCurrent.AMPERE:
@@ -53,18 +56,36 @@ class SolisNumberEntity(RestoreSensor, NumberEntity):
         except Exception:
             self._attr_native_max_value = sensor.max_value
 
-        self._attr_native_step = sensor.step
-        self._attr_should_poll = False
-        self._attr_entity_registry_enabled_default = sensor.enabled
-
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        state = await self.async_get_last_sensor_data()
+        state = await self.async_get_last_number_data()
         if state:
             self._attr_native_value = state.native_value
+            self.adjust_min_max_step(state.native_min_value, state.native_max_value, state.native_step)
 
         # 🔥 Register event listener for real-time updates
         self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
+
+    def adjust_min_max_step(self, min_wanted: float | None, max_wanted: float | None, step_wanted: float | None):
+        # float(43016) & equalization(43017) voltages, and rated capacity(43019)
+        if 43016 in self._register or 43017 in self._register or 43019 in self._register:
+            installed_battery = cache_get(self.hass, 43009)
+
+            if is_number(installed_battery):
+                # only supported with a user defined battery
+                if installed_battery != 2 and not self.registry_entry.disabled:
+                    self.registry_entry.disabled = True
+                else:
+                    self.registry_entry.disabled = False
+
+        if self._attr_native_min_value != min_wanted and min_wanted is not None:
+            self._attr_native_min_value = min_wanted
+        if self._attr_native_max_value != max_wanted and max_wanted is not None:
+            self._attr_native_max_value = max_wanted
+        if self._attr_native_step != step_wanted and step_wanted is not None:
+            self._attr_native_step = step_wanted
+
+
 
     @callback
     def handle_modbus_update(self, event):

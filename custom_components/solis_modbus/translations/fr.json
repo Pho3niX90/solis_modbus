@@ -8,6 +8,8 @@
         "data": {
           "host": "Adresse IP de l'onduleur Solis",
           "port": "Port (par défaut : 502)",
+          "slave": "Slave Address (default: 1)",
+          "identification": "Identification for multi inverters",
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
@@ -15,6 +17,7 @@
           "has_v2": "Mise à jour vers le firmware V2",
           "has_pv": "Possède un panneau solaire (PV)",
           "has_battery": "Possède un stockage de batterie",
+          "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Possède un générateur",
           "phases": "Phases"
         }

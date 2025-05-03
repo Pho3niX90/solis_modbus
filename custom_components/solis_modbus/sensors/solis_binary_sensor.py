@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from homeassistant.helpers.restore_state import RestoreEntity
+
 from custom_components.solis_modbus.helpers import cache_get, cache_save
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -10,7 +12,7 @@ from custom_components.solis_modbus import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
 
-class SolisBinaryEntity(SwitchEntity):
+class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass

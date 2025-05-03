@@ -117,6 +117,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
     inverter_model = config.get("model")
+    identification = config.get("identification", None)
 
     if inverter_model is None:
         old_type = config.get("type", "hybrid")
@@ -141,6 +142,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                          inverter_config.type in [InverterType.HYBRID, InverterType.GRID, InverterType.WAVESHARE]),
         "generator": config.get("has_generator", True),
         "battery": config.get("has_battery", True),
+        "hv_battery": config.get("has_hv_battery", False),
     }
     inverter_config.connection = config.get("connection", "S2_WL_ST")
 
@@ -158,6 +160,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         host=host,
         port=port,
         slave=slave,
+        identification=identification,
         fast_poll=poll_interval_fast,
         normal_poll=poll_interval_normal,
         slow_poll=poll_interval_slow,
@@ -176,7 +179,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             continue  # Skip this group
 
         # If it passes the check, add to sensor groups
-        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller))
+        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
     controller._derived_sensors = [
         SolisBaseSensor(
@@ -190,7 +193,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             editable=entity.get("editable", False),
             hidden=entity.get("hidden", False),
             multiplier=entity.get("multiplier", 1),
-            unique_id=f"{DOMAIN}_{entity['unique']}"
+            category=entity.get("category", 1),
+            identification=entity.get("identification", None),
+            unique_id=f"{DOMAIN}_{entity['unique']}" if identification is None else f"{DOMAIN}_{identification}_{entity['unique']}"
         )
         for entity in sensors_derived
     ]
