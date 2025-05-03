@@ -118,7 +118,7 @@ hybrid_sensors = [
              "register": ['33050'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
 
-            {"name": "PV Voltage 2 ", "category": Category.PV_INFORMATION,
+            {"name": "PV Voltage 2", "category": Category.PV_INFORMATION,
              "unique": "solis_modbus_inverter_dc_voltage_2",
              "register": ['33051'], "device_class": SensorDeviceClass.VOLTAGE, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
