@@ -91,7 +91,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "pv": user_input.get("has_pv", True),
             "generator": user_input.get("has_generator", True),
             "battery": user_input.get("has_battery", True),
-            "hv_battery": user_input.get("has_hv_battery", True),
+            "hv_battery": user_input.get("has_hv_battery", False),
         }
         inverter_config.connection = user_input.get("connection", "S2_WL_ST")
 
