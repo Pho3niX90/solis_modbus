@@ -193,7 +193,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             editable=entity.get("editable", False),
             hidden=entity.get("hidden", False),
             multiplier=entity.get("multiplier", 1),
-            category=entity.get("category", 1),
+            category=entity.get("category", None),
             identification=entity.get("identification", None),
             unique_id=f"{DOMAIN}_{entity['unique']}" if not identification else f"{DOMAIN}_{identification}_{entity['unique']}"
         )

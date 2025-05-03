@@ -16,6 +16,10 @@ class TestSensorDefinitions(unittest.TestCase):
                 continue
 
             # 1. register_start matches first register
+            self.assertTrue(
+                    entities[0].get("register"),
+                    f"{name}: Entity {entities[0].get('name')} has no registers defined"
+                )
             first_register = int(entities[0]["register"][0])
             self.assertEqual(
                 group["register_start"], first_register,
@@ -51,6 +55,11 @@ class TestSensorDefinitions(unittest.TestCase):
         for _, entity in extract_all_entities(sensor_groups):
             key = (entity.get("name", ""), tuple(entity["register"]))
             self.assertNotIn(key, seen_keys, f"{name}: Duplicate entity {key}")
+            seen_keys.add(key)
+
+        for entity in derived_sensors:
+            key = (entity.get("name", ""), tuple(entity.get("register", [])))
+            self.assertNotIn(key, seen_keys, f"{name}: Duplicate derived entity {key}")
             seen_keys.add(key)
 
     def test_hybrid_sensors(self):
