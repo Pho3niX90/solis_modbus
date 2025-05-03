@@ -81,16 +81,18 @@ class DataRetrieval:
         self.hass.create_task(self.controller.process_write_queue())
 
     async def modbus_update_all(self):
-        await self.get_modbus_updates(self.controller.sensor_groups, PollSpeed.STARTUP)
+        await self.modbus_update_fast()
+        await self.modbus_update_normal()
+        await self.modbus_update_slow()
 
-    async def modbus_update_fast(self, now):
+    async def modbus_update_fast(self, now = None):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
         self.hass.bus.async_fire(DOMAIN, {REGISTER: 90006, VALUE: self.controller.last_modbus_success, CONTROLLER: self.controller.host})
 
-    async def modbus_update_slow(self, now):
+    async def modbus_update_slow(self, now = None):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.SLOW], PollSpeed.SLOW)
 
-    async def modbus_update_normal(self, now):
+    async def modbus_update_normal(self, now = None):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed in (PollSpeed.NORMAL, PollSpeed.ONCE)], PollSpeed.NORMAL)
 
     async def get_modbus_updates(self, groups: List[SolisSensorGroup], speed: PollSpeed):

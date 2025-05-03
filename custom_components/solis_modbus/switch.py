@@ -102,9 +102,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                     {"name": "Solis Force Start Generator", "on_value": 1},
                 ]
             },{
-                "register": 43291,
+                "register": 43292,
                 "entities": [
-                    {"name": "Flexible Export Enabling Switch", "on_value": 0x00AA},
+                    {"name": "Flexible Export Enabling Switch", "on_value": 170},
                 ]
             }, {
                 "register": 43707,

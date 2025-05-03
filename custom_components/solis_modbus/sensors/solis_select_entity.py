@@ -2,13 +2,15 @@ import logging
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.restore_state import RestoreEntity
+
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.helpers import cache_get, cache_save
 
 _LOGGER = logging.getLogger(__name__)
 
-class SolisSelectEntity(SelectEntity):
+class SolisSelectEntity(RestoreEntity, SelectEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition) -> None:
         self._hass = hass

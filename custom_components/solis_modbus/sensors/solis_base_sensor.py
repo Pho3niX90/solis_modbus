@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
-from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature
+from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature, Category
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,8 +33,10 @@ class SolisBaseSensor:
                  step = 0.1,
                  hidden = False,
                  enabled = True,
+                 category: Category = None,
                  min_value: Optional[int] = None,
                  max_value: Optional[int] = None,
+                 identification = None,
                  poll_speed = PollSpeed.NORMAL):
         """
         :param name: Sensor name
@@ -57,6 +59,8 @@ class SolisBaseSensor:
         self.enabled = enabled
         self.min_value = min_value
         self.poll_speed = poll_speed
+        self.category = category
+        self.identification = identification
 
         self.tcp_adjustment()
         self.dynamic_adjustments()
@@ -83,21 +87,22 @@ class SolisBaseSensor:
     def min_max(self):
         if self.min_value is not None and self.max_value is not None:
             return self.min_value, self.max_value
-        if self.device_class == PERCENTAGE:
+        if self.unit_of_measurement == PERCENTAGE:
             return 0,100
-        if self.device_class == UnitOfPower.KILO_WATT:
+        if self.unit_of_measurement == UnitOfPower.KILO_WATT:
             return 0,6
-        if self.device_class == UnitOfPower.WATT:
+        if self.unit_of_measurement == UnitOfPower.WATT:
             return 0,6000
 
     def get_step(self, wanted_step):
-        if self.device_class == PERCENTAGE:
+        if wanted_step is not None:
+            return wanted_step
+        if self.unit_of_measurement == PERCENTAGE:
             return 1
-        if self.device_class == UnitOfPower.KILO_WATT:
-            return 0,1
-        if self.device_class == UnitOfPower.WATT:
+        if self.unit_of_measurement == UnitOfPower.KILO_WATT:
+            return 0.1
+        if self.unit_of_measurement == UnitOfPower.WATT:
             return 1
-        return wanted_step
 
     @property
     def get_raw_values(self):
@@ -148,7 +153,7 @@ class SolisBaseSensor:
 class SolisSensorGroup:
     sensors: List[SolisBaseSensor]
 
-    def __init__(self, hass, definition, controller):
+    def __init__(self, hass, definition, controller, identification = None):
         self._sensors = list(map(lambda entity: SolisBaseSensor(
             hass=hass,
             name= entity.get("name", "reserve"),
@@ -161,15 +166,19 @@ class SolisSensorGroup:
             editable=entity.get("editable", False),
             max_value=entity.get("max", 3000),
             min_value=entity.get("min", 0),
+            step=entity.get("step", None),
+            identification= identification,
+            category=entity.get("category", None),
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve")),
+            unique_id="{}_{}_{}".format(DOMAIN, identification if identification is not None else controller.host, entity.get("unique", "reserve")),
             poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))
         self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
 
         _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
         self.validate_sequential_registrars()
+        self.identification = identification
 
     def validate_sequential_registrars(self):
         """Ensure all registrars increase sequentially without skipping numbers."""

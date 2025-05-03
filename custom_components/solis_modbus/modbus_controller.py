@@ -18,11 +18,12 @@ _LOGGER = logging.getLogger(__name__)
 
 class ModbusController:
     def __init__(self, hass, host, inverter_config: InverterConfig, sensor_groups: List[SolisSensorGroup] = None,
-                 derived_sensors: List[SolisDerivedSensor] = None, slave=1, port=502, fast_poll=5, normal_poll=15, slow_poll=30):
+                 derived_sensors: List[SolisDerivedSensor] = None, slave=1, port=502, fast_poll=5, normal_poll=15, slow_poll=30, identification: str | None = None):
         self.hass = hass
         self.host = host
         self.port = port
         self.slave = slave
+        self.identification = identification
         self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(host=self.host, port=self.port, timeout=5, retries=5)
         self.connect_failures = 0
         self._data_received = False

@@ -1,0 +1,26 @@
+name: Validate Sensor Definitions
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install voluptuous homeassistant pymodbus
+
+      - name: Run sensor definition tests
+        run: python3 -m unittest discover -s tests -p "test_sensor_definitions.py"

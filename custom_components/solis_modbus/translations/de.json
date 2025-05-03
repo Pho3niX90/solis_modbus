@@ -7,7 +7,8 @@
         "description": "Geben Sie die Verbindungsdetails für Ihren Solis-Wechselrichter ein.",
         "data": {
           "host": "IP-Adresse des Solis-Wechselrichters",
-          "port": "Port (Standard: 502)",
+          "slave": "Slave-Adresse (Standard: 1)",
+          "identification": "Kennung für Mehrfachwechselrichter",
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
@@ -15,6 +16,7 @@
           "has_v2": "Auf Firmware V2 aktualisiert",
           "has_pv": "Hat Photovoltaik (Solarpaneele)",
           "has_battery": "Hat Batteriespeicher",
+          "has_hv_battery": "HV-Batteriespeicher (100 V+)",
           "has_generator": "Hat Generator",
           "phases": "Phasen"
         }

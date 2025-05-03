@@ -8,6 +8,8 @@
         "data": {
           "host": "IP-adres van Solis-omsetter",
           "port": "Poort (verstek: 502)",
+          "slave": "Slave Address (default: 1)",
+          "identification": "Identification for multi inverters",
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
@@ -15,6 +17,7 @@
           "has_v2": "Opgedateer na V2-firmware",
           "has_pv": "Het sonkrag (PV)",
           "has_battery": "Het batteryberging",
+          "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Het kragopwekker",
           "phases": "Fases"
         }

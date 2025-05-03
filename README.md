@@ -43,8 +43,12 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 
 `Connection Type`: S2 is the default option, only select waveshare if you are using a waveshare device, and some sensors are higher than normal, see here https://solis-modbus.readthedocs.io/en/latest/sensors.html#waveshare
 
-# [sunsynk solar card setup](https://github.com/slipx06/sunsynk-power-flow-card):
-![img_3.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_3.png)
+# [JK BMS](https://github.com/Pho3niX90/jk-bms-card)
+Get the card here : https://github.com/Pho3niX90/jk-bms-card
+![img_jk_bms.png](images/img_jk_bms.png)
+
+# [Solar card setup](https://github.com/slipx06/sunsynk-power-flow-card):
+![img_solar_card.png](images/img_solar_card.png)
 ```yaml
 type: custom:sunsynk-power-flow-card
 view_layout:

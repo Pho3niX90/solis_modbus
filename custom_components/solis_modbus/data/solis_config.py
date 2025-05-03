@@ -4,9 +4,10 @@ from custom_components.solis_modbus.data.enums import InverterType, InverterFeat
 
 
 class InverterOptions:
-    def __init__(self, pv: bool = True, battery: bool = True, generator: bool = True, v2: bool = True):
+    def __init__(self, pv: bool = True, battery: bool = True, hv_battery: bool = True, generator: bool = True, v2: bool = True):
         self.pv = pv
         self.battery = battery
+        self.hv_battery = hv_battery
         self.generator = generator
         self.v2 = v2
 
@@ -34,6 +35,8 @@ class InverterConfig:
             self.features.append(InverterFeature.GENERATOR)
         if options.battery:
             self.features.append(InverterFeature.BATTERY)
+        if options.hv_battery:
+            self.features.append(InverterFeature.HV_BATTERY)
         if options.v2:
             self.features.append(InverterFeature.V2)
         if self.type == InverterType.WAVESHARE or self.connection == "WAVESHARE":
