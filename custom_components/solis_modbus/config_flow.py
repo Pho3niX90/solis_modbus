@@ -1,3 +1,5 @@
+from typing import re
+
 import voluptuous as vol
 import logging
 from homeassistant import config_entries
@@ -22,7 +24,7 @@ CONFIG_SCHEMA = vol.Schema(
         vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=15)),
         vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
         vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),  # Model dropdown
-        vol.Optional("identification", default=""): vol.All(str, vol.Match(r"^[A-Za-z0-9_]+$")),
+        vol.Optional("identification", default=""): str,
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
 
         # Boolean options (Yes/No toggle)

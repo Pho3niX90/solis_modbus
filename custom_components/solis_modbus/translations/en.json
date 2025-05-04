@@ -9,7 +9,7 @@
           "host": "IP address of Solis Inverter",
           "port": "Port (default: 502)",
           "slave": "Slave Address (default: 1)",
-          "identification": "Identification for multi inverters",
+          "identification": "Alias: used when setting up multi inverters",
           "poll_interval_fast": "Fast Poll Interval (seconds)",
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
