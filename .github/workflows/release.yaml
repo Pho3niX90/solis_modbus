@@ -18,6 +18,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install jq
+        run: sudo apt-get install jq
+
+      - name: Install Python semver
+        run: pip install semver
+
       - name: Get latest tag or fail
         id: get-latest-tag
         run: |
@@ -33,9 +39,6 @@ jobs:
         run: |
           current_version=$(cat "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" | jq -r '.version')
           echo "version=$current_version" >> $GITHUB_ENV
-
-      - name: Install jq
-        run: sudo apt-get install jq
 
       - name: Check if version is higher and bump if needed
         id: check-version
