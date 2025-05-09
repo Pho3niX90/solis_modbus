@@ -234,3 +234,7 @@ class ModbusController:
     @property
     def last_modbus_success(self):
         return self._last_modbus_success
+
+    @property
+    def device_identification(self):
+        return f" {self.identification}" if self.identification else ""

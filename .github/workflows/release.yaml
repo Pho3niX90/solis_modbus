@@ -1,9 +1,11 @@
-
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
 env:
   COMPONENT_NAME: solis_modbus
@@ -16,21 +18,88 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - name: Download repo
-        uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Adjust version number
-        shell: bash
+      - name: Get latest tag or fail
+        id: get-latest-tag
         run: |
-          version="${{ github.event.release.tag_name }}"
-          yq e -P -o=json \
-            -i ".version = \"${version}\"" \
-            "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
+          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
+          if [ -z "$latest_tag" ]; then
+            echo "No tags found for the commit."
+            exit 1
+          fi
+          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Get current version
+        id: get-version
+        run: |
+          current_version=$(cat "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" | jq -r '.version')
+          echo "version=$current_version" >> $GITHUB_ENV
+
+      - name: Install semver
+        run: npm install semver
+
+      - name: Check if version is higher and bump if needed
+        id: check-version
+        run: |
+          latest="${{ steps.get-latest-tag.outputs.tag }}"
+          current="${{ env.version }}"
+
+          echo "Current version: $current"
+          echo "Latest tag: $latest"
+
+          is_higher=$(node -pe "require('semver').gt('$current', '$latest')")
+
+          if [ "$is_higher" != "true" ]; then
+            echo "The version is not higher. Bumping patch version..."
+            bumped=$(node -pe "require('semver').inc('$latest', 'patch')")
+            echo "New version: $bumped"
+            jq ".version = \"$bumped\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
+            echo "version=$bumped" >> $GITHUB_ENV
+          else
+            echo "version=$current" >> $GITHUB_ENV
+          fi
+
+          echo "is_higher_version=true" >> $GITHUB_ENV
+
+      - name: Remove package-lock.json to prevent conflicts
+        if: env.is_higher_version == 'true'
+        run: |
+          if [ -f package-lock.json ]; then
+            rm package-lock.json
+          fi
+
+      - name: Build project
+        if: env.is_higher_version == 'true'
+        run: |
+          npm install --legacy-peer-deps
+          npm run build
+
+      - name: Commit and push version bump
+        if: env.is_higher_version == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add custom_components/${{ env.COMPONENT_NAME }}/manifest.json
+          git diff --exit-code || (git commit -m "chore: bump version to v${{ env.version }}" && git push)
+
       - name: Zip ${{ env.COMPONENT_NAME }} dir
         run: |
           cd "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}"
           zip ${{ env.COMPONENT_NAME }}.zip -r ./
+
       - name: Upload zip to release
-        uses: softprops/action-gh-release@v2.1.0
+        if: env.is_higher_version == 'true'
+        uses: softprops/action-gh-release@v2
         with:
           files: ${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/${{ env.COMPONENT_NAME }}.zip
+          tag_name: v${{ env.version }}
+          name: v${{ env.version }}
+          token: ${{ secrets.PAT }}
+          generate_release_notes: true
+
+      - name: 🏷️ Update latest tag
+        if: env.is_higher_version == 'true'
+        uses: EndBug/latest-tag@latest

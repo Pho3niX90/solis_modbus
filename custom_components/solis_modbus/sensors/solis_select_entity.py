@@ -61,7 +61,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             identifiers={(DOMAIN, self._modbus_controller.host)},
             manufacturer=MANUFACTURER,
             model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}",
+            name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.device_identification}",
             sw_version=self._modbus_controller.sw_version,
         )
 
