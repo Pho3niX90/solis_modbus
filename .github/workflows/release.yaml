@@ -51,22 +51,21 @@ jobs:
 
           # Check if latest tag is a valid SemVer string
           if ! python -c "import semver; semver.VersionInfo.parse('$latest')" > /dev/null 2>&1; then
-            echo "Latest tag '$latest' is not a valid SemVer version, treating it as an invalid tag."
-            bumped=$current  # If it's invalid, just use current version
+            echo "Latest tag '$latest' is not a valid SemVer version, treating it as the current version."
+            latest=$current  # Treat invalid tag as current version
+          fi
+
+          # Check if current version is higher than the latest tag (which is now set to current if invalid)
+          is_higher=$(python -c "import semver; print(semver.compare('$current', '$latest') > 0)")
+
+          if [ "$is_higher" != "True" ]; then
+            echo "The version is not higher. Bumping patch version..."
+            bumped=$(python -c "import semver; print(semver.bump_patch('$latest'))")
+            echo "New version: $bumped"
+            jq ".version = \"$bumped\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
             echo "version=$bumped" >> $GITHUB_ENV
           else
-            # Check if current version is higher than the latest tag
-            is_higher=$(python -c "import semver; print(semver.compare('$current', '$latest') > 0)")
-
-            if [ "$is_higher" != "True" ]; then
-              echo "The version is not higher. Bumping patch version..."
-              bumped=$(python -c "import semver; print(semver.bump_patch('$latest'))")
-              echo "New version: $bumped"
-              jq ".version = \"$bumped\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
-              echo "version=$bumped" >> $GITHUB_ENV
-            else
-              echo "version=$current" >> $GITHUB_ENV
-            fi
+            echo "version=$current" >> $GITHUB_ENV
           fi
 
           echo "is_higher_version=true" >> $GITHUB_ENV
