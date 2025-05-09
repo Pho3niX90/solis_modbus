@@ -32,7 +32,7 @@ jobs:
             echo "No tags found for the commit."
             exit 1
           fi
-          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
       - name: Get current version from manifest.json
         id: get-version
@@ -43,23 +43,30 @@ jobs:
       - name: Check if version is higher and bump if needed
         id: check-version
         run: |
-          latest="${{ steps.get-latest-tag.outputs.tag }}"
+          latest="${{ env.latest_tag }}"
           current="${{ env.version }}"
 
           echo "Current version: $current"
           echo "Latest tag: $latest"
 
-          # Check if current version is higher than the latest tag
-          is_higher=$(python -c "import semver; print(semver.compare('$current', '$latest') > 0)")
-
-          if [ "$is_higher" != "True" ]; then
-            echo "The version is not higher. Bumping patch version..."
-            bumped=$(python -c "import semver; print(semver.bump_patch('$latest'))")
-            echo "New version: $bumped"
-            jq ".version = \"$bumped\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
+          # Check if latest tag is a valid SemVer string
+          if ! python -c "import semver; semver.VersionInfo.parse('$latest')" > /dev/null 2>&1; then
+            echo "Latest tag '$latest' is not a valid SemVer version, treating it as an invalid tag."
+            bumped=$current  # If it's invalid, just use current version
             echo "version=$bumped" >> $GITHUB_ENV
           else
-            echo "version=$current" >> $GITHUB_ENV
+            # Check if current version is higher than the latest tag
+            is_higher=$(python -c "import semver; print(semver.compare('$current', '$latest') > 0)")
+
+            if [ "$is_higher" != "True" ]; then
+              echo "The version is not higher. Bumping patch version..."
+              bumped=$(python -c "import semver; print(semver.bump_patch('$latest'))")
+              echo "New version: $bumped"
+              jq ".version = \"$bumped\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
+              echo "version=$bumped" >> $GITHUB_ENV
+            else
+              echo "version=$current" >> $GITHUB_ENV
+            fi
           fi
 
           echo "is_higher_version=true" >> $GITHUB_ENV
