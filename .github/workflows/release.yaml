@@ -32,14 +32,14 @@ jobs:
           fi
           echo "tag=$latest_tag" >> $GITHUB_OUTPUT
 
-      - name: Get current version
+      - name: Get current version from manifest.json
         id: get-version
         run: |
           current_version=$(cat "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" | jq -r '.version')
           echo "version=$current_version" >> $GITHUB_ENV
 
-      - name: Install semver
-        run: npm install semver
+      - name: Install jq
+        run: sudo apt-get install jq
 
       - name: Check if version is higher and bump if needed
         id: check-version
@@ -50,11 +50,12 @@ jobs:
           echo "Current version: $current"
           echo "Latest tag: $latest"
 
-          is_higher=$(node -pe "require('semver').gt('$current', '$latest')")
+          # Check if current version is higher than the latest tag
+          is_higher=$(python -c "import semver; print(semver.compare('$current', '$latest') > 0)")
 
-          if [ "$is_higher" != "true" ]; then
+          if [ "$is_higher" != "True" ]; then
             echo "The version is not higher. Bumping patch version..."
-            bumped=$(node -pe "require('semver').inc('$latest', 'patch')")
+            bumped=$(python -c "import semver; print(semver.bump_patch('$latest'))")
             echo "New version: $bumped"
             jq ".version = \"$bumped\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
             echo "version=$bumped" >> $GITHUB_ENV
@@ -63,19 +64,6 @@ jobs:
           fi
 
           echo "is_higher_version=true" >> $GITHUB_ENV
-
-      - name: Remove package-lock.json to prevent conflicts
-        if: env.is_higher_version == 'true'
-        run: |
-          if [ -f package-lock.json ]; then
-            rm package-lock.json
-          fi
-
-      - name: Build project
-        if: env.is_higher_version == 'true'
-        run: |
-          npm install --legacy-peer-deps
-          npm run build
 
       - name: Commit and push version bump
         if: env.is_higher_version == 'true'
