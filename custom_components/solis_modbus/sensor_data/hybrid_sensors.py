@@ -687,7 +687,7 @@ hybrid_sensors = [
             {"name": "RC Force Battery Charge Power", "category": Category.REMOTE_CONTROL_SETTING,
              "unique": "solis_modbus_inverter_rc_force_charge_power",
              "unit_of_measurement": UnitOfPower.WATT, "device_class": SensorDeviceClass.POWER,
-             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 6000, "default": 1500,
+             "state_class": SensorStateClass.MEASUREMENT, "editable": True, "min": 0, "max": 10000, "default": 1500,
              "register": ['43136'], "multiplier": 10},
             {"name": "Off-Grid Overdischarge SOC", "category": Category.BATTERY_SETTING,
              "unique": "solis_modbus_inverter_overdischarge_offgrid_soc",

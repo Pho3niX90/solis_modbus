@@ -53,6 +53,8 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
                 self._attr_native_max_value = round((self.base_sensor.controller.inverter_config.wattage_chosen / 44) / 5 ) * 5
             elif self._unit_of_measurement == UnitOfPower.WATT:
                 self._attr_native_max_value = self.base_sensor.controller.inverter_config.wattage_chosen
+            elif self._unit_of_measurement == UnitOfPower.KILO_WATT:
+                self._attr_native_max_value = self.base_sensor.controller.inverter_config.wattage_chosen / 1000
         except Exception:
             self._attr_native_max_value = sensor.max_value
 
