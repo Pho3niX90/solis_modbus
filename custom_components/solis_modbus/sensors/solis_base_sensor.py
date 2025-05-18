@@ -55,6 +55,7 @@ class SolisBaseSensor:
         self.hidden = hidden
         self.state_class = state_class
         self.max_value = max_value
+        self.adjust_max(max_value)
         self.step = self.get_step(step)
         self.enabled = enabled
         self.min_value = min_value
@@ -82,6 +83,22 @@ class SolisBaseSensor:
             if self.controller.inverter_config.model in ("RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"):
                 self.multiplier = 1
 
+
+    def adjust_max(self, max_default):
+        try:
+            new_max = max_default
+            if self.unit_of_measurement == UnitOfElectricCurrent.AMPERE:
+                new_max = round(
+                    (self.controller.inverter_config.wattage_chosen / 44) / 5) * 5
+            elif self.unit_of_measurement == UnitOfPower.WATT:
+                new_max = self.controller.inverter_config.wattage_chosen
+            elif self.unit_of_measurement == UnitOfPower.KILO_WATT:
+                new_max = self.controller.inverter_config.wattage_chosen / 1000
+            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {self.max_value} instead of {max_default}")
+            self.max_value = new_max
+        except Exception as e:
+            _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s",
+                          self.controller.inverter_config.wattage_chosen, e)
 
     @property
     def min_max(self):
