@@ -15,16 +15,16 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
 
-    switch_sensors = []
+    switch_sensors = [
+        {
+            "register": 90005,
+            "entities": [
+                {"bit_position": 0, "name": "Solis Modbus Enabled"},
+            ]
+        }]
 
     if modbus_controller.inverter_config.type == InverterType.HYBRID:
         switch_sensors.extend([
-            {
-                "register": 90005,
-                "entities": [
-                    {"bit_position": 0, "name": "Solis Modbus Enabled"},
-                ]
-            },
             {
                 "register": 43110,
                 "entities": [
@@ -124,6 +124,13 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                 ]
             }
         ])
+    elif modbus_controller.inverter_config.type == InverterType.GRID or modbus_controller.inverter_config.type == InverterType.STRING:
+        switch_sensors.append([{
+            "register": 3070,
+            "entities": [
+                {"on_value": 0xAA, "offset": -1, "name": "Enable power limit feature"},
+            ]
+        }])
 
     switchEntities: List[SolisBinaryEntity] = []
 

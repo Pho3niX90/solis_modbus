@@ -17,7 +17,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         self._modbus_controller: ModbusController  = modbus_controller
         self._register = entity_definition["register"]
         self._attr_name = entity_definition["name"]
-        self._attr_unique_id ="{}_{}_{}_select".format(DOMAIN, modbus_controller.host, entity_definition["register"])
+        self._attr_unique_id ="{}_{}_{}_select".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else self._modbus_controller.host, entity_definition["register"])
         self._attr_options = [e["name"] for e in entity_definition["entities"]]
         self._attr_options_raw = entity_definition["entities"]
         self._current_option = None

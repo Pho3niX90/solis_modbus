@@ -245,6 +245,7 @@ Solis and equivalent Axitec, Zonneplan inverters
 - - S5-EH1P6K-L (https://github.com/Pho3niX90/solis_modbus/issues/94#issuecomment-2656512651)
 - **S5-GC**
 - - S5-GC30K (https://github.com/Pho3niX90/solis_modbus/issues/173)
+- - S5-GC60K (https://github.com/Pho3niX90/solis_modbus/issues/180#issuecomment-2887414843)
 - **RAI-***
 - - RAI-3K-48ES-5G (https://github.com/Pho3niX90/solis_modbus/issues/174)
 - **RHI-***
