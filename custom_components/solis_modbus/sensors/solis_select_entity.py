@@ -25,11 +25,12 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         reg_cache = cache_get(self._hass, self._register)
+
+        if reg_cache is None:
+            return
+
         for e in self._attr_options_raw:
            on_value = e.get("on_value", None)
-
-           if reg_cache is None:
-               continue
 
            if on_value is not None and reg_cache == on_value:
                    return e["name"]
