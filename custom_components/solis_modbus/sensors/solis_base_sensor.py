@@ -63,15 +63,7 @@ class SolisBaseSensor:
         self.category = category
         self.identification = identification
 
-        self.tcp_adjustment()
         self.dynamic_adjustments()
-
-    def tcp_adjustment(self):
-        """Adjust multiplier if using WAVESHARE and relevant registers are present."""
-        if InverterFeature.TCP in self.controller.inverter_config.features:
-            waveshare_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
-            if waveshare_registers.intersection(self.registrars):
-                self.multiplier = 0.01
 
     def dynamic_adjustments(self):
         #
@@ -79,9 +71,15 @@ class SolisBaseSensor:
         # RHI-1P(5-10)K-HVES-5G/RHI-3P(5-10)K-HVES-5G/RAI-3K-48ES-5G: 1<-->1W, setting range: 0~30000;
         # S6 model: 1<-->100W,
         #
-        if 43074 in self.registrars:
-            if self.controller.inverter_config.model in ("RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"):
+        if self.controller.inverter_config.model in ("RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"):
+            if 43074 in self.registrars:
                 self.multiplier = 1
+
+        # adjust some registers for S6-EH3P10K-H-ZP inverter type
+        elif self.controller.inverter_config.model in ("S6-EH3P10K-H-ZP"):
+            registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
+            if registers.intersection(self.registrars):
+                self.multiplier = 0.01
 
 
     def adjust_max(self, max_default):
