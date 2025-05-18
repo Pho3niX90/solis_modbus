@@ -106,8 +106,8 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
-            self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))
-            cache_save(self._hass, self._register, new_register_value)
+            self._hass.create_task(controller.async_write_holding_register(self._register + self._offset, new_register_value))
+            cache_save(self._hass, self._register + self._offset, new_register_value)
 
         self._attr_is_on = value
         self._attr_available = True
