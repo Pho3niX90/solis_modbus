@@ -19,9 +19,10 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._modbus_controller: ModbusController = modbus_controller
         self._register: int = entity_definition["register"]
         self._bit_position = entity_definition.get("bit_position", None)
+        self._offset = entity_definition.get("offset", 0)
         self._work_mode = entity_definition.get("work_mode", None)
         self._on_value = entity_definition.get("on_value", None)
-        self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, self._modbus_controller.host, self._register,
+        self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else modbus_controller.host, self._register,
                                                     self._on_value if self._on_value is not None else self._bit_position)
         self._attr_name = entity_definition["name"]
         self._attr_available = False
@@ -105,8 +106,9 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
-            self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))
-            cache_save(self._hass, self._register, new_register_value)
+            target_register = self._register + self._offset
+            self._hass.create_task(controller.async_write_holding_register(target_register, new_register_value))
+            cache_save(self._hass, target_register, new_register_value)
 
         self._attr_is_on = value
         self._attr_available = True

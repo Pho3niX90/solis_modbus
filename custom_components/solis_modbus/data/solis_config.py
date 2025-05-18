@@ -4,7 +4,7 @@ from custom_components.solis_modbus.data.enums import InverterType, InverterFeat
 
 
 class InverterOptions:
-    def __init__(self, pv: bool = True, battery: bool = True, hv_battery: bool = True, generator: bool = True, v2: bool = True):
+    def __init__(self, pv: bool = True, battery: bool = True, hv_battery: bool = False, generator: bool = True, v2: bool = True):
         self.pv = pv
         self.battery = battery
         self.hv_battery = hv_battery

@@ -2,7 +2,6 @@ import logging
 from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
-from homeassistant.const import UnitOfElectricCurrent, UnitOfPower
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.template import is_number
@@ -12,6 +11,7 @@ from custom_components.solis_modbus.helpers import cache_get
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class SolisNumberEntity(RestoreNumber, NumberEntity):
     """Representation of a Number entity."""
@@ -27,7 +27,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._register: List[int] = sensor.registrars
 
         self._device_class = sensor.device_class
-        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._unit_of_measurement = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
@@ -47,16 +47,6 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._attr_step = sensor.step
         self._attr_should_poll = False
         self._attr_entity_registry_enabled_default = sensor.enabled
-
-        try:
-            if self._unit_of_measurement == UnitOfElectricCurrent.AMPERE:
-                self._attr_native_max_value = round((self.base_sensor.controller.inverter_config.wattage_chosen / 44) / 5 ) * 5
-            elif self._unit_of_measurement == UnitOfPower.WATT:
-                self._attr_native_max_value = self.base_sensor.controller.inverter_config.wattage_chosen
-            elif self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                self._attr_native_max_value = self.base_sensor.controller.inverter_config.wattage_chosen / 1000
-        except Exception:
-            self._attr_native_max_value = sensor.max_value
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -82,12 +72,8 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
 
         if self._attr_native_min_value != min_wanted and min_wanted is not None:
             self._attr_native_min_value = min_wanted
-        if self._attr_native_max_value != max_wanted and max_wanted is not None:
-            self._attr_native_max_value = max_wanted
         if self._attr_native_step != step_wanted and step_wanted is not None:
             self._attr_native_step = step_wanted
-
-
 
     @callback
     def handle_modbus_update(self, event):
@@ -96,7 +82,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         updated_controller = str(event.data.get(CONTROLLER))
 
         if updated_controller != self.base_sensor.controller.host:
-            return # meant for a different sensor/inverter combo
+            return  # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
             updated_value = int(event.data.get(VALUE))
@@ -147,4 +133,3 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
             name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.device_identification}",
             sw_version=self.base_sensor.controller.sw_version,
         )
-
