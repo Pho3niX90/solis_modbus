@@ -125,7 +125,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             }
         ])
     elif modbus_controller.inverter_config.type == InverterType.GRID or modbus_controller.inverter_config.type == InverterType.STRING:
-        switch_sensors.append([{
+        switch_sensors.extend([{
             "register": 3070,
             "entities": [
                 {"on_value": 0xAA, "offset": -1, "name": "Enable power limit feature"},
