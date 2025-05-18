@@ -94,7 +94,7 @@ class SolisBaseSensor:
                 new_max = self.controller.inverter_config.wattage_chosen
             elif self.unit_of_measurement == UnitOfPower.KILO_WATT:
                 new_max = self.controller.inverter_config.wattage_chosen / 1000
-            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {self.max_value} instead of {max_default}")
+            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {new_max} instead of {max_default}")
             self.max_value = new_max
         except Exception as e:
             _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s",
