@@ -613,7 +613,7 @@ hybrid_sensors = [
              "default": 10, "min": 0, "max": 100, "step": 1, },
 
             {"name": "Battery Rated Capacity", "category": Category.BATTERY_SETTING,
-             "unique": "solis_modbus_inverter_battery_rated_capacity", "register": ['43019'], "multiplier": 0.1,
+             "unique": "solis_modbus_inverter_battery_rated_capacity", "register": ['43019'], "multiplier": 1,
              "unit_of_measurement": "Ah", "editable": True,
              "default": 200.0, "min": 50.0, "max": 9999.0, "step": 1, },
 
