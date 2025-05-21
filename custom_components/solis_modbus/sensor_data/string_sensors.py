@@ -172,7 +172,7 @@ string_sensors = [
         "entities": [
             {"name": "Power Limitation Switch", "unique": "solis_modbus_power_limitation_switch",
              "state_class": SensorStateClass.MEASUREMENT, "hidden": True,
-             "register": ['3169'], "multiplier": 0.1},
+             "register": ['3169'], "multiplier": 1},
         ]
     },
     {
