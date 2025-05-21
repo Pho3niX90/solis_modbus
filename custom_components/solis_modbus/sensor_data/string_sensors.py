@@ -1,6 +1,6 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential, \
-    UnitOfTemperature, UnitOfFrequency, UnitOfApparentPower, UnitOfReactivePower, PERCENTAGE
+    UnitOfTemperature, UnitOfFrequency, UnitOfReactivePower, PERCENTAGE
 
 from custom_components.solis_modbus.data.enums import PollSpeed
 
