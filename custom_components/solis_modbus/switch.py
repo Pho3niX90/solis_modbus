@@ -128,7 +128,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         switch_sensors.extend([{
             "register": 3070,
             "entities": [
-                {"on_value": 0xAA, "offset": -1, "name": "Enable power limit feature"},
+                {"on_value": 0xAA, "off_value": 0x55, "offset": -1, "name": "Enable power limit feature"},
             ]
         }])
 
