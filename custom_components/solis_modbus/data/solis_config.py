@@ -64,7 +64,7 @@ SOLIS_INVERTERS = [
                    features=[]),
     InverterConfig(model="3P(3-20)K-4G", wattage=[3000,4000,5000,6000,8000,9000,10000,12000,15000,17000,20000], phases=3, type=InverterType.GRID,
                    features=[InverterFeature.PV]),
-    InverterConfig(model="S5-GC", wattage=[25000, 30000, 33000, 36000, 40000, 50000], phases=3, type=InverterType.HYBRID,
+    InverterConfig(model="S5-GC", wattage=[25000, 30000, 33000, 36000, 40000, 50000], phases=3, type=InverterType.GRID,
                    features=[]),
     InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID,
                    features=[]),
