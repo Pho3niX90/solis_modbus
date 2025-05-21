@@ -22,6 +22,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._offset = entity_definition.get("offset", 0)
         self._work_mode = entity_definition.get("work_mode", None)
         self._on_value = entity_definition.get("on_value", None)
+        self._off_value = entity_definition.get("off_value", None)
         self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else modbus_controller.host, self._register,
                                                     self._on_value if self._on_value is not None else self._bit_position)
         self._attr_name = entity_definition["name"]
@@ -97,10 +98,18 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
                 for wbit in self._work_mode:
                     current_register_value = set_bit(current_register_value, wbit, False)
 
-            new_register_value: int = set_bit(current_register_value, self._bit_position, value)
+            new_register_value = set_bit(current_register_value, self._bit_position, value)
 
         else:
-            new_register_value: int = self._on_value if value is True else value
+            # register has a specific on_value
+            if value is True and self._on_value is not None:
+                new_register_value = self._on_value
+            # register has a specific off_value
+            elif value is False and self._off_value is not None:
+                new_register_value = self._off_value
+            # register is a simple 0/1
+            else:
+                new_register_value = int(value)
 
         _LOGGER.debug(
             f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")

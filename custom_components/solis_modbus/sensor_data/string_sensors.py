@@ -1,6 +1,6 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential, \
-    UnitOfTemperature, UnitOfFrequency, UnitOfApparentPower, UnitOfReactivePower, PERCENTAGE
+    UnitOfTemperature, UnitOfFrequency, UnitOfReactivePower, PERCENTAGE
 
 from custom_components.solis_modbus.data.enums import PollSpeed
 
@@ -164,6 +164,15 @@ string_sensors = [
             {"name": "Actual Power Factor Adjustment", "unique": "solis_modbus_inverter_actual_power_factor_adjustment",
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3051'], "multiplier": 0.001, "editable": True, "min": 0, "max": 100},
+        ]
+    },
+    {
+        "register_start": 3169,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {"name": "Power Limitation Switch", "unique": "solis_modbus_power_limitation_switch",
+             "state_class": SensorStateClass.MEASUREMENT, "hidden": True,
+             "register": ['3169'], "multiplier": 1},
         ]
     },
     {
