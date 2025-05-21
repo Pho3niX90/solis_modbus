@@ -73,7 +73,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                     {"bit_position": 1, "name": "AC Coupling Enable"},
                     {"bit_position": 2, "name": "Smart load port grid-connected forced output"},
                     {"bit_position": 3, "name": "Allow export switch under self-generation and self-use"},
-                    {"bit_position": 4, "name": "Backup2Load manual/automatic switch (off = Manual, on = Automatic"},
+                    {"bit_position": 4, "name": "Backup2Load manual/automatic switch (off = Manual, on = Automatic)"},
                     {"bit_position": 5, "name": "Backup2Load manual enable"},
                     {"bit_position": 6, "name": "Smart load port stops output when off-grid"},
                     {"bit_position": 7, "name": "Grid Peak-shaving power enable"},
