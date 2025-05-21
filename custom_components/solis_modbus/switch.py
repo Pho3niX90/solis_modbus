@@ -28,55 +28,55 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             {
                 "register": 43110,
                 "entities": [
-                    {"bit_position": 0, "name": "Solis Self-Use Mode", "work_mode": (0,6,11)},
-                    {"bit_position": 1, "name": "Solis Time Of Use Mode"},
-                    {"bit_position": 2, "name": "Solis OFF-Grid Mode"},
-                    {"bit_position": 3, "name": "Solis Battery Wakeup Switch"},
-                    {"bit_position": 4, "name": "Solis Reserve Battery Mode", "work_mode": (4,11)},
-                    {"bit_position": 5, "name": "Solis Allow Grid To Charge The Battery"},
-                    {"bit_position": 6, "name": "Solis Feed In Priority Mode", "work_mode": (0,6,11)},
-                    {"bit_position": 7, "name": "Solis Batt OVC"},
-                    {"bit_position": 8, "name": "Solis Battery Forcecharge Peakshaving"},
-                    {"bit_position": 9, "name": "Solis Battery current correction"},
-                    {"bit_position": 10, "name": "Solis Battery healing mode"},
-                    {"bit_position": 11, "name": "Solis Peak-shaving Mode", "work_mode": (0,4,6,11)},
+                    {"bit_position": 0, "name": "Self-Use Mode", "work_mode": (0,6,11)},
+                    {"bit_position": 1, "name": "Time Of Use Mode"},
+                    {"bit_position": 2, "name": "OFF-Grid Mode"},
+                    {"bit_position": 3, "name": "Battery Wakeup Switch"},
+                    {"bit_position": 4, "name": "Reserve Battery Mode", "work_mode": (4,11)},
+                    {"bit_position": 5, "name": "Allow Grid To Charge The Battery"},
+                    {"bit_position": 6, "name": "Feed In Priority Mode", "work_mode": (0,6,11)},
+                    {"bit_position": 7, "name": "Batt OVC"},
+                    {"bit_position": 8, "name": "Battery Forcecharge Peakshaving"},
+                    {"bit_position": 9, "name": "Battery current correction"},
+                    {"bit_position": 10, "name": "Battery healing mode"},
+                    {"bit_position": 11, "name": "Peak-shaving Mode", "work_mode": (0,4,6,11)},
                 ]
             },{
                 "register": 43365,
                 "entities": [
-                    {"bit_position": 0, "name": "Solis Generator connection position"},
-                    {"bit_position": 1, "name": "Solis With Generator"},
-                    {"bit_position": 2, "name": "Solis Generator enable signal"},
-                    {"bit_position": 3, "name": "Solis AC Coupling Position (off = GEN port, on = Backup port)"},
-                    {"bit_position": 4, "name": "Solis Generator access location"},
+                    {"bit_position": 0, "name": "Generator connection position"},
+                    {"bit_position": 1, "name": "With Generator"},
+                    {"bit_position": 2, "name": "Generator enable signal"},
+                    {"bit_position": 3, "name": "AC Coupling Position (off = GEN port, on = Backup port)"},
+                    {"bit_position": 4, "name": "Generator access location"},
                 ]
             },{
                 "register": 43815,
                 "entities": [
-                    {"bit_position": 0, "name": "Solis Generator charging period 1 switch"},
-                    {"bit_position": 1, "name": "Solis Generator charging period 2 switch"},
-                    {"bit_position": 2, "name": "Solis Generator charging period 3 switch"},
-                    {"bit_position": 3, "name": "Solis Generator charging period 4 switch"},
-                    {"bit_position": 4, "name": "Solis Generator charging period 5 switch"},
-                    {"bit_position": 5, "name": "Solis Generator charging period 6 switch"},
+                    {"bit_position": 0, "name": "Generator charging period 1 switch"},
+                    {"bit_position": 1, "name": "Generator charging period 2 switch"},
+                    {"bit_position": 2, "name": "Generator charging period 3 switch"},
+                    {"bit_position": 3, "name": "Generator charging period 4 switch"},
+                    {"bit_position": 4, "name": "Generator charging period 5 switch"},
+                    {"bit_position": 5, "name": "Generator charging period 6 switch"},
                 ]
             },{
                 "register": 43340,
                 "entities": [
-                    {"bit_position": 0, "name": "Solis Generator Input Mode (off = Manual, on = Auto)"},
-                    {"bit_position": 1, "name": "Solis Generator Charge Enable"},
+                    {"bit_position": 0, "name": "Generator Input Mode (off = Manual, on = Auto)"},
+                    {"bit_position": 1, "name": "Generator Charge Enable"},
                 ]
             },{
                 "register": 43483,
                 "entities": [
-                    {"bit_position": 0, "name": "Solis Dual Backup Enable"},
-                    {"bit_position": 1, "name": "Solis AC Coupling Enable"},
-                    {"bit_position": 2, "name": "Solis Smart load port grid-connected forced output"},
-                    {"bit_position": 3, "name": "Solis Allow export switch under self-generation and self-use"},
-                    {"bit_position": 4, "name": "Solis Backup2Load manual/automatic switch (off = Manual, on = Automatic"},
-                    {"bit_position": 5, "name": "Solis Backup2Load manual enable"},
-                    {"bit_position": 6, "name": "Solis Smart load port stops output when off-grid"},
-                    {"bit_position": 7, "name": "Solis Grid Peak-shaving power enable"},
+                    {"bit_position": 0, "name": "Dual Backup Enable"},
+                    {"bit_position": 1, "name": "AC Coupling Enable"},
+                    {"bit_position": 2, "name": "Smart load port grid-connected forced output"},
+                    {"bit_position": 3, "name": "Allow export switch under self-generation and self-use"},
+                    {"bit_position": 4, "name": "Backup2Load manual/automatic switch (off = Manual, on = Automatic"},
+                    {"bit_position": 5, "name": "Backup2Load manual enable"},
+                    {"bit_position": 6, "name": "Smart load port stops output when off-grid"},
+                    {"bit_position": 7, "name": "Grid Peak-shaving power enable"},
                 ]
             }, {
                 "register": 43249,
@@ -93,13 +93,13 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             }, {
                 "register": 43135,
                 "entities": [
-                    {"name": "Solis RC Force Battery Charge",  "on_value": 1},
-                    {"name": "Solis RC Force Battery Discharge", "on_value": 2},
+                    {"name": "RC Force Battery Charge",  "on_value": 1},
+                    {"name": "RC Force Battery Discharge", "on_value": 2},
                 ]
             },{
                 "register": 43363,
                 "entities": [
-                    {"name": "Solis Force Start Generator", "on_value": 1},
+                    {"name": "Force Start Generator", "on_value": 1},
                 ]
             },{
                 "register": 43292,
@@ -109,18 +109,18 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             }, {
                 "register": 43707,
                 "entities": [
-                    {"name": "Solis Grid Time of Use Charging Period 1", "bit_position": 0},
-                    {"name": "Solis Grid Time of Use Charging Period 2", "bit_position": 1},
-                    {"name": "Solis Grid Time of Use Charging Period 3", "bit_position": 2},
-                    {"name": "Solis Grid Time of Use Charging Period 4", "bit_position": 3},
-                    {"name": "Solis Grid Time of Use Charging Period 5", "bit_position": 4},
-                    {"name": "Solis Grid Time of Use Charging Period 6", "bit_position": 5},
-                    {"name": "Solis Grid Time of Use Discharge Period 1", "bit_position": 6},
-                    {"name": "Solis Grid Time of Use Discharge Period 2", "bit_position": 7},
-                    {"name": "Solis Grid Time of Use Discharge Period 3", "bit_position": 8},
-                    {"name": "Solis Grid Time of Use Discharge Period 4", "bit_position": 9},
-                    {"name": "Solis Grid Time of Use Discharge Period 5", "bit_position": 10},
-                    {"name": "Solis Grid Time of Use Discharge Period 6", "bit_position": 11},
+                    {"name": "Grid Time of Use Charging Period 1", "bit_position": 0},
+                    {"name": "Grid Time of Use Charging Period 2", "bit_position": 1},
+                    {"name": "Grid Time of Use Charging Period 3", "bit_position": 2},
+                    {"name": "Grid Time of Use Charging Period 4", "bit_position": 3},
+                    {"name": "Grid Time of Use Charging Period 5", "bit_position": 4},
+                    {"name": "Grid Time of Use Charging Period 6", "bit_position": 5},
+                    {"name": "Grid Time of Use Discharge Period 1", "bit_position": 6},
+                    {"name": "Grid Time of Use Discharge Period 2", "bit_position": 7},
+                    {"name": "Grid Time of Use Discharge Period 3", "bit_position": 8},
+                    {"name": "Grid Time of Use Discharge Period 4", "bit_position": 9},
+                    {"name": "Grid Time of Use Discharge Period 5", "bit_position": 10},
+                    {"name": "Grid Time of Use Discharge Period 6", "bit_position": 11},
                 ]
             }
         ])
