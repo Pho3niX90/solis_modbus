@@ -28,18 +28,19 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             {
                 "register": 43110,
                 "entities": [
-                    {"bit_position": 0, "name": "Self-Use Mode", "work_mode": (0, 1, 2, 6, 11)},
-                    {"bit_position": 1, "name": "Time Of Use Mode", "work_mode": (0, 1, 2, 6, 11)},
-                    {"bit_position": 2, "name": "OFF-Grid Mode", "work_mode": (0, 1, 2, 6, 11)},
-                    {"bit_position": 3, "name": "Battery Wakeup Switch"},
-                    {"bit_position": 4, "name": "Reserve Battery Mode", "work_mode": (4,11)},
-                    {"bit_position": 5, "name": "Allow Grid To Charge The Battery"},
-                    {"bit_position": 6, "name": "Feed In Priority Mode", "work_mode": (0,6,11)},
-                    {"bit_position": 7, "name": "Batt OVC"},
-                    {"bit_position": 8, "name": "Battery Forcecharge Peakshaving"},
-                    {"bit_position": 9, "name": "Battery current correction"},
-                    {"bit_position": 10, "name": "Battery healing mode"},
-                    {"bit_position": 11, "name": "Peak-shaving Mode", "work_mode": (0,4,6,11)},
+                    # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8
+                    { "bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [6, 11] },
+                    { "bit_position": 1, "name": "Time of Use", "requires_any": [0,6] },
+                    { "bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 6, 11] },
+                    { "bit_position": 3, "name": "Battery Wakeup Switch" },
+                    { "bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [0, 6] },
+                    { "bit_position": 5, "name": "Allow Grid to Charge the Battery" },
+                    { "bit_position": 6, "name": "Feed-In Priority Mode", "conflicts_with": [0, 11] },
+                    { "bit_position": 7, "name": "Batt OVC" },
+                    { "bit_position": 8, "name": "Battery Forcecharge Peakshaving" },
+                    { "bit_position": 9, "name": "Battery Current Correction" },
+                    { "bit_position": 10, "name": "Battery Healing Mode" },
+                    { "bit_position": 11, "name": "Peak Shaving Mode", "conflicts_with": [0, 4, 6] }
                 ]
             },{
                 "register": 43365,
@@ -126,9 +127,9 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         ])
     elif modbus_controller.inverter_config.type == InverterType.GRID or modbus_controller.inverter_config.type == InverterType.STRING:
         switch_sensors.extend([{
-            "register": 3070,
+            "register": 3069,
             "entities": [
-                {"on_value": 0xAA, "off_value": 0x55, "offset": -1, "name": "Enable power limit feature"},
+                {"on_value": 0xAA, "off_value": 0x55, "name": "Enable power limit feature"},
             ]
         }])
 

@@ -17,10 +17,11 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
         self._modbus_controller: ModbusController = modbus_controller
-        self._register: int = entity_definition["register"]
+        self._register: int = entity_definition["register"] + entity_definition.get("offset", 0)
         self._bit_position = entity_definition.get("bit_position", None)
-        self._offset = entity_definition.get("offset", 0)
-        self._work_mode = entity_definition.get("work_mode", None)
+        self._conflicts_with = entity_definition.get("conflicts_with", None)
+        self._requires = entity_definition.get("requires", None)
+        self._requires_any = entity_definition.get("requires_any", None)
         self._on_value = entity_definition.get("on_value", None)
         self._off_value = entity_definition.get("off_value", None)
         self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else modbus_controller.host, self._register,
@@ -88,34 +89,49 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         else:
             self.set_register_bit(False)
 
-    def set_register_bit(self, value):
-        """Set or clear a specific bit in the Modbus register."""
+    def set_register_bit(self, value: bool):
+        """Set or clear a specific bit in the Modbus register, enforcing dependencies and conflicts."""
         controller = self._modbus_controller
         current_register_value: int = cache_get(self._hass, self._register)
 
-        if self._bit_position is not None:
-            if value is True and self._work_mode is not None:
-                for wbit in self._work_mode:
-                    current_register_value = set_bit(current_register_value, wbit, False)
+        new_register_value = current_register_value
 
-            new_register_value = set_bit(current_register_value, self._bit_position, value)
+        if self._bit_position is not None:
+            if value is True:
+                # Clear conflicting bits
+                if self._conflicts_with:
+                    for cbit in self._conflicts_with:
+                        new_register_value = set_bit(new_register_value, cbit, False)
+
+                # Set required bits
+                if self._requires:
+                    for rbit in self._requires:
+                        new_register_value = set_bit(new_register_value, rbit, True)
+
+                # Set any of the allowed parents if needed (custom logic)
+                if self._requires_any:
+                    if not any(get_bit_bool(current_register_value, r) for r in self._requires_any):
+                        # fallback to enabling the first one
+                        new_register_value = set_bit(new_register_value, self._requires_any[0], True)
+
+            # Set or clear target bit
+            new_register_value = set_bit(new_register_value, self._bit_position, value)
 
         else:
-            # register has a specific on_value
+            # Whole-register style bitless toggle
             if value is True and self._on_value is not None:
                 new_register_value = self._on_value
-            # register has a specific off_value
             elif value is False and self._off_value is not None:
                 new_register_value = self._off_value
-            # register is a simple 0/1
             else:
                 new_register_value = int(value)
 
         _LOGGER.debug(
-            f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
-        # we only want to write when values has changed. After, we read the register again to make sure it applied.
+            f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}"
+        )
+
         if current_register_value != new_register_value and controller.connected():
-            target_register = self._register + self._offset
+            target_register = self._register
             self._hass.create_task(controller.async_write_holding_register(target_register, new_register_value))
             cache_save(self._hass, target_register, new_register_value)
 

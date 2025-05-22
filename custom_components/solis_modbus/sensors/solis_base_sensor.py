@@ -11,7 +11,7 @@ from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
 from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature, Category
-from custom_components.solis_modbus.helpers import cache_get, extract_serial_number
+from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -138,13 +138,8 @@ class SolisBaseSensor:
             values = values
             n_value = extract_serial_number(values)
         elif len(self.registrars) > 1:
-            s32_values = values
-            # These are two 16-bit values representing a 32-bit signed/unsigned integer (S32/U32)
-            high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
-            low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
+            combined_value = split_s32(values)
 
-            # Combine the high and low words to form a 32-bit signed/unsigned integer
-            combined_value = (high_word << 16) | (low_word & 0xFFFF)
             if self.multiplier == 0 or self.multiplier == 1:
                 n_value = round(combined_value)
             else:
