@@ -1,4 +1,5 @@
 import logging
+import struct
 from datetime import datetime
 from typing import List
 
@@ -23,7 +24,8 @@ def hex_to_ascii(hex_value):
 
 
 def extract_serial_number(values):
-    return ''.join([hex_to_ascii(hex_value) for hex_value in values])
+    packed = struct.pack('>' + 'H'*len(values), *values)
+    return packed.decode('ascii', errors='ignore').strip('\x00\r\n ')
 
 
 def clock_drift_test(hass, controller, hours, minutes, seconds):
