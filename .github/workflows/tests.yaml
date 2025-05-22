@@ -26,4 +26,6 @@ jobs:
         run: python3 -m unittest discover -s tests -p "test_sensor_definitions.py"
 
       - name: Run all tests
-        run: pytest tests
+        run: |
+          export PYTHONPATH=.
+          pytest tests
