@@ -1350,54 +1350,64 @@ hybrid_sensors = [
 ## Remove 33132 in next update if this works (43110)
 
 hybrid_sensors_derived = [
-    {"type": "SDS", "name": "Last Modbus Success",
+    {"name": "Last Modbus Success",
      "unique": "solis_modbus_inverter_last_polled", "multiplier": 0,
      "device_class": SensorDeviceClass.TIMESTAMP,
      "register": ['90006']},
 
-    {"type": "SDS", "name": "Status String",
+    {"name": "Last Clock Adjustment",
+     "unique": "solis_modbus_inverter_clock_rectification", "multiplier": 0,
+     "device_class": SensorDeviceClass.TIMESTAMP,
+     "register": ['90007', '33025', '33026', '33027']},
+
+    {"name": "Status String",
      "unique": "solis_modbus_inverter_current_status_string", "multiplier": 0,
      "register": ['33095']},
 
-    {"type": "SDS", "name": "PV Power 1",
+    {"name": "PV Power 1",
      "unique": "solis_modbus_inverter_dc_power_1", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33049', '33050']},
 
-    {"type": "SDS", "name": "PV Power 2",
+    {"name": "PV Power 2",
      "unique": "solis_modbus_inverter_dc_power_2", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33051', '33052']},
 
-    {"type": "SDS", "name": "PV Power 3",
+    {"name": "PV Power 3",
      "unique": "solis_modbus_inverter_dc_power_3", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33053', '33054']},
 
-    {"type": "SDS", "name": "PV Power 4",
+    {"name": "PV Power 4",
      "unique": "solis_modbus_inverter_dc_power_4", "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33055', '33056']},
 
-    {"type": "SDS", "name": "Battery Charge Power",
+    {"name": "Power Factor",
+     "unique": "solis_modbus_inverter_power_factor", "multiplier": 0.001,
+     "state_class": SensorStateClass.MEASUREMENT,
+     "register": ['33079', '33080','33081', '33082']},
+
+    {"name": "Battery Charge Power",
      "unique": "solis_modbus_inverter_battery_charge_power", "device_class": SensorDeviceClass.POWER,
      "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33149', '33150', '33135', '0']},
 
-    {"type": "SDS", "name": "Battery Discharge Power",
+    {"name": "Battery Discharge Power",
      "unique": "solis_modbus_inverter_battery_discharge_power", "device_class": SensorDeviceClass.POWER,
      "multiplier": 0.1,
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33149', '33150', '33135', '1']},
 
-    {"type": "SDS", "name": "Today Net Grid Energy",
+    {"name": "Today Net Grid Energy",
      "unique": "solis_modbus_inverter_today_net_grid_energy", "device_class": SensorDeviceClass.ENERGY,
      "multiplier": 0.1,
      "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR, "state_class": SensorStateClass.TOTAL_INCREASING,
      "register": ['33175', '33171']},
 
-    {"type": "SDS", "name": "Inverter model definition",
+    {"name": "Inverter model definition",
      "unique": "solis_modbus_inverter_model_definition",  "multiplier": 0,
      "register": ['35000']},
 ]
