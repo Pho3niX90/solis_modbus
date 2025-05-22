@@ -25,26 +25,42 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         reg_cache = cache_get(self._hass, self._register)
-
         if reg_cache is None:
             return
 
-        for e in self._attr_options_raw:
-           on_value = e.get("on_value", None)
+        # Sort by number of requires descending to prioritize more specific matches
+        sorted_options = sorted(
+            self._attr_options_raw,
+            key=lambda e: len(e.get("requires", [])) if "requires" in e else 0,
+            reverse=True
+        )
 
-           if on_value is not None and reg_cache == on_value:
-                   return e["name"]
-           elif on_value is None and get_bit_bool(reg_cache, e.get("bit_position")):
-                   return e["name"]
+        for e in sorted_options:
+            on_value = e.get("on_value")
+            bit_position = e.get("bit_position")
+            requires = e.get("requires")
+
+            if on_value is not None:
+                if reg_cache == on_value:
+                    return e["name"]
+            elif bit_position is not None:
+                if get_bit_bool(reg_cache, bit_position):
+                    if requires:
+                        if all(get_bit_bool(reg_cache, rbit) for rbit in requires):
+                            return e["name"]
+                    else:
+                        return e["name"]
 
         return None
+
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         for e in self._attr_options_raw:
             on_value = e.get("on_value", None)
             bit_position = e.get("bit_position", None)
-            work_mode = e.get("work_mode", None)
+            conflicts_with = e.get("conflicts_with", None)
+            requires = e.get("requires", None)
 
             if e["name"] == option:
                 if on_value is not None:
@@ -53,7 +69,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
                     self.async_write_ha_state()
                     break
                 else:
-                    self.set_register_bit(on_value, bit_position, work_mode)
+                    self.set_register_bit(on_value, bit_position, conflicts_with, requires)
 
     @property
     def device_info(self):
@@ -66,15 +82,21 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             sw_version=self._modbus_controller.sw_version,
         )
 
-    def set_register_bit(self, on_value, bit_position, work_mode):
+    def set_register_bit(self, on_value, bit_position, conflicts_with, requires):
         """Set or clear a specific bit in the Modbus register."""
         controller = self._modbus_controller
         current_register_value: int = cache_get(self._hass, self._register)
 
         if bit_position is not None:
-            if work_mode is not None:
-                for wbit in work_mode:
+            # Clear conflicts
+            if conflicts_with:
+                for wbit in conflicts_with:
                     current_register_value = set_bit(current_register_value, wbit, False)
+
+            # Set dependencies
+            if requires:
+                for rbit in requires:
+                    current_register_value = set_bit(current_register_value, rbit, True)
 
             new_register_value: int = set_bit(current_register_value, bit_position, True)
 

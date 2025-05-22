@@ -9,6 +9,7 @@ changelog:
         - semver/minor
         - type/feat
         - enhancement
+        - Enhancement
     - title: 🐛 Patches & Bug Fixes
       labels:
         - semver/patch

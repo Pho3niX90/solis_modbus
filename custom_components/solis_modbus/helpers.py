@@ -1,9 +1,13 @@
+import logging
+import struct
 from datetime import datetime
+from typing import List
 
 from homeassistant.core import HomeAssistant
-
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import DRIFT_COUNTER, VALUES, CONTROLLER
+
+_LOGGER = logging.getLogger(__name__)
 
 def hex_to_ascii(hex_value):
     # Convert hexadecimal to decimal
@@ -20,34 +24,35 @@ def hex_to_ascii(hex_value):
 
 
 def extract_serial_number(values):
-    return ''.join([hex_to_ascii(hex_value) for hex_value in values])
+    packed = struct.pack('>' + 'H'*len(values), *values)
+    return packed.decode('ascii', errors='ignore').strip('\x00\r\n ')
 
 
-async def clock_drift_test(hass, controller, hours, minutes, seconds):
-    # Get the current time
+def clock_drift_test(hass, controller, hours, minutes, seconds):
     current_time = datetime.now()
+    device_time = datetime(current_time.year, current_time.month, current_time.day, hours, minutes, seconds)
+    total_drift = (current_time - device_time).total_seconds()
 
-    # Extract hours, minutes, and seconds
-    r_hours = current_time.hour
-    r_minutes = current_time.minute
-    r_seconds = current_time.second
-    d_hours = r_hours - hours
-    d_minutes = r_minutes - minutes
-    d_seconds = r_seconds - seconds
-    total_drift = (d_hours * 60 * 60) + (d_minutes * 60) + d_seconds
-
+    # Ensure structure
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
     drift_counter = hass.data[DOMAIN].get(DRIFT_COUNTER, 0)
+    clock_adjusted = False
 
-    if abs(total_drift) > 5:
-        """this is to make sure that we do not accidentally roll back the time, resetting all stats"""
+    if abs(total_drift) > 60:
         if drift_counter > 5:
             if controller.connected():
-                await controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute,
-                                                                       current_time.second])
+                hass.create_task(controller.async_write_holding_registers(
+                    43003, [current_time.hour, current_time.minute, current_time.second]
+                ))
+                clock_adjusted = True
         else:
             hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
     else:
         hass.data[DOMAIN][DRIFT_COUNTER] = 0
+
+    _LOGGER.debug(f"Drift: {total_drift}s, Counter: {drift_counter}, Adjusted: {clock_adjusted}")
+    return clock_adjusted
 
 
 def decode_inverter_model(hex_value):
@@ -100,3 +105,10 @@ def cache_get(hass: HomeAssistant, register: str | int):
 
 def get_controller(hass: HomeAssistant, controller_host: str):
     return hass.data[DOMAIN][CONTROLLER][controller_host]
+
+def split_s32(s32_values: List[int]):
+    high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
+    low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
+
+    # Combine the high and low words to form a 32-bit signed/unsigned integer
+    return  (high_word << 16) | (low_word & 0xFFFF)
