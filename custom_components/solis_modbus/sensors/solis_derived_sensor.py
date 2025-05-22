@@ -4,15 +4,15 @@ import logging
 import numbers
 from datetime import datetime, UTC
 from typing import List
+
 from homeassistant.components.sensor import RestoreSensor, SensorEntity, SensorDeviceClass
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER
-from custom_components.solis_modbus.helpers import decode_inverter_model
-from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
-
-from homeassistant.core import callback, HomeAssistant
+from custom_components.solis_modbus.helpers import decode_inverter_model, clock_drift_test
+from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,12 +67,25 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             self._received_values[updated_register] = event.data.get(VALUE)
 
             # If we haven't received all registers yet, wait
-            filtered_registers = {reg for reg in self._register if reg not in (0, 1)}
+            filtered_registers = {reg for reg in self._register if reg not in (0, 1,90007)}
             if not all(reg in self._received_values for reg in filtered_registers):
                 _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return  # Wait until all registers are received
 
             ## start
+            if 90007 in self._register:
+                is_adjusted = clock_drift_test(self.hass, self.base_sensor.controller,
+                                 self._received_values[33025],
+                                 self._received_values[33026],
+                                 self._received_values[33027],
+                                 )
+                if is_adjusted:
+                    self._attr_available = True
+                    self._attr_native_value = datetime.now(UTC)
+                    self.schedule_update_ha_state()
+                    self._received_values.clear()
+
+
             if 90006 in self._register:
                 new_value = self.base_sensor.controller.last_modbus_success
                 if new_value == 0 or new_value is None:
@@ -93,6 +106,11 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 r1_value = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = round(r1_value * r2_value)
+
+            if 33079  in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
+                active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])
+                reactive_power = self.base_sensor.convert_value([self._received_values[self._register[2]], self._received_values[self._register[3]]])
+                new_value = round(active_power / ((active_power**2 + reactive_power**2) ** 0.5),3)
 
             if 33135 in self._register and len(self._register) == 4:
                 registers = self._register.copy()
