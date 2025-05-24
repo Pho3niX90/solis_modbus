@@ -9,6 +9,7 @@ from custom_components.solis_modbus.select import async_setup_entry
 async def test_select_bit_position_requires_combinations_are_unique():
     controller = MagicMock()
     controller.host = "10.0.0.1"
+    controller.slave = 1
     controller.connected.return_value = True
     controller.inverter_config = MagicMock()
     controller.inverter_config.type = InverterType.HYBRID
@@ -23,7 +24,7 @@ async def test_select_bit_position_requires_combinations_are_unique():
     hass.data = {
         DOMAIN: {
             CONTROLLER: {
-                "10.0.0.1": controller
+                "10.0.0.1_1": controller
             }
         }
     }
