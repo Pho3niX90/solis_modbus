@@ -167,12 +167,12 @@ string_sensors = [
         ]
     },
     {
-        "register_start": 3069,
+        "register_start": 3089,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
-            {"name": "Power Limitation Switch", "unique": "solis_modbus_power_limitation_switch",
+            {"name": "Power Limitation Switch (89)", "unique": "solis_modbus_power_limitation_switch",
              "state_class": SensorStateClass.MEASUREMENT, "hidden": True,
-             "register": ['3069'], "multiplier": 1},
+             "register": ['3089'], "multiplier": 1},
         ]
     },
     {

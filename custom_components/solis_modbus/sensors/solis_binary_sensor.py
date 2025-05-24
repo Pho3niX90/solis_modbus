@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from homeassistant.helpers.restore_state import RestoreEntity
+from sqlalchemy.orm.sync import update
 
 from custom_components.solis_modbus.helpers import cache_get, cache_save
 from homeassistant.core import callback
@@ -17,7 +18,9 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
         self._modbus_controller: ModbusController = modbus_controller
-        self._register: int = entity_definition["register"] + entity_definition.get("offset", 0)
+        self._register: int = entity_definition.get("register", entity_definition.get("read_register")) + entity_definition.get("offset", 0)
+        write_register = entity_definition.get("write_register", None)
+        self._write_register: int = self._register if write_register is None else write_register + entity_definition.get("offset", 0)
         self._bit_position = entity_definition.get("bit_position", None)
         self._conflicts_with = entity_definition.get("conflicts_with", None)
         self._requires = entity_definition.get("requires", None)
@@ -68,7 +71,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
                 self._attr_is_on = get_bit_bool(value, self._bit_position)
             if self._on_value is not None:
                 self._attr_is_on = value == self._on_value
-            _LOGGER.debug(f"switch {self.unique_id} set to {self._attr_is_on}")
+            _LOGGER.debug(f"switch {self.unique_id} set to {self._attr_is_on}, value = {updated_value}")
 
     @property
     def is_on(self):
@@ -131,7 +134,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         )
 
         if current_register_value != new_register_value and controller.connected():
-            target_register = self._register
+            target_register = self._write_register
             self._hass.create_task(controller.async_write_holding_register(target_register, new_register_value))
             cache_save(self._hass, target_register, new_register_value)
 
