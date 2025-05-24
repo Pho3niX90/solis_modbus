@@ -103,6 +103,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Merge data and options (options take priority)
     config = {**entry.data, **entry.options}
+    host = config.get("host")
+    slave = config.get("slave", 1)
+    port = config.get("port", 502)
+
+    # Migrate
+    if entry.unique_id and "_" not in entry.unique_id:
+        new_unique_id = f"{host}_{slave}"
+        hass.config_entries.async_update_entry(entry, unique_id=new_unique_id)
+        _LOGGER.debug("Migrated unique_id from %s to %s", entry.unique_id, new_unique_id)
+
+    # Migrate title if needed
+    expected_title = f"Solis: Host {host}, Modbus Address {slave}"
+    if entry.title != expected_title:
+        hass.config_entries.async_update_entry(entry, title=expected_title)
+        _LOGGER.debug("Migrated title")
+
+
     _LOGGER.debug(config)
 
     # Initialize storage for controllers
@@ -111,9 +128,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = entry
     _LOGGER.info(f"Loaded Solis Modbus Integration with Model: {config.get('model')}")
 
-    host = config.get("host")
-    port = config.get("port", 502)
-    slave = config.get("slave", 1)
 
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)

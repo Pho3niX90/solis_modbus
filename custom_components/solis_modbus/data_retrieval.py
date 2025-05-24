@@ -7,7 +7,6 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from typing_extensions import List
-
 from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER
 from custom_components.solis_modbus.helpers import cache_save, cache_get
 from .data.enums import PollSpeed
@@ -57,11 +56,11 @@ class DataRetrieval:
         while not self.controller.connected():
             try:
                 if await self.controller.connect():
-                    _LOGGER.info("✅ Modbus controller connected successfully.")
+                    _LOGGER.info(f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
                     break
-                _LOGGER.debug(f"⚠️ Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
+                _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
             except Exception as e:
-                _LOGGER.error(f"❌ Connection error: {e}")
+                _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
 
             await asyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, 30)
@@ -103,7 +102,7 @@ class DataRetrieval:
         group_hash = frozenset({group.start_register for group in groups})
 
         if group_hash in self.poll_updating[speed]:
-            _LOGGER.debug(f"⚠️ Skipping {speed.name} update: A previous instance is still running")
+            _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Skipping {speed.name} update: A previous instance is still running")
             return
 
         self.poll_updating[speed][group_hash] = True
@@ -120,7 +119,7 @@ class DataRetrieval:
                     total_registrars += count
                     total_groups += 1
 
-                    _LOGGER.debug(f"Group {start_register} starting")
+                    _LOGGER.debug(f"Group {start_register} starting for ({self.controller.host}.{self.controller.slave})")
 
                     values = await (
                         self.controller.async_read_holding_register(start_register, count)
@@ -129,11 +128,11 @@ class DataRetrieval:
                     )
 
                     if values is None:
-                        _LOGGER.debug(f"⚠️ Received None for register {start_register} - {start_register + count - 1}, skipping.")
+                        _LOGGER.debug(f"⚠️ Received None for register {start_register} - {start_register + count - 1}, fro ({self.controller.host}.{self.controller.slave}), skipping.")
                         continue
                     if len(values) != count:
                         _LOGGER.debug(
-                            f"⚠️ Modbus read mismatch: Received {len(values)} values, expected {count} "
+                            f"⚠️ Modbus read mismatch: Received {len(values)} values, expected {count} from ({self.controller.host}.{self.controller.slave}) "
                             f"for register {start_register} - {start_register + count - 1}. Skipping because linking them is uncertain."
                         )
                         continue

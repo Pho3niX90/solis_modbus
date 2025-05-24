@@ -68,10 +68,12 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            host = user_input["host"]
+            slave = user_input["slave"]
             if await self._validate_config(user_input):
-                await self.async_set_unique_id("{}_{}".format(user_input["host"], user_input["slave"]))
+                await self.async_set_unique_id("{}_{}".format(host, slave))
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=f"Solis: {user_input['host']}", data=user_input)
+                return self.async_create_entry(title=f"Solis: Host {host}, Modbus Address {slave}", data=user_input)
 
             errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
 

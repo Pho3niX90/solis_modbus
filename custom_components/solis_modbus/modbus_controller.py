@@ -5,7 +5,6 @@ from datetime import datetime, UTC
 
 from typing import List
 from pymodbus.client import AsyncModbusTcpClient
-
 from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
@@ -75,10 +74,10 @@ class ModbusController:
                 int_register = int(register)
                 result = await self.client.write_register(address=int_register, value=int_value, slave=self.slave)
                 _LOGGER.debug(
-                    f"Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
+                    f"({self.host}.{self.slave}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
 
                 if result.isError():
-                    _LOGGER.error(f"Failed to write holding register {register} with value {value}: {result}")
+                    _LOGGER.error(f"({self.host}.{self.slave}) Failed to write holding register {register} with value {value}: {result}")
                     return None
 
                 cache_save(self.hass, int_register, result.registers[0])
@@ -97,10 +96,10 @@ class ModbusController:
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)
                 result = await self.client.write_registers(address=start_register, values=values, slave=self.slave)
-                _LOGGER.debug(f"Write Holding Registers register = {start_register}, values = {values}: {result}")
+                _LOGGER.debug(f"({self.host}.{self.slave}) Write Holding Registers register = {start_register}, values = {values}: {result}")
 
                 if result.isError():
-                    _LOGGER.error(f"Failed to write holding registers {start_register} with values {values}: {result}")
+                    _LOGGER.error(f"({self.host}.{self.slave}) Failed to write holding registers {start_register} with values {values}: {result}")
                     return None
 
                 for i, value in result.registers:
@@ -110,30 +109,30 @@ class ModbusController:
 
                 return result
         except Exception as e:
-            _LOGGER.error(f"Failed to write holding registers {start_register} with values {values}: {str(e)}")
+            _LOGGER.error(f"({self.host}.{self.slave}) Failed to write holding registers {start_register} with values {values}: {str(e)}")
             return None
 
     async def async_write_holding_register(self, register, value):
         """Queues a single holding register write asynchronously."""
         await self.write_queue.put((register, value, False))
-        _LOGGER.debug(f"Queued Write Holding Register register = {register}, value = {value}")
+        _LOGGER.debug(f"({self.host}.{self.slave}) Queued Write Holding Register register = {register}, value = {value}")
 
     async def async_write_holding_registers(self, start_register, values):
         """Queues multiple holding registers write asynchronously."""
         await self.write_queue.put((start_register, values, True))
-        _LOGGER.debug(f"Queued Write Holding Registers register = {start_register}, values = {values}")
+        _LOGGER.debug(f"({self.host}.{self.slave}) Queued Write Holding Registers register = {start_register}, values = {values}")
 
     async def async_read_input_register(self, register, count=1):
         """Reads an input register asynchronously."""
         try:
             await self.connect()
             result = await self.client.read_input_registers(address=register, count=count, slave=self.slave)
-            _LOGGER.debug(f"Register {register}: {result.registers}")
+            _LOGGER.debug(f"({self.host}.{self.slave}) Register {register}: {result.registers}")
             await self.inter_frame_wait()
             self._last_modbus_success = datetime.now(UTC)
             return result.registers
         except Exception as e:
-            _LOGGER.error(f"Failed to read input register {register}: {str(e)}")
+            _LOGGER.error(f"({self.host}.{self.slave}) Failed to read input register {register}: {str(e)}")
             return None
 
     async def async_read_holding_register(self, register, count=1):
@@ -141,12 +140,12 @@ class ModbusController:
         try:
             await self.connect()
             result = await self.client.read_holding_registers(address=register, count=count, slave=self.slave)
-            _LOGGER.debug(f"Holding Register {register}: {result.registers}")
+            _LOGGER.debug(f"({self.host}.{self.slave}) Holding Register {register}: {result.registers}")
             await self.inter_frame_wait()
             self._last_modbus_success = datetime.now(UTC)
             return result.registers
         except Exception as e:
-            _LOGGER.error(f"Failed to read holding register {register}: {str(e)}")
+            _LOGGER.error(f"({self.host}.{self.slave}) Failed to read holding register {register}: {str(e)}")
             return None
 
     async def inter_frame_wait(self, read_delay=0.3, write_delay=0.7, is_write=False):
@@ -156,7 +155,7 @@ class ModbusController:
 
         # Calculate remaining delay (if any)
         remaining_delay = max(0.0, required_delay - elapsed_time)
-        _LOGGER.debug(f"inter_frame elapsed = {elapsed_time}, remaining_wait = {remaining_delay}")
+        _LOGGER.debug(f"({self.host}.{self.slave}) inter_frame elapsed = {elapsed_time}, remaining_wait = {remaining_delay}")
 
         if remaining_delay > 0:
             await asyncio.sleep(remaining_delay)
@@ -175,16 +174,16 @@ class ModbusController:
         self._last_attempt = now  # Update last attempt time
 
         try:
-            _LOGGER.debug('Connecting to Modbus TCP...')
+            _LOGGER.debug(f'({self.host}.{self.slave}) Connecting to Modbus TCP...')
             if not await self.client.connect():
                 self.connect_failures += 1
-                _LOGGER.debug(f"Failed to connect (Attempt {self.connect_failures})")
+                _LOGGER.debug(f"({self.host}.{self.slave}) Failed to connect (Attempt {self.connect_failures})")
                 return False
             self.connect_failures = 0
             return True
 
         except Exception as e:
-            _LOGGER.error(f"Connection error: {e}")
+            _LOGGER.error(f"({self.host}.{self.slave}) Connection error: {e}")
             return False
 
     def disable_connection(self):
