@@ -13,6 +13,7 @@ from .const import DOMAIN, CONTROLLER, TIME_ENTITIES
 from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
+from .helpers import get_controller, set_controller
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
 from .sensors.solis_derived_sensor import SolisDerivedSensor
@@ -43,9 +44,10 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         address = call.data.get('address')
         value = call.data.get('value')
         host = call.data.get("host")
+        slave = call.data.get("slave", 1)
 
         if host:
-            controller = hass.data[DOMAIN][CONTROLLER][host]
+            controller = get_controller(hass, host, slave)
             hass.create_task(controller.async_write_holding_register(int(address), int(value)))
         else:
             for controller in hass.data[DOMAIN][CONTROLLER].values():
@@ -201,7 +203,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     ]
 
     # Store controller in HA data
-    hass.data[DOMAIN][CONTROLLER][host] = controller
+    set_controller(hass, controller)
 
     _LOGGER.debug(f"Config entry setup for host {host}, port {port}")
 

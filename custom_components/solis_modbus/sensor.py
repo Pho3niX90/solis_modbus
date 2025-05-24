@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
-    controller: ModbusController = get_controller(hass, config_entry.data.get("host"))
+    controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
     sensor_entities: List[SolisSensor] = []
     sensor_derived_entities: List[SensorEntity] = []
     hass.data[DOMAIN][VALUES] = {}

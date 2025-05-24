@@ -103,7 +103,13 @@ def cache_save(hass: HomeAssistant, register: str | int, value):
 def cache_get(hass: HomeAssistant, register: str | int):
     return hass.data[DOMAIN][VALUES].get(str(register), None)
 
-def get_controller(hass: HomeAssistant, controller_host: str):
+def set_controller(hass: HomeAssistant, controller):
+    hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller.host, controller.slave)] = controller
+
+def get_controller(hass: HomeAssistant, controller_host: str, controller_slave: int):
+    controller = hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller_host, controller_slave)]
+    if controller:
+        return controller
     return hass.data[DOMAIN][CONTROLLER][controller_host]
 
 def split_s32(s32_values: List[int]):
