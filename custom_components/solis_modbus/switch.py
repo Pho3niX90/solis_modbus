@@ -3,17 +3,16 @@ from typing import List
 
 from homeassistant.config_entries import ConfigEntry
 
-from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER,  ENTITIES, SWITCH_ENTITIES
+from custom_components.solis_modbus import ModbusController, get_controller
+from custom_components.solis_modbus.const import DOMAIN, ENTITIES, SWITCH_ENTITIES
 from custom_components.solis_modbus.data.enums import InverterType
-from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.sensors.solis_binary_sensor import SolisBinaryEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
-    modbus_controller: ModbusController = hass.data[DOMAIN][CONTROLLER][config_entry.data.get("host")]
+    modbus_controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
 
     switch_sensors = [
         {
@@ -127,7 +126,8 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         ])
     elif modbus_controller.inverter_config.type == InverterType.GRID or modbus_controller.inverter_config.type == InverterType.STRING:
         switch_sensors.extend([{
-            "register": 3069,
+            "read_register": 3089,
+            "write_register": 3069,
             "entities": [
                 {"on_value": 0xAA, "off_value": 0x55, "name": "Enable power limit feature"},
             ]

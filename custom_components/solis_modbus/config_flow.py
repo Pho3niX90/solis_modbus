@@ -69,7 +69,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             if await self._validate_config(user_input):
-                await self.async_set_unique_id(user_input["host"])
+                await self.async_set_unique_id("{}_{}".format(user_input["host"], user_input["slave"]))
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=f"Solis: {user_input['host']}", data=user_input)
 

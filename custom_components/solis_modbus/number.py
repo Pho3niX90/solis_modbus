@@ -12,7 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
-    controller: ModbusController = get_controller(hass, config_entry.data.get("host"))
+    controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 

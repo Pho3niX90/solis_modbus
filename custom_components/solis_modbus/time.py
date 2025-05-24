@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
-    modbus_controller: ModbusController = get_controller(hass, config_entry.data.get("host"))
+    modbus_controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
 
     inverter_config = modbus_controller.inverter_config
 
