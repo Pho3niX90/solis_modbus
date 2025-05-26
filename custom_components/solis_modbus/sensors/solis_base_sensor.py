@@ -76,7 +76,7 @@ class SolisBaseSensor:
                 self.multiplier = 1
 
         # adjust some registers for S6-EH3P10K-H-ZP inverter type
-        elif self.controller.inverter_config.model in ("S6-EH3P10K-H-ZP"):
+        elif self.controller.inverter_config.model == "S6-EH3P10K-H-ZP":
             registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
             if registers.intersection(self.registrars):
                 self.multiplier = 0.01
