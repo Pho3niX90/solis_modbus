@@ -32,7 +32,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
                     { "bit_position": 1, "name": "Time of Use", "requires_any": [0,6] },
                     { "bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 6, 11] },
                     { "bit_position": 3, "name": "Battery Wakeup Switch" },
-                    { "bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [0, 6] },
+                    { "bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [11] },
                     { "bit_position": 5, "name": "Allow Grid to Charge the Battery" },
                     { "bit_position": 6, "name": "Feed-In Priority Mode", "conflicts_with": [0, 11] },
                     { "bit_position": 7, "name": "Batt OVC" },

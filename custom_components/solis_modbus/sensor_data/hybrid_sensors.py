@@ -239,6 +239,15 @@ hybrid_sensors = [
         ]
     },
     {
+        "register_start": 33122,
+        "poll_speed": PollSpeed.FAST,
+        "entities": [
+            {"name": "Operating Mode", "category": Category.BASIC_INFORMATION,
+             "unique": "solis_modbus_inverter_operating_mode", "register": ['33122'],
+             "multiplier": 0, "state_class": SensorStateClass.MEASUREMENT},
+        ]
+    },
+    {
         "register_start": 33132,
         "poll_speed": PollSpeed.FAST,
         "entities": [
