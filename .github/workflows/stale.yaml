@@ -23,5 +23,5 @@ jobs:
           days-before-stale: 21 # Number of days before marking as stale
           days-before-close: 7 # Number of days before closing after being marked stale
           exempt-issue-labels: "pinned,security" # Issues with these labels won't be marked stale
-          exempt-pr-labels: "pinned,security"
+          exempt-pr-labels: "pinned,security,deprecation"
           remove-stale-when-updated: true
