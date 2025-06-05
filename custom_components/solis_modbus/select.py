@@ -21,6 +21,8 @@ async def async_setup_entry(
     _LOGGER.info("Options %s", len(config_entry.options))
 
     platform_config = config_entry.data or {}
+    inverter_type = controller.inverter_config.type
+
     if len(config_entry.options) > 0:
         platform_config = config_entry.options
 
@@ -28,7 +30,7 @@ async def async_setup_entry(
 
     sensor_groups = []
 
-    if controller.inverter_config.type == InverterType.HYBRID:
+    if inverter_type == InverterType.HYBRID:
         sensor_groups = [
             {
                 "register": 43135,
@@ -50,6 +52,13 @@ async def async_setup_entry(
                     { "bit_position": 6, "name": "Feed-in Priority", "conflicts_with": [0, 6, 11] },
                     { "bit_position": 6, "name": "Feed-in + TOU", "conflicts_with": [0, 6, 11] ,"requires": [1] },
                     { "bit_position": 11, "name": "Peak Shaving", "conflicts_with": [0, 4, 6, 11] }
+                ]
+            },
+            {
+                "register": 43009,
+                "name": "Inverter Power",
+                "entities": [
+                    {"name": "Power State",  "on_value": 190, "off_value": 222},
                 ]
             }
         ]
