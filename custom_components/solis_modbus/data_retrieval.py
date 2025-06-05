@@ -7,7 +7,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from typing_extensions import List
-from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER
+from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER, SLAVE
 from custom_components.solis_modbus.helpers import cache_save, cache_get
 from .data.enums import PollSpeed
 from .modbus_controller import ModbusController
@@ -44,7 +44,7 @@ class DataRetrieval:
 
         # Emit controller status
         self.hass.bus.async_fire(DOMAIN,
-                                 {REGISTER: 90005, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
+                                 {REGISTER: 90005, VALUE: self.controller.enabled, CONTROLLER: self.controller.host, SLAVE: self.controller.slave})
 
         if self.controller.connected():
             if self.first_poll:
@@ -86,7 +86,7 @@ class DataRetrieval:
 
     async def modbus_update_fast(self, now = None):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
-        self.hass.bus.async_fire(DOMAIN, {REGISTER: 90006, VALUE: self.controller.last_modbus_success, CONTROLLER: self.controller.host})
+        self.hass.bus.async_fire(DOMAIN, {REGISTER: 90006, VALUE: self.controller.last_modbus_success, CONTROLLER: self.controller.host, SLAVE: self.controller.slave})
 
     async def modbus_update_slow(self, now = None):
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.SLOW], PollSpeed.SLOW)
@@ -142,7 +142,7 @@ class DataRetrieval:
                         _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
                         corrected_value = self.spike_filtering(reg, value)
                         cache_save(self.hass, reg, corrected_value)
-                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host})
+                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value, CONTROLLER: self.controller.host, SLAVE: self.controller.slave})
 
                     if sensor_group.poll_speed == PollSpeed.ONCE:
                         marked_for_removal.append(sensor_group)

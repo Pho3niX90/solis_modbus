@@ -8,9 +8,9 @@ from homeassistant.core import callback
 from homeassistant.helpers.entity import DeviceInfo
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER, TIME_ENTITIES
+from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER, TIME_ENTITIES, SLAVE
 from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
-from custom_components.solis_modbus.helpers import get_controller, cache_get
+from custom_components.solis_modbus.helpers import get_controller, cache_get, is_correct_controller
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -126,10 +126,10 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
     def handle_modbus_update(self, event):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
-
         updated_controller = str(event.data.get(CONTROLLER))
+        updated_controller_slave = int(event.data.get(SLAVE))
 
-        if updated_controller != self._modbus_controller.host:
+        if not is_correct_controller(self._modbus_controller, updated_controller, updated_controller_slave):
             return # meant for a different sensor/inverter combo
 
         if updated_register == self._register:
@@ -169,7 +169,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._modbus_controller.host)},
+            identifiers={(DOMAIN, "{}_{}_{}".format(self._modbus_controller.host, self._modbus_controller.slave, self._modbus_controller.identification))},
             manufacturer=MANUFACTURER,
             model=self._modbus_controller.model,
             name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.device_identification}",

@@ -121,3 +121,6 @@ def split_s32(s32_values: List[int]):
 
 def _any_in(target: List[int], collection: set[int]) -> bool:
     return any(item in collection for item in target)
+
+def is_correct_controller(controller, host: str, slave: int):
+    return controller.host == host and controller.slave == slave

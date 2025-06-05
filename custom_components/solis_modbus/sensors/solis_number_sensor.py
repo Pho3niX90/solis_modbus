@@ -6,8 +6,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.template import is_number
 
-from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, MANUFACTURER
-from custom_components.solis_modbus.helpers import cache_get
+from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, MANUFACTURER, SLAVE
+from custom_components.solis_modbus.helpers import cache_get, is_correct_controller
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,9 +82,10 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
         updated_controller = str(event.data.get(CONTROLLER))
+        updated_controller_slave = int(event.data.get(SLAVE))
 
-        if updated_controller != self.base_sensor.controller.host:
-            return  # meant for a different sensor/inverter combo
+        if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
+            return # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
             updated_value = int(event.data.get(VALUE))
@@ -129,7 +130,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self.base_sensor.controller.host)},
+            identifiers={(DOMAIN, "{}_{}_{}".format(self.base_sensor.controller.host, self.base_sensor.controller.slave, self.base_sensor.controller.identification))},
             manufacturer=MANUFACTURER,
             model=self.base_sensor.controller.model,
             name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.device_identification}",
