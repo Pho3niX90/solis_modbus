@@ -53,13 +53,6 @@ async def async_setup_entry(
                     { "bit_position": 6, "name": "Feed-in + TOU", "conflicts_with": [0, 6, 11] ,"requires": [1] },
                     { "bit_position": 11, "name": "Peak Shaving", "conflicts_with": [0, 4, 6, 11] }
                 ]
-            },
-            {
-                "register": 43009,
-                "name": "Inverter Power",
-                "entities": [
-                    {"name": "Power State",  "on_value": 190, "off_value": 222},
-                ]
             }
         ]
 

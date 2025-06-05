@@ -578,7 +578,7 @@ hybrid_sensors = [
 
             {"name": "Power State", "category": Category.POWER_CONTROL_SETTING,
              "unique": "solis_modbus_inverter_power_state", "register": ['43007'],
-             "state_class": SensorStateClass.MEASUREMENT, "hidden": True},
+             "state_class": SensorStateClass.MEASUREMENT, "switch": True, "on_value": 190, "off_value": 222},
 
             {"type": "reserve", "register": ['43008']},
 
