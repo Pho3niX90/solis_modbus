@@ -203,6 +203,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             name=entity.get("name"),
             controller=controller,
             registrars=[int(r) for r in entity.get("register", [])],
+            write_register=entity.get("write_register", None),
             state_class=entity.get("state_class", None),
             device_class=entity.get("device_class", None),
             unit_of_measurement=entity.get("unit_of_measurement", None),

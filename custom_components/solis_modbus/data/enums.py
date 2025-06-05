@@ -26,6 +26,7 @@ class InverterFeature(Enum):
     TCP = "tcp"
     HV_BATTERY = "high_voltage_battery"
     LV_BATTERY = "low_voltage_battery"
+    ZONNEPLAN = "zonneplan"
 
 class Category(Enum):
     BASIC_INFORMATION = "Basic Information"

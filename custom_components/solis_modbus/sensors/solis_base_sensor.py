@@ -10,8 +10,8 @@ from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
 from custom_components.solis_modbus.const import DOMAIN
-from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature, Category
-from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32
+from custom_components.solis_modbus.data.enums import PollSpeed, Category, InverterFeature
+from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32, _any_in
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class SolisBaseSensor:
                  unique_id: str,
                  name: str,
                  registrars: List[int],
+                 write_register: int,
                  multiplier: float,
                  device_class: Union[SwitchDeviceClass, SensorDeviceClass, str] = None,
                  unit_of_measurement: UnitOfElectricPotential | UnitOfApparentPower | UnitOfElectricCurrent | UnitOfPower = None,
@@ -48,6 +49,8 @@ class SolisBaseSensor:
         self.name = name
         self.default = default
         self.registrars = registrars
+        self.write_register = write_register
+        _LOGGER.debug(f" self.registrars = {self.registrars} | self.write_register = {self.write_register}")
         self.editable = editable
         self.multiplier = multiplier
         self.device_class = device_class
@@ -66,19 +69,24 @@ class SolisBaseSensor:
         self.dynamic_adjustments()
 
     def dynamic_adjustments(self):
-        #
-        # RHI-(3-6)K-48ES-5G: 1<-->100W, setting range: 0~99;
-        # RHI-1P(5-10)K-HVES-5G/RHI-3P(5-10)K-HVES-5G/RAI-3K-48ES-5G: 1<-->1W, setting range: 0~30000;
-        # S6 model: 1<-->100W,
-        #
-        if self.controller.inverter_config.model in ("RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"):
-            if 43074 in self.registrars:
-                self.multiplier = 1
+        inv_model = self.controller.inverter_config.model
+        inv_features = self.controller.inverter_config.features
 
-        # adjust some registers for S6-EH3P10K-H-ZP inverter type
-        elif self.controller.inverter_config.model == "S6-EH3P10K-H-ZP":
-            registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
-            if registers.intersection(self.registrars):
+        # HV battery-specific adjustments
+        if InverterFeature.HV_BATTERY in inv_features:
+            hv_battery_sensitive_regs = {33205, 33206, 33207, 43013, 43117}
+            if _any_in(self.registrars, hv_battery_sensitive_regs):
+                self.min_value = 0
+                self.step = min(self.step, 0.1)
+
+        # RHI/RAI models: 1 <--> 1W (range: 0–30000)
+        if inv_model in {"RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"} and 43074 in self.registrars:
+            self.multiplier = 1
+
+        # S6-EH3P10K-H-ZP or ZONNEPLAN feature: apply 0.01 multiplier
+        elif inv_model == "S6-EH3P10K-H-ZP" or InverterFeature.ZONNEPLAN in inv_features:
+            s6_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
+            if _any_in(self.registrars, s6_registers):
                 self.multiplier = 0.01
 
 
@@ -97,17 +105,6 @@ class SolisBaseSensor:
         except Exception as e:
             _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s",
                           self.controller.inverter_config.wattage_chosen, e)
-
-    @property
-    def min_max(self):
-        if self.min_value is not None and self.max_value is not None:
-            return self.min_value, self.max_value
-        if self.unit_of_measurement == PERCENTAGE:
-            return 0,100
-        if self.unit_of_measurement == UnitOfPower.KILO_WATT:
-            return 0,6
-        if self.unit_of_measurement == UnitOfPower.WATT:
-            return 0,6000
 
     def get_step(self, wanted_step):
         if wanted_step is not None:
@@ -169,6 +166,7 @@ class SolisSensorGroup:
             name= entity.get("name", "reserve"),
             controller=controller,
             registrars=[int(r) for r in entity["register"]],
+            write_register=entity.get("write_register", None),
             state_class=entity.get("state_class", None),
             device_class=entity.get("device_class", None),
             unit_of_measurement=entity.get("unit_of_measurement", None),

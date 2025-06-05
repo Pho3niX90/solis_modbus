@@ -155,7 +155,8 @@ class DataRetrieval:
 
                 total_duration = time.perf_counter() - total_start_time
                 _LOGGER.debug(f"✅ {speed.name} update completed in {total_duration:.4f}s")
-
+        except Exception as e:
+            _LOGGER.debug("exception caught: %s", e)
         finally:
             del self.poll_updating[speed][group_hash]  # ✅ Reset only this group set
 

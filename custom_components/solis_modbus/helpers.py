@@ -118,3 +118,6 @@ def split_s32(s32_values: List[int]):
 
     # Combine the high and low words to form a 32-bit signed/unsigned integer
     return  (high_word << 16) | (low_word & 0xFFFF)
+
+def _any_in(target: List[int], collection: set[int]) -> bool:
+    return any(item in collection for item in target)

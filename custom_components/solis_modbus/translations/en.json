@@ -67,6 +67,20 @@
         }
       }
     },
+    "solis_read_register": {
+      "name": "Read register",
+      "description": "Writes a value to a holding register",
+      "fields": {
+        "address": {
+          "name": "Address",
+          "description": "Address to write to"
+        },
+        "host": {
+          "name": "Inverter",
+          "description": "Inverter IP (only required if you have multiple inverters)"
+        }
+      }
+    },
     "solis_write_time": {
       "name": "Change the time of a entity",
       "description": "Sets the time of the entity to the provided one",

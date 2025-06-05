@@ -22,36 +22,38 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     inverter_config = modbus_controller.inverter_config
 
     timeEntities: List[SolisTimeEntity] = []
+    time_definitions = []
 
-    timeent = [
-        {"name": "Time-Charging Charge Start (Slot 1)", "register": 43143, "enabled": True},
-        {"name": "Time-Charging Charge End (Slot 1)", "register": 43145, "enabled": True},
-        {"name": "Time-Charging Discharge Start (Slot 1)", "register": 43147, "enabled": True},
-        {"name": "Time-Charging Discharge End (Slot 1)", "register": 43149, "enabled": True},
+    if inverter_config.type == InverterType.HYBRID:
+        time_definitions = [
+            {"name": "Time-Charging Charge Start (Slot 1)", "register": 43143, "enabled": True},
+            {"name": "Time-Charging Charge End (Slot 1)", "register": 43145, "enabled": True},
+            {"name": "Time-Charging Discharge Start (Slot 1)", "register": 43147, "enabled": True},
+            {"name": "Time-Charging Discharge End (Slot 1)", "register": 43149, "enabled": True},
 
-        {"name": "Time-Charging Charge Start (Slot 2)", "register": 43153, "enabled": True},
-        {"name": "Time-Charging Charge End (Slot 2)", "register": 43155, "enabled": True},
-        {"name": "Time-Charging Discharge Start (Slot 2)", "register": 43157, "enabled": True},
-        {"name": "Time-Charging Discharge End (Slot 2)", "register": 43159, "enabled": True},
+            {"name": "Time-Charging Charge Start (Slot 2)", "register": 43153, "enabled": True},
+            {"name": "Time-Charging Charge End (Slot 2)", "register": 43155, "enabled": True},
+            {"name": "Time-Charging Discharge Start (Slot 2)", "register": 43157, "enabled": True},
+            {"name": "Time-Charging Discharge End (Slot 2)", "register": 43159, "enabled": True},
 
-        {"name": "Time-Charging Charge Start (Slot 3)", "register": 43163, "enabled": True},
-        {"name": "Time-Charging Charge End (Slot 3)", "register": 43165, "enabled": True},
-        {"name": "Time-Charging Discharge Start (Slot 3)", "register": 43167, "enabled": True},
-        {"name": "Time-Charging Discharge End (Slot 3)", "register": 43169, "enabled": True},
+            {"name": "Time-Charging Charge Start (Slot 3)", "register": 43163, "enabled": True},
+            {"name": "Time-Charging Charge End (Slot 3)", "register": 43165, "enabled": True},
+            {"name": "Time-Charging Discharge Start (Slot 3)", "register": 43167, "enabled": True},
+            {"name": "Time-Charging Discharge End (Slot 3)", "register": 43169, "enabled": True},
 
-        {"name": "Time-Charging Charge Start (Slot 4)", "register": 43173, "enabled": True},
-        {"name": "Time-Charging Charge End (Slot 4)", "register": 43175, "enabled": True},
-        {"name": "Time-Charging Discharge Start (Slot 4)", "register": 43177, "enabled": True},
-        {"name": "Time-Charging Discharge End (Slot 4)", "register": 43179, "enabled": True},
+            {"name": "Time-Charging Charge Start (Slot 4)", "register": 43173, "enabled": True},
+            {"name": "Time-Charging Charge End (Slot 4)", "register": 43175, "enabled": True},
+            {"name": "Time-Charging Discharge Start (Slot 4)", "register": 43177, "enabled": True},
+            {"name": "Time-Charging Discharge End (Slot 4)", "register": 43179, "enabled": True},
 
-        {"name": "Time-Charging Charge Start (Slot 5)", "register": 43183, "enabled": True},
-        {"name": "Time-Charging Charge End (Slot 5)", "register": 43185, "enabled": True},
-        {"name": "Time-Charging Discharge Start (Slot 5)", "register": 43187, "enabled": True},
-        {"name": "Time-Charging Discharge End (Slot 5)", "register": 43189, "enabled": True},
-    ]
+            {"name": "Time-Charging Charge Start (Slot 5)", "register": 43183, "enabled": True},
+            {"name": "Time-Charging Charge End (Slot 5)", "register": 43185, "enabled": True},
+            {"name": "Time-Charging Discharge Start (Slot 5)", "register": 43187, "enabled": True},
+            {"name": "Time-Charging Discharge End (Slot 5)", "register": 43189, "enabled": True},
+        ]
 
     if inverter_config.type == InverterType.HYBRID or InverterFeature.V2 in inverter_config.features:
-        timeent.extend([
+        time_definitions.extend([
             {"name": "Grid Time of Use Charge Start (Slot 1)", "register": 43711, "enabled": True},
             {"name": "Grid Time of Use Charge End (Slot 1)", "register": 43713, "enabled": True},
             {"name": "Grid Time of Use Discharge Start (Slot 1)", "register": 43753, "enabled": True},
@@ -83,7 +85,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             {"name": "Grid Time of Use Discharge End (Slot 6)", "register": 43790, "enabled": True},
         ])
 
-    for entity_definition in timeent:
+    for entity_definition in time_definitions:
         timeEntities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
     hass.data[DOMAIN][TIME_ENTITIES] = timeEntities
     async_add_devices(timeEntities, True)

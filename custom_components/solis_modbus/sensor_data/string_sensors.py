@@ -12,7 +12,6 @@ string_sensors = [
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {"name": "Product Model", "unique": "solis_modbus_product_model",
-             "unit_of_measurement": UnitOfPower.WATT, "device_class": SensorDeviceClass.POWER,
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['2999'], "multiplier": 1},
             {"name": "DSP Software Version", "unique": "solis_modbus_dsp_software_version",
@@ -131,8 +130,11 @@ string_sensors = [
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3038'], "multiplier": 0.1},
 
-            {"type": "reserve", "register": ['3039', '3040']},
+            {"type": "reserve", "register": ['3039']},
 
+            {"name": "Working Mode", "unique": "solis_modbus_inverter_working_mode",
+             "state_class": SensorStateClass.MEASUREMENT,
+             "register": ['3040'], "multiplier": 1},
             {"name": "Inverter Temperature", "unique": "solis_modbus_inverter_temperature",
              "unit_of_measurement": UnitOfTemperature.CELSIUS, "device_class": SensorDeviceClass.TEMPERATURE,
              "state_class": SensorStateClass.MEASUREMENT,
@@ -156,14 +158,14 @@ string_sensors = [
             {"name": "Actual Limited Active Power", "unique": "solis_modbus_inverter_actual_limited_active_power",
              "unit_of_measurement": PERCENTAGE,
              "state_class": SensorStateClass.MEASUREMENT,
-             "register": ['3049'], "multiplier": 0.01, "editable": True, "min": 0, "max": 110},
+             "register": ['3049'], "write_register": 3051, "multiplier": 0.01, "editable": True, "min": 0, "max": 110},
             {"name": "Actual Adjusted Power Factor", "unique": "solis_modbus_inverter_actual_adjusted_power_factor",
              "unit_of_measurement": PERCENTAGE,
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3050'], "multiplier": 0.01},
             {"name": "Actual Power Factor Adjustment", "unique": "solis_modbus_inverter_actual_power_factor_adjustment",
              "state_class": SensorStateClass.MEASUREMENT,
-             "register": ['3051'], "multiplier": 0.001, "editable": True, "min": 0, "max": 100},
+             "register": ['3051'], "multiplier": 0.001, "editable": True, "min": 0, "max": 110},
         ]
     },
     {
