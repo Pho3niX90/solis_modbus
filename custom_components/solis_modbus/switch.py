@@ -25,6 +25,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     if modbus_controller.inverter_config.type == InverterType.HYBRID:
         switch_sensors.extend([
             {
+            "register": 43007,
+            "entities": [
+                {"name": "Power State", "on_value": 190, "off_value": 222},
+            ]
+            },
+            {
                 "register": 43110,
                 "entities": [
                     # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8

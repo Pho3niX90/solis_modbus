@@ -21,6 +21,8 @@ async def async_setup_entry(
     _LOGGER.info("Options %s", len(config_entry.options))
 
     platform_config = config_entry.data or {}
+    inverter_type = controller.inverter_config.type
+
     if len(config_entry.options) > 0:
         platform_config = config_entry.options
 
@@ -28,7 +30,7 @@ async def async_setup_entry(
 
     sensor_groups = []
 
-    if controller.inverter_config.type == InverterType.HYBRID:
+    if inverter_type == InverterType.HYBRID:
         sensor_groups = [
             {
                 "register": 43135,

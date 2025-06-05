@@ -572,9 +572,15 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43009,
+        "register_start": 43007,
         "poll_speed": PollSpeed.NORMAL,
         "entities": [
+
+            {"name": "Power State", "category": Category.POWER_CONTROL_SETTING,
+             "unique": "solis_modbus_inverter_power_state", "register": ['43007'],
+             "state_class": SensorStateClass.MEASUREMENT, "switch": True, "on_value": 190, "off_value": 222},
+
+            {"type": "reserve", "register": ['43008']},
 
             {"name": "Battery Model", "category": Category.BATTERY_SETTING,
              "unique": "solis_modbus_inverter_battery_model", "register": ['43009'], "multiplier": 1,
