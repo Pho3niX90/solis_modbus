@@ -29,6 +29,12 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
         vol.Optional("host"): vol.Coerce(str),
     }
 )
+SCHEME_READ_REGISTER = vol.Schema(
+    {
+        vol.Required("address"): vol.Coerce(int),
+        vol.Optional("host"): vol.Coerce(str),
+    }
+)
 SCHEME_TIME_SET = vol.Schema(
     {
         vol.Required("entity_id"): vol.Coerce(str),
@@ -52,6 +58,21 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         else:
             for controller in hass.data[DOMAIN][CONTROLLER].values():
                 hass.create_task(controller.async_write_holding_register(int(address), int(value)))
+
+    async def service_read_register(call: ServiceCall):
+        address = call.data.get('address')
+        host = call.data.get("host")
+        slave = call.data.get("slave", 1)
+
+        response = ''
+        if host:
+            controller = get_controller(hass, host, slave)
+            response = await controller.async_read_input_register(int(address), 1)
+        else:
+            for controller in hass.data[DOMAIN][CONTROLLER].values():
+                response = await controller.async_read_input_register(int(address), 1)
+
+        call.return_response = {"value": response}
 
     # @Ian-Johnston
     async def service_set_time(call: ServiceCall) -> None:
@@ -84,6 +105,10 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.services.async_register(
         DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER
+    )
+    hass.services.async_register(
+        DOMAIN, "service_read_register", service_read_register,
+        schema=SCHEME_READ_REGISTER
     )
     hass.services.async_register(
         DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET
@@ -203,6 +228,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             name=entity.get("name"),
             controller=controller,
             registrars=[int(r) for r in entity.get("register", [])],
+            write_register=entity.get("write_register", None),
             state_class=entity.get("state_class", None),
             device_class=entity.get("device_class", None),
             unit_of_measurement=entity.get("unit_of_measurement", None),

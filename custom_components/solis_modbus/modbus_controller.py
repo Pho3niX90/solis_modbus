@@ -2,9 +2,11 @@ import asyncio
 import logging
 import time
 from datetime import datetime, UTC
-
 from typing import List
+
+from homeassistant.helpers.template import is_number
 from pymodbus.client import AsyncModbusTcpClient
+
 from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
@@ -71,7 +73,7 @@ class ModbusController:
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
                 int_value = int(value)
-                int_register = int(register)
+                int_register = register if is_number(register) else int(register)
                 result = await self.client.write_register(address=int_register, value=int_value, slave=self.slave)
                 _LOGGER.debug(
                     f"({self.host}.{self.slave}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")

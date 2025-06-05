@@ -137,7 +137,8 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     for main_entity in switch_sensors:
         for child_entity in main_entity[ENTITIES]:
-           child_entity['register'] = main_entity['register']
+           child_entity['register'] = main_entity.get('register',main_entity.get('read_register'))
+           child_entity['write_register'] = main_entity.get('write_register', None)
            switchEntities.append(SolisBinaryEntity(hass, modbus_controller, child_entity))
 
     hass.data[DOMAIN][SWITCH_ENTITIES] = switchEntities
