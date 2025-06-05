@@ -7,7 +7,7 @@ from typing import List
 from homeassistant.helpers.template import is_number
 from pymodbus.client import AsyncModbusTcpClient
 
-from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER
+from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER, SLAVE
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.helpers import cache_save
@@ -84,7 +84,7 @@ class ModbusController:
 
                 cache_save(self.hass, int_register, result.registers[0])
                 self.hass.bus.async_fire(DOMAIN,
-                                         {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host})
+                                         {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host, SLAVE: self.slave})
 
                 return result
         except Exception as e:
@@ -107,7 +107,7 @@ class ModbusController:
                 for i, value in result.registers:
                     reg = start_register + i
                     cache_save(self.hass, reg, value)
-                    self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: value, CONTROLLER: self.host})
+                    self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: value, CONTROLLER: self.host, SLAVE: self.slave})
 
                 return result
         except Exception as e:
