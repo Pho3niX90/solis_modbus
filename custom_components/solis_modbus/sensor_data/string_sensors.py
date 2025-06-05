@@ -130,7 +130,7 @@ string_sensors = [
              "state_class": SensorStateClass.MEASUREMENT,
              "register": ['3038'], "multiplier": 0.1},
 
-            {"type": "reserve", "register": ['3039', '3040']},
+            {"type": "reserve", "register": ['3039']},
 
             {"name": "Working Mode", "unique": "solis_modbus_inverter_working_mode",
              "state_class": SensorStateClass.MEASUREMENT,
