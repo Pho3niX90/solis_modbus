@@ -22,9 +22,10 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     inverter_config = modbus_controller.inverter_config
 
     timeEntities: List[SolisTimeEntity] = []
+    time_definitions = []
 
     if inverter_config.type == InverterType.HYBRID:
-        timeent = [
+        time_definitions = [
             {"name": "Time-Charging Charge Start (Slot 1)", "register": 43143, "enabled": True},
             {"name": "Time-Charging Charge End (Slot 1)", "register": 43145, "enabled": True},
             {"name": "Time-Charging Discharge Start (Slot 1)", "register": 43147, "enabled": True},
@@ -52,7 +53,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         ]
 
     if inverter_config.type == InverterType.HYBRID or InverterFeature.V2 in inverter_config.features:
-        timeent.extend([
+        time_definitions.extend([
             {"name": "Grid Time of Use Charge Start (Slot 1)", "register": 43711, "enabled": True},
             {"name": "Grid Time of Use Charge End (Slot 1)", "register": 43713, "enabled": True},
             {"name": "Grid Time of Use Discharge Start (Slot 1)", "register": 43753, "enabled": True},
@@ -84,7 +85,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             {"name": "Grid Time of Use Discharge End (Slot 6)", "register": 43790, "enabled": True},
         ])
 
-    for entity_definition in timeent:
+    for entity_definition in time_definitions:
         timeEntities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
     hass.data[DOMAIN][TIME_ENTITIES] = timeEntities
     async_add_devices(timeEntities, True)
