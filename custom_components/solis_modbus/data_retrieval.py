@@ -7,7 +7,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from typing_extensions import List
-from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER
+from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER, SLAVE
 from custom_components.solis_modbus.helpers import cache_save, cache_get
 from .data.enums import PollSpeed
 from .modbus_controller import ModbusController
@@ -44,7 +44,7 @@ class DataRetrieval:
 
         # Emit controller status
         self.hass.bus.async_fire(DOMAIN,
-                                 {REGISTER: 90005, VALUE: self.controller.enabled, CONTROLLER: self.controller.host})
+                                 {REGISTER: 90005, VALUE: self.controller.enabled, CONTROLLER: self.controller.host, SLAVE: self.controller.slave})
 
         if self.controller.connected():
             if self.first_poll:

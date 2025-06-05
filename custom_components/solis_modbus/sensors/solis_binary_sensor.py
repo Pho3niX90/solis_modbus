@@ -4,11 +4,11 @@ from typing import Any
 from homeassistant.helpers.restore_state import RestoreEntity
 from sqlalchemy.orm.sync import update
 
-from custom_components.solis_modbus.helpers import cache_get, cache_save
+from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.components.switch import SwitchEntity
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, REGISTER, VALUE
+from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, MANUFACTURER, REGISTER, VALUE, SLAVE
 from custom_components.solis_modbus import ModbusController
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,8 +44,9 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         """Callback function that updates sensor when new register data is available."""
         updated_register = int(event.data.get(REGISTER))
         updated_controller = str(event.data.get(CONTROLLER))
+        updated_controller_slave = int(event.data.get(SLAVE))
 
-        if updated_controller != self._modbus_controller.host:
+        if not is_correct_controller(self._modbus_controller, updated_controller, updated_controller_slave):
             return # meant for a different sensor/inverter combo
 
         if updated_register == self._register:

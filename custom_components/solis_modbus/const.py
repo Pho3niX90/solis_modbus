@@ -1,5 +1,6 @@
 DOMAIN = "solis_modbus"
 CONTROLLER = "modbus_controller"
+SLAVE = "modbus_controller_slave"
 MANUFACTURER = "Solis"
 
 VALUES = 'values'
