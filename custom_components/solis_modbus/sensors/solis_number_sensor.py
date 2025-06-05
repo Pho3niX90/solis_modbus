@@ -129,7 +129,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self.base_sensor.controller.host)},
+            identifiers={(DOMAIN, "{}_{}".format(self.base_sensor.controller.host, self.base_sensor.controller.identification))},
             manufacturer=MANUFACTURER,
             model=self.base_sensor.controller.model,
             name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.device_identification}",

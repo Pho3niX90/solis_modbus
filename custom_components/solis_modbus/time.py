@@ -169,7 +169,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._modbus_controller.host)},
+            identifiers={(DOMAIN, "{}_{}".format(self._modbus_controller.host, self._modbus_controller.identification))},
             manufacturer=MANUFACTURER,
             model=self._modbus_controller.model,
             name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.device_identification}",
