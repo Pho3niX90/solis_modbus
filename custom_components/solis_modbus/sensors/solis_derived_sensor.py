@@ -111,7 +111,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])
                 reactive_power = self.base_sensor.convert_value([self._received_values[self._register[2]], self._received_values[self._register[3]]])
 
-                if active_power is 0 or reactive_power is 0:
+                if active_power == 0 or reactive_power == 0:
                     new_value = 1
                 else:
                     new_value = round(active_power / ((active_power**2 + reactive_power**2) ** 0.5),3)
