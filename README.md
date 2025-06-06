@@ -252,6 +252,8 @@ Solis and equivalent Axitec, Zonneplan inverters
 - - RHI-3K-48ES-5G (https://github.com/Pho3niX90/solis_modbus/issues/97#issuecomment-2639807764)
 - **3P(3-20)K-4G**
 - - 3P6K-4G (https://github.com/Pho3niX90/solis_modbus/issues/210)
+- **1P(2.5-6)K-4G**
+- - https://github.com/Pho3niX90/solis_modbus/issues/230
 
 **Wifi Dongles Tested**
 - S2_WL_ST
