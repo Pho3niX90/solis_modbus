@@ -5,6 +5,20 @@ myst:
 
 The following sensors are provided in the integration.
 
+# String Inverter Registers
+The string inverter uses the following register ranges:
+- 2xxx: Basic information and measurements
+- 3xxx: AC and DC measurements, status information
+- 36xxx: Additional measurements and energy data
+
+# Hybrid Inverter Registers
+The hybrid inverter uses the following register ranges:
+- 33xxx: Basic information and measurements
+- 34xxx: Additional measurements
+- 35xxx: Inverter type definition
+- 43xxx: Control settings and parameters
+- 90xxx: Derived values
+
 # Input Control Sensors
 | Name                                                | Device Class | Unit Of Measurement | State Class | Registers |
 |-----------------------------------------------------|--------------|---------------------|-------------|-----------|
@@ -86,7 +100,7 @@ The following sensors are provided in the integration.
 | Solis Time-Charging Discharge Start (Slot 5) | 43187    |
 | Solis Time-Charging Discharge End (Slot 5)   | 43189    |
 
-# Sensors
+# Hybrid Inverter Sensors
 | Name                                                      | Device Class   | Unit Of Measurement        | State Class      | Registers                              |
 |-----------------------------------------------------------|----------------|----------------------------|------------------|----------------------------------------|
 | Solis Model No                                            |                |                            |                  | 33000                                  |
@@ -338,6 +352,70 @@ This is only required if your values are higher than expected, if you aren't exp
 | 33165    | Total Battery Discharge Energy     | 1       | 0.01      | Changes 100kwh to 1kwh  |
 | 33167    | Today Battery Discharge Energy     | 0.1     | 0.01      | Changes 100kwh to 10kwh |
 | 33168    | Yesterday Battery Discharge Energy | 0.1     | 0.01      | Changes 100kwh to 10kwh |
+
+# String Inverter Sensors
+| Name                                                      | Device Class   | Unit Of Measurement        | State Class      | Registers                              |
+|-----------------------------------------------------------|----------------|----------------------------|------------------|----------------------------------------|
+| Product Model                                             |                |                            | MEASUREMENT      | 2999                                   |
+| DSP Software Version                                      |                |                            | MEASUREMENT      | 3000                                   |
+| HMI Major Version                                         |                |                            | MEASUREMENT      | 3001                                   |
+| AC Output Type                                            |                |                            | MEASUREMENT      | 3002                                   |
+| DC Input Type                                             |                |                            | MEASUREMENT      | 3003                                   |
+| Active Power                                              | POWER          | WATT                       | MEASUREMENT      | 3004, 3005                             |
+| Total DC Output Power                                     | POWER          | WATT                       | MEASUREMENT      | 3006, 3007                             |
+| Total Energy                                              | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3008, 3009                             |
+| Energy This Month                                         | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3010, 3011                             |
+| Energy Last Month                                         | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3012, 3013                             |
+| Energy Today                                              | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3014                                   |
+| Energy Yesterday                                          | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3015                                   |
+| Energy This Year                                          | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3016, 3017                             |
+| Energy Last Year                                          | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 3018, 3019                             |
+| DC Voltage 1                                              | VOLTAGE        | VOLT                       | MEASUREMENT      | 3021                                   |
+| DC Current 1                                              | CURRENT        | AMPERE                     | MEASUREMENT      | 3022                                   |
+| DC Voltage 2                                              | VOLTAGE        | VOLT                       | MEASUREMENT      | 3023                                   |
+| DC Current 2                                              | CURRENT        | AMPERE                     | MEASUREMENT      | 3024                                   |
+| DC Voltage 3                                              | VOLTAGE        | VOLT                       | MEASUREMENT      | 3025                                   |
+| DC Current 3                                              | CURRENT        | AMPERE                     | MEASUREMENT      | 3026                                   |
+| DC Voltage 4                                              | VOLTAGE        | VOLT                       | MEASUREMENT      | 3027                                   |
+| DC Current 4                                              | CURRENT        | AMPERE                     | MEASUREMENT      | 3028                                   |
+| A Phase Voltage                                           | VOLTAGE        | VOLT                       | MEASUREMENT      | 3033                                   |
+| B Phase Voltage                                           | VOLTAGE        | VOLT                       | MEASUREMENT      | 3034                                   |
+| C Phase Voltage                                           | VOLTAGE        | VOLT                       | MEASUREMENT      | 3035                                   |
+| A Phase Current                                           | CURRENT        | AMPERE                     | MEASUREMENT      | 3036                                   |
+| B Phase Current                                           | CURRENT        | AMPERE                     | MEASUREMENT      | 3037                                   |
+| C Phase Current                                           | CURRENT        | AMPERE                     | MEASUREMENT      | 3038                                   |
+| Working Mode                                              |                |                            | MEASUREMENT      | 3040                                   |
+| Inverter Temperature                                      | TEMPERATURE    | CELSIUS                    | MEASUREMENT      | 3041                                   |
+| Grid Frequency                                            | FREQUENCY      | HERTZ                      | MEASUREMENT      | 3042                                   |
+| Inverter Status                                           |                |                            | MEASUREMENT      | 3043                                   |
+| Limited active power adjustment rated power output value  | POWER          | WATT                       | MEASUREMENT      | 3044, 3045                             |
+| Reactive power regulation rated power output value        | REACTIVE_POWER | VOLT_AMPERE_REACTIVE       | MEASUREMENT      | 3046, 3047                             |
+| Actual Limited Active Power                               |                | PERCENTAGE                 | MEASUREMENT      | 3049                                   |
+| Actual Adjusted Power Factor                              |                | PERCENTAGE                 | MEASUREMENT      | 3050                                   |
+| Actual Power Factor Adjustment                            |                |                            | MEASUREMENT      | 3051                                   |
+| Power Limitation Switch (89)                              |                |                            | MEASUREMENT      | 3089                                   |
+| Shading MPPT Scan Enable                                  | VOLTAGE        | VOLT                       | MEASUREMENT      | 3179                                   |
+| Shading MPPT Scan Time Interval                           |                | MINUTES                    | MEASUREMENT      | 3180                                   |
+| Meter AC Voltage A                                        | VOLTAGE        | VOLT                       | MEASUREMENT      | 3250                                   |
+| Meter AC Current A                                        | CURRENT        | AMPERE                     | MEASUREMENT      | 3251                                   |
+| Meter AC Voltage B                                        | VOLTAGE        | VOLT                       | MEASUREMENT      | 3252                                   |
+| Meter AC Current B                                        | CURRENT        | AMPERE                     | MEASUREMENT      | 3253                                   |
+| Meter AC Voltage C                                        | VOLTAGE        | VOLT                       | MEASUREMENT      | 3254                                   |
+| Meter AC Current C                                        | CURRENT        | AMPERE                     | MEASUREMENT      | 3255                                   |
+| Meter AC Active Power A                                   | POWER          | KILO_WATT                  | MEASUREMENT      | 3256, 3257                             |
+| Meter AC Active Power B                                   | POWER          | KILO_WATT                  | MEASUREMENT      | 3258, 3259                             |
+| Meter AC Active Power C                                   | POWER          | KILO_WATT                  | MEASUREMENT      | 3260, 3261                             |
+| Meter AC Active Power Total                               | POWER          | KILO_WATT                  | MEASUREMENT      | 3262, 3263                             |
+| Model No                                                  |                |                            |                  | 36013                                  |
+| Inverter EPM Firmware Version                             |                |                            |                  | 36014                                  |
+| Clock (Hours)                                             |                | HOURS                      | MEASUREMENT      | 36022                                  |
+| Clock (Minutes)                                           |                | MINUTES                    | MEASUREMENT      | 36023                                  |
+| Clock (Seconds)                                           |                | SECONDS                    | MEASUREMENT      | 36024                                  |
+| Total Load power                                          | POWER          | WATT                       | MEASUREMENT      | 36028, 36029                           |
+| Total Generation Energy                                   | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 36050, 36051                           |
+| Load Total Consumption Energy                             | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 36052, 36053                           |
+| Grid Import Total Active Energy                           | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 36054, 36055                           |
+| Grid Export Total Active Energy                           | ENERGY         | KILO_WATT_HOUR             | TOTAL_INCREASING | 36056, 36057                           |
 
 # Solar Inverter Modes in Solis Inverters
 
