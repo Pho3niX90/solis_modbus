@@ -46,7 +46,15 @@ class ModbusController:
         self._last_modbus_success = datetime.now(UTC)
 
     async def process_write_queue(self):
-        """Process queued Modbus write requests sequentially."""
+        """Process queued Modbus write requests sequentially.
+
+        This method runs in an infinite loop, processing write requests from the queue.
+        It ensures that write operations are executed one at a time, with appropriate
+        delays between operations to avoid overwhelming the Modbus device.
+
+        Returns:
+            None
+        """
         while True:
             if not self.connected():
                 await asyncio.sleep(5)
@@ -67,7 +75,18 @@ class ModbusController:
             self.write_queue.task_done()
 
     async def _execute_write_holding_register(self, register, value):
-        """Executes a single register write with interframe delay."""
+        """Executes a single register write with interframe delay.
+
+        Args:
+            register (int): The register address to write to.
+            value (int): The value to write to the register.
+
+        Returns:
+            result: The result of the write operation, or None if an error occurred.
+
+        Raises:
+            Exception: If there is an error during the write operation.
+        """
         try:
             await self.connect()
             async with self.poll_lock:
@@ -92,7 +111,18 @@ class ModbusController:
             return None
 
     async def _execute_write_holding_registers(self, start_register, values):
-        """Executes a multiple register write."""
+        """Executes a multiple register write.
+
+        Args:
+            start_register (int): The starting register address to write to.
+            values (list): A list of values to write to consecutive registers.
+
+        Returns:
+            result: The result of the write operation, or None if an error occurred.
+
+        Raises:
+            Exception: If there is an error during the write operation.
+        """
         try:
             await self.connect()
             async with self.poll_lock:
@@ -115,17 +145,50 @@ class ModbusController:
             return None
 
     async def async_write_holding_register(self, register, value):
-        """Queues a single holding register write asynchronously."""
+        """Queues a single holding register write asynchronously.
+
+        This method adds a write request to the queue, which will be processed
+        by the process_write_queue method.
+
+        Args:
+            register (int): The register address to write to.
+            value (int): The value to write to the register.
+
+        Returns:
+            None
+        """
         await self.write_queue.put((register, value, False))
         _LOGGER.debug(f"({self.host}.{self.slave}) Queued Write Holding Register register = {register}, value = {value}")
 
     async def async_write_holding_registers(self, start_register, values):
-        """Queues multiple holding registers write asynchronously."""
+        """Queues multiple holding registers write asynchronously.
+
+        This method adds a write request for multiple registers to the queue,
+        which will be processed by the process_write_queue method.
+
+        Args:
+            start_register (int): The starting register address to write to.
+            values (list): A list of values to write to consecutive registers.
+
+        Returns:
+            None
+        """
         await self.write_queue.put((start_register, values, True))
         _LOGGER.debug(f"({self.host}.{self.slave}) Queued Write Holding Registers register = {start_register}, values = {values}")
 
     async def async_read_input_register(self, register, count=1):
-        """Reads an input register asynchronously."""
+        """Reads an input register asynchronously.
+
+        Args:
+            register (int): The register address to read from.
+            count (int, optional): The number of registers to read. Defaults to 1.
+
+        Returns:
+            list: A list of register values, or None if an error occurred.
+
+        Raises:
+            Exception: If there is an error during the read operation.
+        """
         try:
             await self.connect()
             result = await self.client.read_input_registers(address=register, count=count, slave=self.slave)
@@ -138,7 +201,18 @@ class ModbusController:
             return None
 
     async def async_read_holding_register(self, register, count=1):
-        """Reads a holding register asynchronously."""
+        """Reads a holding register asynchronously.
+
+        Args:
+            register (int): The register address to read from.
+            count (int, optional): The number of registers to read. Defaults to 1.
+
+        Returns:
+            list: A list of register values, or None if an error occurred.
+
+        Raises:
+            Exception: If there is an error during the read operation.
+        """
         try:
             await self.connect()
             result = await self.client.read_holding_registers(address=register, count=count, slave=self.slave)
@@ -151,7 +225,19 @@ class ModbusController:
             return None
 
     async def inter_frame_wait(self, read_delay=0.3, write_delay=0.7, is_write=False):
-        """Ensures the Modbus interframe delay is respected before the next request."""
+        """Ensures the Modbus interframe delay is respected before the next request.
+
+        This method calculates and waits for the appropriate delay between Modbus
+        requests to avoid overwhelming the device.
+
+        Args:
+            read_delay (float, optional): The delay in seconds for read operations. Defaults to 0.3.
+            write_delay (float, optional): The delay in seconds for write operations. Defaults to 0.7.
+            is_write (bool, optional): Whether this is a write operation. Defaults to False.
+
+        Returns:
+            None
+        """
         required_delay = write_delay if is_write else read_delay
         elapsed_time = time.monotonic() - self._last_modbus_request
 
@@ -165,7 +251,18 @@ class ModbusController:
         self._last_modbus_request = time.monotonic()  # Update last request time
 
     async def connect(self):
-        """Ensure the Modbus TCP connection is active."""
+        """Ensure the Modbus TCP connection is active.
+
+        This method attempts to establish a connection to the Modbus device
+        if one doesn't already exist. It includes rate limiting to prevent
+        excessive reconnection attempts.
+
+        Returns:
+            bool: True if the connection is established, False otherwise.
+
+        Raises:
+            Exception: If there is an error during the connection attempt.
+        """
         if self.client.connected:
             return True  # Already connected
 
@@ -189,53 +286,123 @@ class ModbusController:
             return False
 
     def disable_connection(self):
+        """Disables the Modbus connection.
+
+        This method sets the enabled flag to False and closes the connection.
+
+        Returns:
+            None
+        """
         self.enabled = False
         self.close_connection()
 
     async def enable_connection(self):
+        """Enables the Modbus connection.
+
+        This method sets the enabled flag to True and attempts to establish a connection.
+
+        Returns:
+            None
+        """
         self.enabled = True
         await self.connect()
 
     def close_connection(self):
-        """Closes the Modbus connection."""
+        """Closes the Modbus connection.
+
+        This method closes the connection to the Modbus device.
+
+        Returns:
+            None
+        """
         self.client.close()
 
     def connected(self):
+        """Checks if the Modbus connection is active.
+
+        Returns:
+            bool: True if the connection is active, False otherwise.
+        """
         return self.client.connected
 
     @property
     def poll_speed(self):
+        """Gets the polling speed configuration.
+
+        Returns:
+            dict: A dictionary mapping poll speed types to their interval values in seconds.
+        """
         return {PollSpeed.FAST: self._poll_interval_fast, PollSpeed.NORMAL: self._poll_interval_normal,
                 PollSpeed.SLOW: self._poll_interval_slow}
 
     @property
     def model(self):
+        """Gets the model of the inverter.
+
+        Returns:
+            str: The model name of the inverter.
+        """
         return self._model
 
     @property
     def sw_version(self):
+        """Gets the software version of the inverter.
+
+        Returns:
+            str: The software version of the inverter.
+        """
         return self._sw_version
 
     @property
     def data_received(self):
+        """Checks if data has been received from the inverter.
+
+        Returns:
+            bool: True if data has been received, False otherwise.
+        """
         return self._data_received
 
     @property
     def sensor_groups(self):
+        """Gets the sensor groups associated with this controller.
+
+        Returns:
+            list: A list of SolisSensorGroup objects.
+        """
         return self._sensor_groups
 
     @property
     def sensor_derived_groups(self):
+        """Gets the derived sensor groups associated with this controller.
+
+        Returns:
+            list: A list of SolisDerivedSensor objects.
+        """
         return self._derived_sensors
 
     @property
     def last_modbus_request(self):
+        """Gets the timestamp of the last Modbus request.
+
+        Returns:
+            float: The timestamp of the last Modbus request (from time.monotonic()).
+        """
         return self._last_modbus_request
 
     @property
     def last_modbus_success(self):
+        """Gets the timestamp of the last successful Modbus operation.
+
+        Returns:
+            datetime: The timestamp of the last successful Modbus operation.
+        """
         return self._last_modbus_success
 
     @property
     def device_identification(self):
+        """Gets the device identification string.
+
+        Returns:
+            str: The device identification string, or an empty string if not available.
+        """
         return f" {self.identification}" if self.identification else ""

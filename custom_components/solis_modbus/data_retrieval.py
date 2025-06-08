@@ -36,7 +36,17 @@ class DataRetrieval:
             self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self.poll_controller)
 
     async def check_connection(self, now=None):
-        """Ensure the Modbus controller is connected, retrying on failure."""
+        """Ensure the Modbus controller is connected, retrying on failure.
+
+        This method checks if the controller is connected and attempts to reconnect
+        if it's not. It also emits the controller status to the event bus.
+
+        Args:
+            now (datetime, optional): Current time, provided by the scheduler. Defaults to None.
+
+        Returns:
+            None
+        """
         if self.connection_check:
             return
 
@@ -68,7 +78,18 @@ class DataRetrieval:
         self.connection_check = False
 
     async def poll_controller(self, event=None):
-        """Poll the Modbus controller for data, retrying until success."""
+        """Poll the Modbus controller for data, retrying until success.
+
+        This method sets up periodic polling of the Modbus controller at different
+        intervals based on the poll speed configuration. It also starts the write
+        queue processing.
+
+        Args:
+            event (Event, optional): The Home Assistant started event. Defaults to None.
+
+        Returns:
+            None
+        """
         await self.check_connection()
 
         # Start periodic polling
@@ -80,22 +101,74 @@ class DataRetrieval:
         self.hass.create_task(self.controller.process_write_queue())
 
     async def modbus_update_all(self):
+        """Updates all sensor groups regardless of their poll speed.
+
+        This method calls the update methods for fast, normal, and slow poll speeds
+        to ensure all sensor groups are updated.
+
+        Returns:
+            None
+        """
         await self.modbus_update_fast()
         await self.modbus_update_normal()
         await self.modbus_update_slow()
 
     async def modbus_update_fast(self, now = None):
+        """Updates sensor groups with fast poll speed.
+
+        This method retrieves data for all sensor groups with a fast poll speed
+        and emits the last successful Modbus operation timestamp to the event bus.
+
+        Args:
+            now (datetime, optional): Current time, provided by the scheduler. Defaults to None.
+
+        Returns:
+            None
+        """
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
         self.hass.bus.async_fire(DOMAIN, {REGISTER: 90006, VALUE: self.controller.last_modbus_success, CONTROLLER: self.controller.host, SLAVE: self.controller.slave})
 
     async def modbus_update_slow(self, now = None):
+        """Updates sensor groups with slow poll speed.
+
+        This method retrieves data for all sensor groups with a slow poll speed.
+
+        Args:
+            now (datetime, optional): Current time, provided by the scheduler. Defaults to None.
+
+        Returns:
+            None
+        """
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.SLOW], PollSpeed.SLOW)
 
     async def modbus_update_normal(self, now = None):
+        """Updates sensor groups with normal poll speed.
+
+        This method retrieves data for all sensor groups with a normal poll speed
+        or a one-time poll speed.
+
+        Args:
+            now (datetime, optional): Current time, provided by the scheduler. Defaults to None.
+
+        Returns:
+            None
+        """
         await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed in (PollSpeed.NORMAL, PollSpeed.ONCE)], PollSpeed.NORMAL)
 
     async def get_modbus_updates(self, groups: List[SolisSensorGroup], speed: PollSpeed):
-        """Read registers from the Modbus controller, ensuring no concurrent runs."""
+        """Read registers from the Modbus controller, ensuring no concurrent runs.
+
+        This method reads register values for the specified sensor groups and
+        updates the cache with the retrieved values. It also emits events for
+        each register value that is read.
+
+        Args:
+            groups (List[SolisSensorGroup]): The sensor groups to read data for.
+            speed (PollSpeed): The poll speed category for these groups.
+
+        Returns:
+            None
+        """
         if not self.controller.enabled or not self.controller.connected():
             return
 
