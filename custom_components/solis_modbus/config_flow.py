@@ -1,6 +1,7 @@
 import voluptuous as vol
 import logging
 from homeassistant import config_entries
+from homeassistant.config_entries import OptionsFlowWithConfigEntry
 
 from . import ModbusController
 from .const import DOMAIN
@@ -133,12 +134,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return ModbusOptionsFlowHandler(config_entry)
 
 
-class ModbusOptionsFlowHandler(config_entries.OptionsFlow):
+class ModbusOptionsFlowHandler(OptionsFlowWithConfigEntry):
     """Handle options flow for Modbus."""
-
-    def __init__(self, config_entry):
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
