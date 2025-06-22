@@ -664,9 +664,14 @@ hybrid_sensors = [
         ]
     },
     {
-        "register_start": 43074,
+        "register_start": 43073,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
+            {"name": "Grid feed in Switch value", "category": Category.AC_PORT_SETTING,
+             "unique": "solis_modbus_inverter_grid_feed_in_switch_value", "register": ['43073'],
+             "multiplier": 1,
+             "hidden": True,
+             "state_class": SensorStateClass.MEASUREMENT},
             {"name": "Backflow Power", "category": Category.AC_PORT_SETTING,
              "unique": "solis_modbus_inverter_backflow_power", "register": ['43074'],
              "device_class": SensorDeviceClass.POWER, "multiplier": 100,
