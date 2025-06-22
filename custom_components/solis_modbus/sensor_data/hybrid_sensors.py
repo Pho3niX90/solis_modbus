@@ -676,7 +676,7 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_backflow_power", "register": ['43074'],
              "device_class": SensorDeviceClass.POWER, "multiplier": 100,
              "unit_of_measurement": UnitOfPower.WATT, "editable": True,
-             "default": 0, "min": 5, "max": 20000, "step": 1, },
+             "default": 0, "min": 0, "max": 20000, "step": 1, },
         ]
     },
     {
