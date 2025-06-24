@@ -29,6 +29,11 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             "entities": [
                 {"name": "Power State", "on_value": 190, "off_value": 222},
             ]
+            },{
+                "register": 43073,
+                "entities": [
+                    {"bit_position": 4, "name": "Grid feed in power limit switch"},
+                ]
             },
             {
                 "register": 43110,
