@@ -44,7 +44,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
         # Watchdog parameters
         self._last_update = datetime.now(timezone.utc).astimezone()
-        self._update_timeout = timedelta(minutes=_WATCHDOG_TIMEOUT_MIN)
+        self._update_timeout = timedelta(minutes=self.base_sensor.controller.poll_speed.get(sensor.poll_speed, 0) + _WATCHDOG_TIMEOUT_MIN)
 
     def decimal_count(self, number: float) -> int | None:
         """Returns the number of decimal places in a given number."""
