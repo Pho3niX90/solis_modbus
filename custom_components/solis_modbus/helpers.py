@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import List
 
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_utils
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import DRIFT_COUNTER, VALUES, CONTROLLER
 
@@ -29,8 +30,11 @@ def extract_serial_number(values):
 
 
 def clock_drift_test(hass, controller, hours, minutes, seconds):
-    current_time = datetime.now()
-    device_time = datetime(current_time.year, current_time.month, current_time.day, hours, minutes, seconds)
+    current_time = dt_utils.now()
+    device_time = datetime(
+        current_time.year, current_time.month, current_time.day, hours, minutes, seconds,
+        tzinfo=current_time.tzinfo
+    )
     total_drift = (current_time - device_time).total_seconds()
 
     # Ensure structure
