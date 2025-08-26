@@ -55,7 +55,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         state = await self.async_get_last_number_data()
         if state:
             self._attr_native_value = state.native_value
-            self.adjust_min_max_step(state.native_min_value, state.native_max_value, state.native_step)
+            #self.adjust_min_max_step(state.native_min_value, state.native_max_value, state.native_step)
 
         # 🔥 Register event listener for real-time updates
         self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)

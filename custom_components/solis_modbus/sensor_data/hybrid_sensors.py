@@ -1378,7 +1378,7 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_battery_max_discharge_current", "register": ['43118'],
              "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
-             "default": 20, "min": 5, "max": 200, "step": 0.1, },
+             "default": 20, "min": 0, "max": 200, "step": 0.1, },
         ]
     },
     {
