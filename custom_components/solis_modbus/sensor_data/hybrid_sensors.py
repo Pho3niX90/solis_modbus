@@ -335,6 +335,32 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_ac_grid_port_power",
              "register": ['33151', '33152'], "device_class": SensorDeviceClass.POWER, "multiplier": 0,
              "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+
+            {"name": "Backup AC Voltage Phase B", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_voltage_phase_b",
+             "register": ['33153'], "device_class": SensorDeviceClass.VOLTAGE,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT,
+             "state_class": SensorStateClass.MEASUREMENT},
+            {"name": "Backup AC Current Phase B", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_current_phase_b",
+             "register": ['33154'], "device_class": SensorDeviceClass.CURRENT,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+             "state_class": SensorStateClass.MEASUREMENT},
+
+            {"name": "Backup AC Voltage Phase C", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_voltage_phase_c",
+             "register": ['33155'], "device_class": SensorDeviceClass.VOLTAGE,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT,
+             "state_class": SensorStateClass.MEASUREMENT},
+            {"name": "Backup AC Current Phase C", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_current_phase_c",
+             "register": ['33156'], "device_class": SensorDeviceClass.CURRENT,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+             "state_class": SensorStateClass.MEASUREMENT}
         ]
     },
     {
@@ -1352,7 +1378,7 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_battery_max_discharge_current", "register": ['43118'],
              "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
              "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "editable": True,
-             "default": 20, "min": 5, "max": 200, "step": 0.1, },
+             "default": 20, "min": 0, "max": 200, "step": 0.1, },
         ]
     },
     {
