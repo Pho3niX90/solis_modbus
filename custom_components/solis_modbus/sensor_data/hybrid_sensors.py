@@ -335,6 +335,32 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_ac_grid_port_power",
              "register": ['33151', '33152'], "device_class": SensorDeviceClass.POWER, "multiplier": 0,
              "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+
+            {"name": "Backup AC Voltage Phase B", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_voltage_phase_b",
+             "register": ['33133'], "device_class": SensorDeviceClass.VOLTAGE,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT,
+             "state_class": SensorStateClass.MEASUREMENT},
+            {"name": "Backup AC Current Phase B", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_current_phase_b",
+             "register": ['33134'], "device_class": SensorDeviceClass.CURRENT,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+             "state_class": SensorStateClass.MEASUREMENT},
+
+            {"name": "Backup AC Voltage Phase C", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_voltage_phase_c",
+             "register": ['33135'], "device_class": SensorDeviceClass.VOLTAGE,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricPotential.VOLT,
+             "state_class": SensorStateClass.MEASUREMENT},
+            {"name": "Backup AC Current Phase C", "category": Category.LOAD_INFORMATION,
+             "unique": "solis_modbus_inverter_backup_ac_current_phase_c",
+             "register": ['33136'], "device_class": SensorDeviceClass.CURRENT,
+             "multiplier": 0.1,
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+             "state_class": SensorStateClass.MEASUREMENT}
         ]
     },
     {
