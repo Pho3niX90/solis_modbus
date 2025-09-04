@@ -30,7 +30,7 @@ class TestModbusController(unittest.TestCase):
             hass=self.hass,
             host="192.168.1.100",
             inverter_config=self.inverter_config,
-            slave=1,
+            device_id=1,
             port=502,
             fast_poll=5,
             normal_poll=15,
@@ -83,7 +83,7 @@ class TestModbusController(unittest.TestCase):
         result = await self.controller.async_read_input_register(100)
         
         self.assertEqual([42], result)
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
     
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
@@ -93,7 +93,7 @@ class TestModbusController(unittest.TestCase):
         result = await self.controller.async_read_input_register(100)
         
         self.assertIsNone(result)
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
     
     async def test_async_read_holding_register_success(self):
         """Test successful read of holding register."""
@@ -105,7 +105,7 @@ class TestModbusController(unittest.TestCase):
         result = await self.controller.async_read_holding_register(100)
         
         self.assertEqual([42], result)
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
     
     async def test_async_read_holding_register_failure(self):
         """Test failed read of holding register."""
@@ -115,7 +115,7 @@ class TestModbusController(unittest.TestCase):
         result = await self.controller.async_read_holding_register(100)
         
         self.assertIsNone(result)
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
     
     async def test_async_write_holding_register(self):
         """Test queuing a write to a holding register."""

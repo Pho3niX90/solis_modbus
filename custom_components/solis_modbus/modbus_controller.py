@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class ModbusController:
     def __init__(self, hass, host, inverter_config: InverterConfig, sensor_groups: List[SolisSensorGroup] = None,
-                 derived_sensors: List[SolisDerivedSensor] = None, slave=1, port=502, fast_poll=5, normal_poll=15, slow_poll=30, identification: str | None = None):
+                 derived_sensors: List[SolisDerivedSensor] = None, device_id=1, port=502, fast_poll=5, normal_poll=15, slow_poll=30, identification: str | None = None):
         self.hass = hass
         self.host = host
         self.port = port
@@ -93,7 +93,7 @@ class ModbusController:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
                 int_value = int(value)
                 int_register = register if is_number(register) else int(register)
-                result = await self.client.write_register(address=int_register, value=int_value, slave=self.slave)
+                result = await self.client.write_register(address=int_register, value=int_value, device_id=self.slave)
                 _LOGGER.debug(
                     f"({self.host}.{self.slave}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
 
@@ -127,7 +127,7 @@ class ModbusController:
             await self.connect()
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)
-                result = await self.client.write_registers(address=start_register, values=values, slave=self.slave)
+                result = await self.client.write_registers(address=start_register, values=values, device_id=self.slave)
                 _LOGGER.debug(f"({self.host}.{self.slave}) Write Holding Registers register = {start_register}, values = {values}: {result}")
 
                 if result.isError():
@@ -191,7 +191,7 @@ class ModbusController:
         """
         try:
             await self.connect()
-            result = await self.client.read_input_registers(address=register, count=count, slave=self.slave)
+            result = await self.client.read_input_registers(address=register, count=count, device_id=self.slave)
             _LOGGER.debug(f"({self.host}.{self.slave}) Register {register}: {result.registers}")
             await self.inter_frame_wait()
             self._last_modbus_success = datetime.now(UTC)
@@ -215,7 +215,7 @@ class ModbusController:
         """
         try:
             await self.connect()
-            result = await self.client.read_holding_registers(address=register, count=count, slave=self.slave)
+            result = await self.client.read_holding_registers(address=register, count=count, device_id=self.slave)
             _LOGGER.debug(f"({self.host}.{self.slave}) Holding Register {register}: {result.registers}")
             await self.inter_frame_wait()
             self._last_modbus_success = datetime.now(UTC)
