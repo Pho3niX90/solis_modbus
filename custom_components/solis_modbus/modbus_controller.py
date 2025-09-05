@@ -24,6 +24,8 @@ class ModbusController:
         self.host = host
         self.port = port
         self.device_id = device_id
+        # todo: quick fix, replace naming where applicable later.
+        self.slave = device_id
         self.identification = identification
         self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(host=self.host, port=self.port, timeout=5, retries=5)
         self.connect_failures = 0
