@@ -175,7 +175,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass=hass,
         host=host,
         port=port,
-        slave=slave,
+        device_id=slave,
         identification=identification,
         fast_poll=poll_interval_fast,
         normal_poll=poll_interval_normal,
