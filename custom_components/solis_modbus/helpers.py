@@ -108,7 +108,7 @@ def cache_get(hass: HomeAssistant, register: str | int):
     return hass.data[DOMAIN][VALUES].get(str(register), None)
 
 def set_controller(hass: HomeAssistant, controller):
-    hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller.host, controller.slave)] = controller
+    hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller.host, controller.device_id)] = controller
 
 def get_controller(hass: HomeAssistant, controller_host: str, controller_slave: int):
     controller = hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller_host, controller_slave)]
@@ -127,4 +127,4 @@ def _any_in(target: List[int], collection: set[int]) -> bool:
     return any(item in collection for item in target)
 
 def is_correct_controller(controller, host: str, slave: int):
-    return controller.host == host and controller.slave == slave
+    return controller.host == host and controller.device_id == slave
