@@ -585,6 +585,7 @@ hybrid_sensors = [
     {
         "register_start": 33530,
         "poll_speed": PollSpeed.FAST,
+        "feature_requirement": [InverterFeature.GENERATOR],
         "entities": [
             {"name": "Generator Phase A Active Power", "category": Category.GENERATOR_INFORMATION,
              "unique": "solis_modbus_inverter_generator_phase_a_active_power",
