@@ -152,12 +152,8 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_total_dc_output",
              "register": ['33057', '33058'], "device_class": SensorDeviceClass.POWER, "multiplier": 0,
              "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
-        ]
-    },
-    {
-        "register_start": 33070,
-        "poll_speed": PollSpeed.FAST,
-        "entities": [
+
+            {"type": "reserve", "register": ['33059', '33060', '33061', '33062', '33063', '33064', '33065', '33066', '33067', '33068', '33069']},
 
             {"name": "Alarm code data", "category": Category.STATUS_INFORMATION,
              "unique": "solis_modbus_inverter_alarm_code_data",
@@ -214,13 +210,10 @@ hybrid_sensors = [
             {"name": "Apparent Power", "category": Category.AC_INFORMATION,
              "unique": "solis_modbus_inverter_apparent_power",
              "register": ['33083', '33084'], "device_class": SensorDeviceClass.APPARENT_POWER, "multiplier": 0,
-             "unit_of_measurement": UnitOfApparentPower.VOLT_AMPERE, "state_class": SensorStateClass.MEASUREMENT}
-        ]
-    },
-    {
-        "register_start": 33093,
-        "poll_speed": PollSpeed.FAST,
-        "entities": [
+             "unit_of_measurement": UnitOfApparentPower.VOLT_AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+
+            {"type": "reserve", "register": ['33085', '33086', '33087', '33088', '33089', '33090', '33091', '33092']},
+
             {"name": "Temperature", "unique": "solis_modbus_inverter_temperature", "category": Category.BASIC_INFORMATION,
              "register": ['33093'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
              "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
@@ -585,6 +578,7 @@ hybrid_sensors = [
     {
         "register_start": 33530,
         "poll_speed": PollSpeed.FAST,
+        "feature_requirement": [InverterFeature.GENERATOR],
         "entities": [
             {"name": "Generator Phase A Active Power", "category": Category.GENERATOR_INFORMATION,
              "unique": "solis_modbus_inverter_generator_phase_a_active_power",
