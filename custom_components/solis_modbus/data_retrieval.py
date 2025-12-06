@@ -30,10 +30,18 @@ class DataRetrieval:
             PollSpeed.STARTUP: {},
         }
 
+        self._unsub_listeners = []
         if self.hass.is_running:
             self.hass.create_task(self.poll_controller())
         else:
-            self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self.poll_controller)
+            self._unsub_listeners.append(self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self.poll_controller))
+
+    async def async_stop(self):
+        """Cancel all listeners."""
+        for unsub in self._unsub_listeners:
+            unsub()
+        self._unsub_listeners = []
+        self.connection_check = False # Stop connection loop logic if any
 
     async def check_connection(self, now=None):
         """Ensure the Modbus controller is connected, retrying on failure.
@@ -93,10 +101,10 @@ class DataRetrieval:
         await self.check_connection()
 
         # Start periodic polling
-        async_track_time_interval(self.hass, self.check_connection, timedelta(minutes=2))
-        async_track_time_interval(self.hass, self.modbus_update_fast, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.FAST, 5)))
-        async_track_time_interval(self.hass, self.modbus_update_normal, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15)))
-        async_track_time_interval(self.hass, self.modbus_update_slow, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30)))
+        self._unsub_listeners.append(async_track_time_interval(self.hass, self.check_connection, timedelta(minutes=2)))
+        self._unsub_listeners.append(async_track_time_interval(self.hass, self.modbus_update_fast, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.FAST, 5))))
+        self._unsub_listeners.append(async_track_time_interval(self.hass, self.modbus_update_normal, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15))))
+        self._unsub_listeners.append(async_track_time_interval(self.hass, self.modbus_update_slow, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30))))
 
         self.hass.create_task(self.controller.process_write_queue())
 

@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch, AsyncMock
+from unittest import IsolatedAsyncioTestCase
 import asyncio
 from datetime import datetime, UTC
 
@@ -7,7 +8,7 @@ from custom_components.solis_modbus.modbus_controller import ModbusController
 from custom_components.solis_modbus.data.enums import PollSpeed
 
 
-class TestModbusController(unittest.TestCase):
+class TestModbusController(IsolatedAsyncioTestCase):
     """Test the ModbusController class."""
 
     def setUp(self):
@@ -19,11 +20,21 @@ class TestModbusController(unittest.TestCase):
         self.inverter_config = MagicMock()
         self.inverter_config.model = "Test Model"
         
-        # Create a patcher for AsyncModbusTcpClient
-        self.client_patcher = patch('custom_components.solis_modbus.modbus_controller.AsyncModbusTcpClient')
-        self.mock_client_class = self.client_patcher.start()
+        # Create a patcher for ModbusClientManager
+        self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
+        self.mock_manager_data = self.manager_patcher.start()
+        self.mock_manager = MagicMock()
+        self.mock_manager_data.get_instance.return_value = self.mock_manager
+        
+        # Mock Client
         self.mock_client = MagicMock()
-        self.mock_client_class.return_value = self.mock_client
+        self.mock_manager.get_client.return_value = self.mock_client
+
+        # Mock Lock
+        self.mock_lock = MagicMock()
+        self.mock_lock.__aenter__ = AsyncMock(return_value=None)
+        self.mock_lock.__aexit__ = AsyncMock(return_value=None)
+        self.mock_manager.get_client_lock.return_value = self.mock_lock
         
         # Create the controller
         self.controller = ModbusController(
@@ -39,7 +50,7 @@ class TestModbusController(unittest.TestCase):
     
     def tearDown(self):
         """Tear down test fixtures."""
-        self.client_patcher.stop()
+        self.manager_patcher.stop()
     
     async def test_connect_success(self):
         """Test successful connection."""
@@ -163,7 +174,8 @@ class TestModbusController(unittest.TestCase):
         self.controller.disable_connection()
         
         self.assertFalse(self.controller.enabled)
-        self.mock_client.close.assert_called_once()
+        # Check that release_client was called on the manager
+        self.mock_manager.release_client.assert_called_once_with("192.168.1.100", 502)
     
     async def test_enable_connection(self):
         """Test enabling the connection."""

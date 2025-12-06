@@ -119,7 +119,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         register_value = round(value / self._multiplier)
 
         # Write to Modbus controller
-        self.hass.create_task(
+        self._hass.create_task(
             self.base_sensor.controller.async_write_holding_register(self._write_register, int(register_value))
         )
 

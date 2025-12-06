@@ -179,7 +179,7 @@ class SolisSensorGroup:
             category=entity.get("category", None),
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}_{}".format(DOMAIN, identification if identification is not None else controller.host, entity.get("unique", "reserve")),
+            unique_id="{}_{}_{}".format(DOMAIN, identification if identification is not None else (f"{controller.host}{f'_{controller.port}' if controller.port != 502 else ''}{f'_{controller.device_id}' if controller.device_id != 1 else ''}"), entity.get("unique", "reserve")),
             poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))
         self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)

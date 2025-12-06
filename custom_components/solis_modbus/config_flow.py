@@ -111,7 +111,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         try:
-            await modbus_controller.connect()
+            if not await modbus_controller.connect():
+                raise ConnectionError("Failed to connect")
             if inverter_config.type in [InverterType.GRID, InverterType.STRING]:
                 await modbus_controller.async_read_input_register(3041)
             else:
