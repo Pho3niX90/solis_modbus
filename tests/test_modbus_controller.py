@@ -104,7 +104,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_input_register(100, 1)
 
         self.assertEqual([42], result)
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
@@ -126,7 +126,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_holding_register(100, 1)
 
         self.assertEqual([42], result)
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_holding_register_failure(self):
         """Test failed read of holding register."""
@@ -300,7 +300,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_input_register(100, 1)
 
         self.assertEqual([42], result)
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
@@ -322,7 +322,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_holding_register(100, 1)
 
         self.assertEqual([42], result)
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_holding_register_failure(self):
         """Test failed read of holding register."""
@@ -467,6 +467,81 @@ class TestModbusControllerInitialization(unittest.TestCase):
                 inverter_config=self.inverter_config
             )
         self.assertIn("serial_port is required", str(context.exception))
+
+
+class TestModbusControllerProperties(unittest.TestCase):
+    """Test standard properties and methods of ModbusController."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.hass = MagicMock()
+        self.inverter_config = MagicMock()
+        self.inverter_config.model = "Test Model"
+        
+        # Patch ModbusClientManager
+        self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
+        self.mock_manager_class = self.manager_patcher.start()
+        self.mock_manager = MagicMock()
+        self.mock_manager_class.get_instance.return_value = self.mock_manager
+        
+        self.mock_manager.get_tcp_client.return_value = MagicMock()
+        self.mock_manager.get_client_lock.return_value = MagicMock()
+
+        self.sensor_groups = [MagicMock()]
+        self.derived_sensors = [MagicMock()]
+
+        self.controller = ModbusController(
+            hass=self.hass,
+            inverter_config=self.inverter_config,
+            sensor_groups=self.sensor_groups,
+            derived_sensors=self.derived_sensors,
+            identification="SN123456",
+            connection_type=CONN_TYPE_TCP,
+            host="1.2.3.4"
+        )
+
+    def tearDown(self):
+        """Tear down test fixtures."""
+        self.manager_patcher.stop()
+
+    def test_sw_version(self):
+        """Test sw_version property."""
+        self.assertEqual("N/A", self.controller.sw_version)
+
+    def test_sensor_groups(self):
+        """Test sensor_groups property."""
+        self.assertEqual(self.sensor_groups, self.controller.sensor_groups)
+
+    def test_derived_sensors(self):
+        """Test derived_sensors property."""
+        self.assertEqual(self.derived_sensors, self.controller.derived_sensors)
+
+    def test_sensor_derived_groups(self):
+        """Test sensor_derived_groups property."""
+        self.assertEqual(self.derived_sensors, self.controller.sensor_derived_groups)
+
+    def test_last_modbus_request(self):
+        """Test last_modbus_request property."""
+        # Initial value is 0
+        self.assertEqual(0, self.controller.last_modbus_request)
+
+    def test_last_modbus_success(self):
+        """Test last_modbus_success property."""
+        # Initial value is a datetime
+        self.assertIsInstance(self.controller.last_modbus_success, datetime)
+
+    def test_device_identification(self):
+        """Test device_identification property."""
+        self.assertEqual(" SN123456", self.controller.device_identification)
+        
+        # Test with no identification
+        self.controller.identification = None
+        self.assertEqual("", self.controller.device_identification)
+
+    def test_close_connection(self):
+        """Test close_connection method."""
+        self.controller.close_connection()
+        self.mock_manager.release_client.assert_called_once_with(self.controller.connection_id)
 
 
 if __name__ == "__main__":
