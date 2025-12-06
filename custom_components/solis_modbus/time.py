@@ -145,8 +145,8 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
             self._received_values[updated_register] = updated_value
 
             if updated_value is not None:
-                hour = cache_get(self.hass, self._register)
-                minute = cache_get(self.hass, self._register + 1)
+                hour = cache_get(self._hass, self._register)
+                minute = cache_get(self._hass, self._register + 1)
 
                 if hour is not None and minute is not None:
                     hour, minute = int(hour), int(minute)
