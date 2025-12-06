@@ -5,8 +5,12 @@ from typing import List
 
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_utils
+from homeassistant.config_entries import ConfigEntry
 from custom_components.solis_modbus import DOMAIN
-from custom_components.solis_modbus.const import DRIFT_COUNTER, VALUES, CONTROLLER
+from custom_components.solis_modbus.const import (
+    DRIFT_COUNTER, VALUES, CONTROLLER,
+    CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT, CONF_CONNECTION_TYPE
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,11 +114,36 @@ def cache_get(hass: HomeAssistant, register: str | int):
 def set_controller(hass: HomeAssistant, controller):
     hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller.host, controller.device_id)] = controller
 
+def get_controller_from_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Get controller from config entry (works for both TCP and Serial)."""
+    config = {**config_entry.data, **config_entry.options}
+    slave = config.get("slave", 1)
+
+    # Determine connection type and get the appropriate identifier
+    connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_SERIAL)
+
+    if connection_type == CONN_TYPE_TCP:
+        controller_id = config.get("host")
+    else:  # Serial
+        controller_id = config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0")
+
+    key = "{}_{}".format(controller_id, slave)
+    return hass.data[DOMAIN][CONTROLLER].get(key)
+
 def get_controller(hass: HomeAssistant, controller_host: str, controller_slave: int):
-    controller = hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller_host, controller_slave)]
+    """Get controller by host/port and slave (legacy function for backwards compatibility)."""
+    if controller_host is None:
+        # This is a serial connection, but we don't have the port info here
+        # Return the first controller with matching slave
+        for key, controller in hass.data[DOMAIN][CONTROLLER].items():
+            if controller.device_id == controller_slave:
+                return controller
+        return None
+
+    controller = hass.data[DOMAIN][CONTROLLER].get("{}_{}".format(controller_host, controller_slave))
     if controller:
         return controller
-    return hass.data[DOMAIN][CONTROLLER][controller_host]
+    return hass.data[DOMAIN][CONTROLLER].get(controller_host)
 
 def split_s32(s32_values: List[int]):
     high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]

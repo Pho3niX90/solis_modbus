@@ -4,7 +4,7 @@ from typing_extensions import List
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
-from custom_components.solis_modbus.helpers import get_controller
+from custom_components.solis_modbus.helpers import get_controller_from_entry
 import logging
 
 from custom_components.solis_modbus.sensors.solis_select_entity import SolisSelectEntity
@@ -16,7 +16,7 @@ async def async_setup_entry(
         config_entry: ConfigEntry,
         async_add_devices,
 ) -> None:
-    controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
+    controller: ModbusController = get_controller_from_entry(hass, config_entry)
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 
