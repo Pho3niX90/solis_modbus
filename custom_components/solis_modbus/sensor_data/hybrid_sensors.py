@@ -1492,6 +1492,17 @@ hybrid_sensors_derived = [
      "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
      "register": ['33149', '33150', '33135', '1']},
 
+    {"name": "Battery Power Net",
+     "unique": "solis_modbus_inverter_battery_power_combined", "device_class": SensorDeviceClass.POWER,
+     "multiplier": 0.1,
+     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT,
+     "register": ['33149', '33150', '33135']},
+
+    {"name": "Grid Power Net", "category": Category.METER_INFORMATION,
+     "unique": "solis_modbus_inverter_grid_power_net",
+     "register": ['33263', '33264'], "device_class": SensorDeviceClass.POWER, "multiplier": 0,
+     "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+
     {"name": "Today Net Grid Energy",
      "unique": "solis_modbus_inverter_today_net_grid_energy", "device_class": SensorDeviceClass.ENERGY,
      "multiplier": 0.1,

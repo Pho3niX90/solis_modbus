@@ -132,6 +132,24 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 else:
                     new_value = 0
 
+            if 33135 in self._register and len(self._register) == 3:
+                registers = self._register.copy()
+                self._register = registers[:2]
+
+                p_value = self.base_sensor.convert_value([self._received_values[reg] for reg in filtered_registers])
+                d_value = self._received_values[registers[2]]
+
+                self._register = registers
+
+                # 0 indicated charging, 1 indicated discharging
+                if str(d_value) == str(0):
+                    new_value = round(p_value * 10) * -1
+                else:
+                    new_value = round(p_value * 10)
+
+            if 33263 in self._register and len(self._register) == 2:
+                new_value = new_value * -1
+
             if 33175 in self._register or 33171 in self._register:
                 # 33175 - to grid
                 # 33171 - from grid
