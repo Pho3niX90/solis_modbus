@@ -140,10 +140,17 @@ class ModbusController:
                     _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register} with values {values}: {result}")
                     return None
 
-                for i, value in result.registers:
-                    reg = start_register + i
-                    cache_save(self.hass, reg, value)
-                    self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: value, CONTROLLER: self.host, SLAVE: self.device_id})
+                response_values = getattr(result, "registers", None)
+                if response_values is None:
+                    response_values = values
+
+                for offset, written_value in enumerate(response_values):
+                    reg = start_register + offset
+                    cache_save(self.hass, reg, written_value)
+                    self.hass.bus.async_fire(
+                        DOMAIN,
+                        {REGISTER: reg, VALUE: written_value, CONTROLLER: self.host, SLAVE: self.device_id},
+                    )
 
                 return result
         except Exception as e:

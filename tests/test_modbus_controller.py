@@ -1,11 +1,12 @@
 import unittest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch, AsyncMock, call
 from unittest import IsolatedAsyncioTestCase
 import asyncio
 from datetime import datetime, UTC
 
 from custom_components.solis_modbus.modbus_controller import ModbusController
 from custom_components.solis_modbus.data.enums import PollSpeed
+from custom_components.solis_modbus.const import DOMAIN, VALUES, REGISTER, VALUE, CONTROLLER, SLAVE
 
 
 class TestModbusController(IsolatedAsyncioTestCase):
@@ -15,6 +16,7 @@ class TestModbusController(IsolatedAsyncioTestCase):
         """Set up test fixtures."""
         self.hass = MagicMock()
         self.hass.bus.async_fire = MagicMock()
+        self.hass.data = {DOMAIN: {VALUES: {}}}
         
         # Mock the inverter config
         self.inverter_config = MagicMock()
@@ -147,6 +149,43 @@ class TestModbusController(IsolatedAsyncioTestCase):
         await self.controller.async_write_holding_registers(100, [42, 43])
         
         self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True))
+
+    async def test_execute_write_holding_registers_caches_response_values(self):
+        """Ensure write responses update the cache and fire events."""
+        self.mock_client.connected = True
+        mock_result = MagicMock()
+        mock_result.isError.return_value = False
+        mock_result.registers = [10, 11]
+        self.mock_client.write_registers = AsyncMock(return_value=mock_result)
+        self.hass.bus.async_fire.reset_mock()
+
+        await self.controller._execute_write_holding_registers(200, [10, 11])
+
+        self.mock_client.write_registers.assert_awaited_once_with(address=200, values=[10, 11], device_id=1)
+        self.assertEqual(self.hass.data[DOMAIN][VALUES]["200"], 10)
+        self.assertEqual(self.hass.data[DOMAIN][VALUES]["201"], 11)
+        self.assertEqual(
+            self.hass.bus.async_fire.call_args_list,
+            [
+                call(DOMAIN, {REGISTER: 200, VALUE: 10, CONTROLLER: "192.168.1.100", SLAVE: 1}),
+                call(DOMAIN, {REGISTER: 201, VALUE: 11, CONTROLLER: "192.168.1.100", SLAVE: 1}),
+            ],
+        )
+
+    async def test_execute_write_holding_registers_falls_back_to_requested_values(self):
+        """Fallback to the requested payload when the driver omits registers."""
+        self.mock_client.connected = True
+        mock_result = MagicMock()
+        mock_result.isError.return_value = False
+        mock_result.registers = None
+        self.mock_client.write_registers = AsyncMock(return_value=mock_result)
+
+        await self.controller._execute_write_holding_registers(300, [21])
+
+        self.assertEqual(self.hass.data[DOMAIN][VALUES]["300"], 21)
+        self.hass.bus.async_fire.assert_called_once_with(
+            DOMAIN, {REGISTER: 300, VALUE: 21, CONTROLLER: "192.168.1.100", SLAVE: 1}
+        )
     
     def test_poll_speed(self):
         """Test the poll_speed property."""
