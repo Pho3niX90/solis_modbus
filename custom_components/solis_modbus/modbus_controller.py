@@ -10,8 +10,7 @@ from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient
 from custom_components.solis_modbus.client_manager import ModbusClientManager
 from custom_components.solis_modbus.const import (
     DOMAIN, REGISTER, VALUE, CONTROLLER, SLAVE,
-    CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
-    CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
+    CONN_TYPE_TCP, CONN_TYPE_SERIAL,
     DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
@@ -270,7 +269,7 @@ class ModbusController:
             await self.connect()
             async with self.poll_lock:
                 await self.inter_frame_wait()
-                result = await self.client.read_input_registers(address=register, count=count, slave=self.device_id)
+                result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
 
@@ -302,7 +301,7 @@ class ModbusController:
             await self.connect()
             async with self.poll_lock:
                 await self.inter_frame_wait()
-                result = await self.client.read_holding_registers(address=register, count=count, slave=self.device_id)
+                result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
 
@@ -419,6 +418,29 @@ class ModbusController:
         return self._derived_sensors
 
     @property
+    def sensor_derived_groups(self):
+        """Gets the derived sensor groups associated with this controller."""
+        return self._derived_sensors
+
+    @property
+    def last_modbus_request(self):
+        """Gets the timestamp of the last Modbus request.
+
+        Returns:
+            float: The timestamp of the last Modbus request (from time.monotonic()).
+        """
+        return self._last_modbus_request
+
+    @property
     def last_modbus_success(self):
         """Returns the timestamp of the last successful Modbus operation."""
         return self._last_modbus_success
+
+    @property
+    def device_identification(self):
+        """Gets the device identification string.
+
+        Returns:
+            str: The device identification string, or an empty string if not available.
+        """
+        return f" {self.identification}" if self.identification else ""
