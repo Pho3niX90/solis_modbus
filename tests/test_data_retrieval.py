@@ -207,6 +207,53 @@ class TestDataRetrieval(unittest.TestCase):
         self.controller.async_read_holding_register.assert_not_called()
         self.controller.async_read_input_register.assert_called_once()
 
+        self.controller.async_read_input_register.assert_called_once()
+    
+    def test_spike_filtering(self):
+        """Test spike filtering logic."""
+        # Non-target register
+        self.assertEqual(50, self.data_retrieval.spike_filtering(12345, 50))
+        
+        # Target register 33139
+        reg = 33139
+        
+        # Initial non-spike
+        self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 50))
+        
+        # Spike check: value 0 should be ignored initially
+        with patch('custom_components.solis_modbus.data_retrieval.cache_get', return_value=50):
+             # 1st spike
+             self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 0))
+             # 2nd spike
+             self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 0))
+             # 3rd spike (accepted)
+             self.assertEqual(0, self.data_retrieval.spike_filtering(reg, 0))
 
-if __name__ == "__main__":
-    unittest.main()
+    async def test_concurrency_lock(self):
+        """Test that get_modbus_updates respects concurrency."""
+        # Manually set the group hash in poll_updating
+        groups = [self.fast_group]
+        group_hash = frozenset({g.start_register for g in groups})
+        
+        self.data_retrieval.poll_updating[PollSpeed.FAST][group_hash] = True
+        
+        await self.data_retrieval.get_modbus_updates(groups, PollSpeed.FAST)
+        
+        # Should return early
+        self.controller.async_read_holding_register.assert_not_called()
+        self.controller.async_read_input_register.assert_not_called()
+
+    async def test_remove_once_groups(self):
+        """Test that ONCE groups are removed after updating."""
+        self.once_group.poll_speed = PollSpeed.ONCE
+        self.controller.sensor_groups = [self.once_group, self.normal_group]
+        self.controller.enabled = True
+        self.controller.connected.return_value = True
+        self.controller.async_read_holding_register = AsyncMock(return_value=[1]*10)
+        self.controller.async_read_input_register = AsyncMock(return_value=[1]*10)
+        
+        await self.data_retrieval.get_modbus_updates([self.once_group], PollSpeed.NORMAL)
+        
+        # Check if once_group is removed from controller.sensor_groups
+        self.assertNotIn(self.once_group, self.controller.sensor_groups)
+        self.assertIn(self.normal_group, self.controller.sensor_groups)

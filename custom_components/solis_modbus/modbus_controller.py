@@ -7,6 +7,7 @@ from typing import List
 from homeassistant.helpers.template import is_number
 from pymodbus.client import AsyncModbusTcpClient
 
+from custom_components.solis_modbus.client_manager import ModbusClientManager
 from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER, SLAVE
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
@@ -27,7 +28,9 @@ class ModbusController:
         # todo: quick fix, replace naming where applicable later.
         self.slave = device_id
         self.identification = identification
-        self.client: AsyncModbusTcpClient = AsyncModbusTcpClient(host=self.host, port=self.port, timeout=5, retries=5)
+        manager = ModbusClientManager.get_instance()
+        self.client: AsyncModbusTcpClient = manager.get_client(self.host, self.port)
+        self.poll_lock = manager.get_client_lock(self.host, self.port)
         self.connect_failures = 0
         self._data_received = False
         self._poll_interval_fast = fast_poll
@@ -40,7 +43,8 @@ class ModbusController:
         self._last_attempt = 0  # Track last connection attempt time
         self._sensor_groups = sensor_groups
         self._derived_sensors = derived_sensors
-        self.poll_lock = asyncio.Lock()
+        self._derived_sensors = derived_sensors
+        # self.poll_lock = asyncio.Lock() # Replaced by shared lock from manager
 
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
@@ -192,10 +196,11 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
-            result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
-            _LOGGER.debug(f"({self.host}.{self.device_id}) Register {register}: {result.registers}")
-            await self.inter_frame_wait()
+            async with self.poll_lock:
+                await self.connect()
+                result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
+                _LOGGER.debug(f"({self.host}.{self.device_id}) Register {register}: {result.registers}")
+                await self.inter_frame_wait()
             self._last_modbus_success = datetime.now(UTC)
             return result.registers
         except Exception as e:
@@ -216,10 +221,11 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
-            result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
-            _LOGGER.debug(f"({self.host}.{self.device_id}) Holding Register {register}: {result.registers}")
-            await self.inter_frame_wait()
+            async with self.poll_lock:
+                await self.connect()
+                result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
+                _LOGGER.debug(f"({self.host}.{self.device_id}) Holding Register {register}: {result.registers}")
+                await self.inter_frame_wait()
             self._last_modbus_success = datetime.now(UTC)
             return result.registers
         except Exception as e:
@@ -317,7 +323,7 @@ class ModbusController:
         Returns:
             None
         """
-        self.client.close()
+        ModbusClientManager.get_instance().release_client(self.host, self.port)
 
     def connected(self):
         """Checks if the Modbus connection is active.

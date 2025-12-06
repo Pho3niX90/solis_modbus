@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install voluptuous homeassistant pymodbus pytest pytest-asyncio
+          pip install voluptuous homeassistant pymodbus pytest pytest-asyncio pytest_homeassistant_custom_component
 
       - name: Run all tests
         run: PYTHONPATH=. pytest tests

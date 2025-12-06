@@ -14,6 +14,7 @@ from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
 from .helpers import get_controller, set_controller
+from homeassistant.helpers import entity_registry as er
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
 from .sensors.solis_derived_sensor import SolisDerivedSensor
@@ -35,6 +36,24 @@ SCHEME_TIME_SET = vol.Schema(
         vol.Required("time"): vol.Coerce(str)
     }
 )
+
+async def async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry, host: str, port: int):
+    """Migrate legacy unique_ids (missing port) to new format."""
+    if port == 502:
+        return
+
+    _LOGGER.debug(f"Checking for unique_id migration for host {host}, port {port}")
+    registry = er.async_get(hass)
+    entries = er.async_entries_for_config_entry(registry, entry.entry_id)
+
+    old_prefix = f"{DOMAIN}_{host}_"
+    new_prefix = f"{DOMAIN}_{host}_{port}_"
+
+    for entity in entries:
+        if entity.unique_id.startswith(old_prefix) and not entity.unique_id.startswith(new_prefix):
+            new_unique_id = entity.unique_id.replace(old_prefix, new_prefix, 1)
+            _LOGGER.warning(f"Migrating entity {entity.entity_id} unique_id from {entity.unique_id} to {new_unique_id}")
+            registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
 
 
 async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
@@ -128,6 +147,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = entry
     _LOGGER.info(f"Loaded Solis Modbus Integration with Model: {config.get('model')}")
 
+    # Migrate unique_ids if needed
+    await async_migrate_unique_ids(hass, entry, host, port)
 
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)
@@ -212,12 +233,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             multiplier=entity.get("multiplier", 1),
             category=entity.get("category", None),
             identification=entity.get("identification", None),
-            unique_id=f"{DOMAIN}_{entity['unique']}" if not identification else f"{DOMAIN}_{identification}_{entity['unique']}"
+            unique_id=f"{DOMAIN}_{identification}_{entity['unique']}" if identification else f"{DOMAIN}_{host}{f'_{port}' if port != 502 else ''}{f'_{slave}' if slave != 1 else ''}_{entity['unique']}"
         )
         for entity in sensors_derived
     ]
 
-    # Store controller in HA data
+
     set_controller(hass, controller)
 
     _LOGGER.debug(f"Config entry setup for host {host}, port {port}")
@@ -227,9 +248,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Start data retrieval
-    DataRetrieval(hass, controller)
+    hass.data[DOMAIN].setdefault("data_retrieval", {})
+    hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
 
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""
@@ -243,6 +266,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Clean up resources
     if unload_ok:
+        data_retrieval = hass.data[DOMAIN].get("data_retrieval", {}).pop(entry.entry_id, None)
+        if data_retrieval:
+            await data_retrieval.async_stop()
+
         for controller in hass.data[DOMAIN][CONTROLLER].values():
             controller.close_connection()
 
