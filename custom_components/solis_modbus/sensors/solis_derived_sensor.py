@@ -186,6 +186,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             identifiers={(DOMAIN, "{}_{}_{}".format(self.base_sensor.controller.host, self.base_sensor.controller.slave, self.base_sensor.controller.identification))},
             manufacturer=MANUFACTURER,
             model=self.base_sensor.controller.model,
-            name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.device_identification}",
+            name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.identification}",
             sw_version=self.base_sensor.controller.sw_version,
         )

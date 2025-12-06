@@ -149,7 +149,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             identifiers={(DOMAIN, "{}_{}_{}".format(self._modbus_controller.host, self._modbus_controller.slave, self._modbus_controller.identification))},
             manufacturer=MANUFACTURER,
             model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.device_identification}",
+            name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.identification}",
             sw_version=self._modbus_controller.sw_version,
         )
 
