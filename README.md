@@ -127,7 +127,7 @@ entities:
 ```
 
 ## Settings Card Example
-![img_4.png](https://raw.githubusercontent.com/Pho3niX90/solis_modbus/master/img_4.png)
+![img_4.png](images/img_4.png)
 ```yaml
 type: vertical-stack
 cards:
