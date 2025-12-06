@@ -3,7 +3,8 @@ from typing import List
 
 from homeassistant.config_entries import ConfigEntry
 
-from custom_components.solis_modbus import ModbusController, get_controller
+from custom_components.solis_modbus import ModbusController
+from custom_components.solis_modbus.helpers import get_controller_from_entry
 from custom_components.solis_modbus.const import DOMAIN, ENTITIES, SWITCH_ENTITIES
 from custom_components.solis_modbus.data.enums import InverterType
 from custom_components.solis_modbus.sensors.solis_binary_sensor import SolisBinaryEntity
@@ -12,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
-    modbus_controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
+    modbus_controller: ModbusController = get_controller_from_entry(hass, config_entry)
 
     switch_sensors = [
         {

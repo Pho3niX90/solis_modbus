@@ -10,14 +10,14 @@ from homeassistant.helpers.entity import DeviceInfo
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER, TIME_ENTITIES, SLAVE
 from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
-from custom_components.solis_modbus.helpers import get_controller, cache_get, is_correct_controller
+from custom_components.solis_modbus.helpers import get_controller_from_entry, cache_get, is_correct_controller
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
-    modbus_controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
+    modbus_controller: ModbusController = get_controller_from_entry(hass, config_entry)
 
     inverter_config = modbus_controller.inverter_config
 

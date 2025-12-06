@@ -4,7 +4,7 @@ from typing import List
 from homeassistant.config_entries import ConfigEntry
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.helpers import get_controller
+from custom_components.solis_modbus.helpers import get_controller_from_entry
 from custom_components.solis_modbus.sensors.solis_number_sensor import SolisNumberEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
-    controller: ModbusController = get_controller(hass, config_entry.data.get("host"), config_entry.data.get("slave", 1))
+    controller: ModbusController = get_controller_from_entry(hass, config_entry)
     # We only want this platform to be set up via discovery.
     _LOGGER.info("Options %s", len(config_entry.options))
 

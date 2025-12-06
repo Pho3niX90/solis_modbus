@@ -9,7 +9,13 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryError
 
-from .const import DOMAIN, CONTROLLER, TIME_ENTITIES
+from .const import (
+    DOMAIN, CONTROLLER, TIME_ENTITIES,
+    CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
+    CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
+    CONF_CONNECTION_TYPE, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
+    DEFAULT_PARITY, DEFAULT_STOPBITS
+)
 from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
@@ -122,22 +128,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Merge data and options (options take priority)
     config = {**entry.data, **entry.options}
-    host = config.get("host")
     slave = config.get("slave", 1)
-    port = config.get("port", 502)
 
-    # Migrate
-    if entry.unique_id and "_" not in entry.unique_id:
+    # Determine connection type (default to TCP for backwards compatibility with old configs)
+    connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_SERIAL)
+
+    # Get connection-specific parameters
+    if connection_type == CONN_TYPE_TCP:
+        host = config.get("host")
+        port = config.get("port", 502)
+        connection_id = f"{host}:{port}"
+    else:  # Serial
+        serial_port = config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0")
+        connection_id = serial_port
+
+    # Migrate old TCP configs
+    if entry.unique_id and "_" not in entry.unique_id and connection_type == CONN_TYPE_TCP:
+        host = config.get("host")
         new_unique_id = f"{host}_{slave}"
         hass.config_entries.async_update_entry(entry, unique_id=new_unique_id)
         _LOGGER.debug("Migrated unique_id from %s to %s", entry.unique_id, new_unique_id)
 
-    # Migrate title if needed
-    expected_title = f"Solis: Host {host}, Modbus Address {slave}"
-    if entry.title != expected_title:
-        hass.config_entries.async_update_entry(entry, title=expected_title)
-        _LOGGER.debug("Migrated title")
-
+        # Migrate title if needed
+        expected_title = f"Solis: Host {host}, Modbus Address {slave}"
+        if entry.title != expected_title:
+            hass.config_entries.async_update_entry(entry, title=expected_title)
+            _LOGGER.debug("Migrated title")
 
     _LOGGER.debug(config)
 
@@ -145,7 +161,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(CONTROLLER, {})
     hass.data[DOMAIN][entry.entry_id] = entry
-    _LOGGER.info(f"Loaded Solis Modbus Integration with Model: {config.get('model')}")
+    _LOGGER.info(f"Loaded Solis Modbus Integration ({connection_type}) with Model: {config.get('model')}")
 
     # Migrate unique_ids if needed
     await async_migrate_unique_ids(hass, entry, host, port)
@@ -192,17 +208,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         from .sensor_data.hybrid_sensors import hybrid_sensors_derived as sensors_derived
 
     # Create the Modbus controller and assign sensor groups
-    controller = ModbusController(
-        hass=hass,
-        host=host,
-        port=port,
-        device_id=slave,
-        identification=identification,
-        fast_poll=poll_interval_fast,
-        normal_poll=poll_interval_normal,
-        slow_poll=poll_interval_slow,
-        inverter_config=inverter_config
-    )
+    # Build controller parameters based on connection type
+    controller_params = {
+        "hass": hass,
+        "device_id": slave,
+        "identification": identification,
+        "fast_poll": poll_interval_fast,
+        "normal_poll": poll_interval_normal,
+        "slow_poll": poll_interval_slow,
+        "inverter_config": inverter_config,
+        "connection_type": connection_type
+    }
+
+    if connection_type == CONN_TYPE_TCP:
+        controller_params["host"] = host
+        controller_params["port"] = port
+    else:  # Serial
+        controller_params["serial_port"] = config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0")
+        controller_params["baudrate"] = config.get(CONF_BAUDRATE, DEFAULT_BAUDRATE)
+        controller_params["bytesize"] = config.get(CONF_BYTESIZE, DEFAULT_BYTESIZE)
+        controller_params["parity"] = config.get(CONF_PARITY, DEFAULT_PARITY)
+        controller_params["stopbits"] = config.get(CONF_STOPBITS, DEFAULT_STOPBITS)
+
+    controller = ModbusController(**controller_params)
 
     controller._sensor_groups = []
     for group in sensors:
@@ -241,7 +269,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     set_controller(hass, controller)
 
-    _LOGGER.debug(f"Config entry setup for host {host}, port {port}")
+    _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
 
     # Forward entry to platforms
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
