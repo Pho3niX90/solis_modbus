@@ -285,7 +285,7 @@ class ModbusController:
                 # Different pymodbus APIs for TCP vs Serial
                 if self.connection_type == CONN_TYPE_TCP:
                     # TCP: pass slave as parameter
-                    result = await self.client.read_input_registers(address=register, count=count, slave=self.device_id)
+                    result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
                 else:
                     # Serial: set slave on client, then call without slave parameter
                     self.client.slave = self.device_id
