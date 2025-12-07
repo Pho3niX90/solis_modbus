@@ -105,7 +105,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         self.assertEqual([42], result)
         # TCP: slave is passed as parameter
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, slave=1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
