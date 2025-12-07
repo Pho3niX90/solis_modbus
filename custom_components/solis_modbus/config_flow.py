@@ -154,11 +154,13 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Remove connection_type from schema since we already have it
         if self._connection_type == CONN_TYPE_TCP:
             # Create TCP schema without connection_type field
-            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items() if k != vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_SERIAL)}
+            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
+                          if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
             schema = vol.Schema(schema_dict)
         else:
             # Create Serial schema without connection_type field
-            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items() if k != vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_SERIAL)}
+            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items()
+                          if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
             schema = vol.Schema(schema_dict)
 
         return self.async_show_form(
@@ -179,10 +181,10 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Multi-step flow - return to config step without connection_type field
             if conn_type == CONN_TYPE_TCP:
                 schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
-                              if k != vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_SERIAL)}
+                              if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
             else:
                 schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items()
-                              if k != vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_SERIAL)}
+                              if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
 
             return self.async_show_form(
                 step_id="config",
