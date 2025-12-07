@@ -195,7 +195,7 @@ class ModbusController:
 
                 # Different pymodbus APIs for TCP vs Serial
                 if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.write_registers(address=start_register, values=values, slave=self.device_id)
+                    result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
                 else:
                     self.client.slave = self.device_id
                     result = await self.client.write_registers(address=start_register, values=values)
