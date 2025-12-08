@@ -54,7 +54,6 @@ class ModbusController:
         self.connection_type = connection_type
         self.device_id = device_id
         self.slave = device_id  # Alias for device_id
-        print(f"DEBUG: Initializing ModbusController with serial_number='{serial_number}'")
         self.serial_number = serial_number
 
         # Use ModbusClientManager to get shared client and lock
@@ -385,13 +384,11 @@ class ModbusController:
                 return True
             else:
                 self.connect_failures += 1
-                print(f"DEBUG: Connect failure incremented (connected=False). Count: {self.connect_failures}")
                 _LOGGER.debug(
                     f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
                 return False
         except Exception as e:
             self.connect_failures += 1
-            print(f"DEBUG: Connect failure incremented (Exception). Count: {self.connect_failures}")
             _LOGGER.debug(f"❌ ({self.host}.{self.device_id}) Connection error (attempt {self.connect_failures}): {e}")
             return False
 
