@@ -21,15 +21,22 @@ async def test_flow_user_success(hass: HomeAssistant):
         return_value=True,
     ) as mock_setup_entry:
 
+        # Step 1: Select connection type
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
         assert result["type"] == data_entry_flow.FlowResultType.FORM
         assert result["step_id"] == "user"
 
-        # Valid input with required fields
-        user_input = {
-            "connection_type": CONN_TYPE_TCP,
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP}
+        )
+
+        # Step 2: Configure connection details
+        assert result["type"] == data_entry_flow.FlowResultType.FORM
+        assert result["step_id"] == "config"
+
+        config_input = {
             "host": "1.2.3.4",
             "port": 502,
             "slave": 1,
@@ -43,12 +50,15 @@ async def test_flow_user_success(hass: HomeAssistant):
         }
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=user_input
+            result["flow_id"], user_input=config_input
         )
 
         assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
         assert result["title"] == "Solis: Host 1.2.3.4, Modbus Address 1"
-        for key, value in user_input.items():
+
+        # Verify all data is present (including connection_type from step 1)
+        assert result["data"]["connection_type"] == CONN_TYPE_TCP
+        for key, value in config_input.items():
             assert result["data"][key] == value
 
         mock_connect.assert_called()
@@ -62,12 +72,20 @@ async def test_flow_user_connection_error(hass: HomeAssistant):
         return_value=False,
     ) as mock_connect:
 
+        # Step 1: Select connection type
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
 
-        user_input = {
-            "connection_type": CONN_TYPE_TCP,
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP}
+        )
+
+        # Step 2: Configure connection details (with bad connection)
+        assert result["type"] == data_entry_flow.FlowResultType.FORM
+        assert result["step_id"] == "config"
+
+        config_input = {
             "host": "1.2.3.4",
             "port": 502,
             "slave": 1,
@@ -81,7 +99,7 @@ async def test_flow_user_connection_error(hass: HomeAssistant):
         }
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=user_input
+            result["flow_id"], user_input=config_input
         )
 
         assert result["type"] == data_entry_flow.FlowResultType.FORM
@@ -101,12 +119,20 @@ async def test_flow_user_duplicates(hass: HomeAssistant):
         "custom_components.solis_modbus.modbus_controller.ModbusController.connect",
         return_value=True,
     ):
+        # Step 1: Select connection type
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
 
-        user_input = {
-            "connection_type": CONN_TYPE_TCP,
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP}
+        )
+
+        # Step 2: Configure connection details (duplicate config)
+        assert result["type"] == data_entry_flow.FlowResultType.FORM
+        assert result["step_id"] == "config"
+
+        config_input = {
             "host": "1.2.3.4",
             "port": 502,
             "slave": 1,
@@ -120,8 +146,8 @@ async def test_flow_user_duplicates(hass: HomeAssistant):
         }
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=user_input
+            result["flow_id"], user_input=config_input
         )
-        
+
         assert result["type"] == data_entry_flow.FlowResultType.ABORT
         assert result["reason"] == "already_configured"

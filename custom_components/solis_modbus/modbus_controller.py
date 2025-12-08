@@ -152,7 +152,13 @@ class ModbusController:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
                 int_value = int(value)
                 int_register = register if is_number(register) else int(register)
-                result = await self.client.write_register(address=int_register, value=int_value, device_id=self.device_id)
+
+                # Different pymodbus APIs for TCP vs Serial
+                if self.connection_type == CONN_TYPE_TCP:
+                    result = await self.client.write_register(address=int_register, value=int_value, device_id=self.device_id)
+                else:
+                    self.client.slave = self.device_id
+                    result = await self.client.write_register(address=int_register, value=int_value)
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
 
@@ -186,7 +192,13 @@ class ModbusController:
             await self.connect()
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
-                result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
+
+                # Different pymodbus APIs for TCP vs Serial
+                if self.connection_type == CONN_TYPE_TCP:
+                    result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
+                else:
+                    self.client.slave = self.device_id
+                    result = await self.client.write_registers(address=start_register, values=values)
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Write Holding Register block for {len(values)} registers starting at register = {start_register}")
 
@@ -269,7 +281,16 @@ class ModbusController:
             await self.connect()
             async with self.poll_lock:
                 await self.inter_frame_wait()
-                result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
+
+                # Different pymodbus APIs for TCP vs Serial
+                if self.connection_type == CONN_TYPE_TCP:
+                    # TCP: pass slave as parameter
+                    result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
+                else:
+                    # Serial: set slave on client, then call without slave parameter
+                    self.client.slave = self.device_id
+                    result = await self.client.read_input_registers(address=register, count=count)
+
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
 
@@ -301,7 +322,16 @@ class ModbusController:
             await self.connect()
             async with self.poll_lock:
                 await self.inter_frame_wait()
-                result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
+
+                # Different pymodbus APIs for TCP vs Serial
+                if self.connection_type == CONN_TYPE_TCP:
+                    # TCP: pass slave as parameter
+                    result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
+                else:
+                    # Serial: set slave on client, then call without slave parameter
+                    self.client.slave = self.device_id
+                    result = await self.client.read_holding_registers(address=register, count=count)
+
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
 

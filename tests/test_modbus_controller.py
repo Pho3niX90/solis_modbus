@@ -104,6 +104,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_input_register(100, 1)
 
         self.assertEqual([42], result)
+        # TCP: slave is passed as parameter
         self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_input_register_failure(self):
@@ -126,6 +127,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_holding_register(100, 1)
 
         self.assertEqual([42], result)
+        # TCP: slave is passed as parameter
         self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_holding_register_failure(self):
@@ -300,7 +302,9 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_input_register(100, 1)
 
         self.assertEqual([42], result)
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
+        # Serial: slave is set on client, not passed as parameter
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1)
+        self.assertEqual(self.mock_client.slave, 1)
 
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
@@ -322,7 +326,9 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_holding_register(100, 1)
 
         self.assertEqual([42], result)
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
+        # Serial: slave is set on client, not passed as parameter
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1)
+        self.assertEqual(self.mock_client.slave, 1)
 
     async def test_async_read_holding_register_failure(self):
         """Test failed read of holding register."""

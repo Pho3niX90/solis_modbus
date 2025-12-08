@@ -113,36 +113,98 @@ def clean_identification(iden: str | None) -> str | None:
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
+    VERSION = 1
+
+    def __init__(self):
+        """Initialize the config flow."""
+        self._connection_type = None
+        self._config_data = {}
+
     async def async_step_user(self, user_input=None):
-        """Handle a flow initiated by the user."""
+        """Handle initial step - ask for connection type."""
         errors = {}
 
         if user_input is not None:
-            conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
-            slave = user_input["slave"]
+            # Save connection type and proceed to config step
+            conn_type = user_input.get(CONF_CONNECTION_TYPE)
+            if conn_type:
+                self._connection_type = conn_type
+                return await self.async_step_config()
 
-            if await self._validate_config(user_input):
-                # Create unique ID based on connection type
-                if conn_type == CONN_TYPE_TCP:
-                    host = user_input["host"]
-                    unique_id = f"{host}_{slave}"
-                    title = f"Solis: Host {host}, Modbus Address {slave}"
-                else:  # Serial
-                    port = user_input[CONF_SERIAL_PORT]
-                    unique_id = f"{port}_{slave}"
-                    title = f"Solis: {port}, Modbus Address {slave}"
+            errors["base"] = "Please select a connection type."
 
-                await self.async_set_unique_id(unique_id)
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=title, data=user_input)
-
-            errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
-
+        # Show connection type selector only
         return self.async_show_form(
             step_id="user",
-            data_schema=self._get_user_schema(user_input),
+            data_schema=vol.Schema({
+                vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_SERIAL): vol.In(CONNECTION_TYPES),
+            }),
             errors=errors
         )
+
+    async def async_step_config(self, user_input=None):
+        """Handle second step - show connection-specific configuration."""
+        errors = {}
+
+        if user_input is not None:
+            # Merge connection type with configuration
+            full_config = {CONF_CONNECTION_TYPE: self._connection_type, **user_input}
+            return await self._create_entry_from_input(full_config)
+
+        # Remove connection_type from schema since we already have it
+        if self._connection_type == CONN_TYPE_TCP:
+            # Create TCP schema without connection_type field
+            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
+                          if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+            schema = vol.Schema(schema_dict)
+        else:
+            # Create Serial schema without connection_type field
+            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items()
+                          if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+            schema = vol.Schema(schema_dict)
+
+        return self.async_show_form(
+            step_id="config",
+            data_schema=schema,
+            errors=errors
+        )
+
+    async def _create_entry_from_input(self, user_input):
+        """Create config entry from validated input."""
+        conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
+        slave = user_input["slave"]
+
+        if not await self._validate_config(user_input):
+            # Validation failed - show error
+            errors = {"base": "Cannot connect to Modbus device. Please check your configuration."}
+
+            # Multi-step flow - return to config step without connection_type field
+            if conn_type == CONN_TYPE_TCP:
+                schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
+                              if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+            else:
+                schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items()
+                              if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+
+            return self.async_show_form(
+                step_id="config",
+                data_schema=vol.Schema(schema_dict),
+                errors=errors
+            )
+
+        # Create unique ID based on connection type
+        if conn_type == CONN_TYPE_TCP:
+            host = user_input["host"]
+            unique_id = f"{host}_{slave}"
+            title = f"Solis: Host {host}, Modbus Address {slave}"
+        else:  # Serial
+            port = user_input[CONF_SERIAL_PORT]
+            unique_id = f"{port}_{slave}"
+            title = f"Solis: {port}, Modbus Address {slave}"
+
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title=title, data=user_input)
 
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device."""
@@ -201,10 +263,18 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             modbus_controller.close_connection()
 
     def _get_user_schema(self, user_input=None):
-        """Return the combined schema that accepts both TCP and Serial fields."""
-        # Use combined schema that accepts both connection types
-        # The actual validation of required fields happens in _validate_config
-        return vol.Schema(COMBINED_CONFIG_SCHEMA)
+        """Return the appropriate schema based on connection type selection."""
+        # If we have user input with connection_type, show the appropriate schema
+        if user_input and CONF_CONNECTION_TYPE in user_input:
+            conn_type = user_input[CONF_CONNECTION_TYPE]
+            if conn_type == CONN_TYPE_TCP:
+                return vol.Schema(TCP_CONFIG_SCHEMA)
+            else:
+                return vol.Schema(SERIAL_CONFIG_SCHEMA)
+
+        # On first render (no user input), show Serial schema by default
+        # but allow both types during validation (for tests and edge cases)
+        return vol.Schema(SERIAL_CONFIG_SCHEMA)
 
     @staticmethod
     @config_entries.HANDLERS.register(DOMAIN)
