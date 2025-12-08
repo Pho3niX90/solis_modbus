@@ -3,27 +3,59 @@
   "config": {
     "step": {
       "user": {
-        "title": "Solis Modbus konfigurieren",
-        "description": "Geben Sie die Verbindungsdetails für Ihren Solis-Wechselrichter ein.",
+        "title": "Verbindungsmethode auswählen",
+        "description": "Wählen Sie, wie der Solis-Wechselrichter mit Home Assistant verbunden ist.",
         "data": {
-          "host": "IP-Adresse des Solis-Wechselrichters",
-          "slave": "Slave-Adresse (Standard: 1)",
-          "identification": "Kennung für Mehrfachwechselrichter",
+          "connection_type": "Verbindungstyp"
+        }
+      },
+      "config": {
+        "title": "Wechselrichter-Konfiguration",
+        "description": "Bitte geben Sie die Modbus-Einstellungen für Ihren Wechselrichter ein.",
+        "data": {
+          "host": "IP-Adresse",
+          "port": "Port",
+          "slave": "Modbus Slave-ID",
+          "serial_port": "Serieller Port",
+          "baudrate": "Baudrate",
+          "bytesize": "Byte-Größe",
+          "parity": "Parität",
+          "stopbits": "Stoppbits",
+          "model": "Wechselrichtermodell",
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
+          "identification": "Identifikationsname",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "IP-Adresse",
+          "port": "Port",
+          "slave": "Modbus Slave-ID",
+          "serial_port": "Serieller Port",
+          "baudrate": "Baudrate",
+          "bytesize": "Byte-Größe",
+          "parity": "Parität",
+          "stopbits": "Stoppbits",
           "model": "Wechselrichtermodell",
-          "has_v2": "Auf Firmware V2 aktualisiert",
-          "has_pv": "Hat Photovoltaik (Solarpaneele)",
-          "has_battery": "Hat Batteriespeicher",
-          "has_hv_battery": "HV-Batteriespeicher (100 V+)",
-          "has_generator": "Hat Generator",
-          "phases": "Phasen"
+          "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
+          "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
+          "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
+          "identification": "Identifikationsname",
+          "inverter_serial": "Inverter Serial"
         }
       }
     },
     "error": {
-      "base": "Verbindung zum Wechselrichter nicht möglich. Überprüfen Sie Ihre Einstellungen."
+      "cannot_connect": "Verbindung fehlgeschlagen, bitte überprüfen Sie Ihre Einstellungen.",
+      "unknown": "Unerwarteter Fehler aufgetreten."
+    },
+    "abort": {
+      "already_configured": "Dieses Gerät ist bereits konfiguriert."
     }
   },
   "options": {
@@ -39,8 +71,11 @@
           "has_v2": "Auf Firmware V2 aktualisiert",
           "has_pv": "Hat Photovoltaik (Solarpaneele)",
           "has_battery": "Hat Batteriespeicher",
+          "has_hv_battery": "HV-Batteriespeicher (100 V+)",
           "has_generator": "Hat Generator",
-          "phases": "Phasen"
+          "phases": "Phasen",
+          "connection": "Verbindungstyp",
+          "inverter_serial": "Inverter Serial"
         }
       }
     }
@@ -57,6 +92,20 @@
         "value": {
           "name": "Wert",
           "description": "Wert zum Schreiben"
+        },
+        "host": {
+          "name": "Wechselrichter",
+          "description": "IP-Adresse des Wechselrichters (nur erforderlich, wenn mehrere Wechselrichter vorhanden sind)"
+        }
+      }
+    },
+    "solis_read_register": {
+      "name": "Register lesen",
+      "description": "Liest einen Wert aus einem Register",
+      "fields": {
+        "address": {
+          "name": "Adresse",
+          "description": "Adresse zum Lesen"
         },
         "host": {
           "name": "Wechselrichter",

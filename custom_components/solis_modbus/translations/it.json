@@ -1,0 +1,131 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seleziona Metodo di Connessione",
+        "description": "Scegli come l'inverter Solis è connesso a Home Assistant.",
+        "data": {
+          "connection_type": "Tipo di Connessione"
+        }
+      },
+      "config": {
+        "title": "Configurazione Inverter",
+        "description": "Inserisci le impostazioni Modbus per il tuo inverter.",
+        "data": {
+          "host": "Indirizzo IP",
+          "port": "Porta",
+          "slave": "ID Slave Modbus",
+          "serial_port": "Porta Seriale",
+          "baudrate": "Baud Rate",
+          "bytesize": "Dimensione Byte",
+          "parity": "Parità",
+          "stopbits": "Bit di Stop",
+          "model": "Modello Inverter",
+          "poll_interval_fast": "Intervallo di Aggiornamento Veloce (secondi)",
+          "poll_interval_normal": "Intervallo di Aggiornamento Normale (secondi)",
+          "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
+          "identification": "Nome Identificativo",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "Indirizzo IP",
+          "port": "Porta",
+          "slave": "ID Slave Modbus",
+          "serial_port": "Porta Seriale",
+          "baudrate": "Baud Rate",
+          "bytesize": "Dimensione Byte",
+          "parity": "Parità",
+          "stopbits": "Bit di Stop",
+          "model": "Modello Inverter",
+          "poll_interval_fast": "Intervallo di Aggiornamento Veloce (secondi)",
+          "poll_interval_normal": "Intervallo di Aggiornamento Normale (secondi)",
+          "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
+          "identification": "Nome Identificativo",
+          "inverter_serial": "Inverter Serial"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile connettersi, controlla le impostazioni.",
+      "unknown": "Si è verificato un errore imprevisto."
+    },
+    "abort": {
+      "already_configured": "Questo dispositivo è già configurato."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modifica Impostazioni Solis Modbus",
+        "description": "Cambia le impostazioni per il tuo inverter Solis. (riavvio richiesto)",
+        "data": {
+          "poll_interval_fast": "Intervallo di Aggiornamento Veloce (secondi)",
+          "poll_interval_normal": "Intervallo di Aggiornamento Normale (secondi)",
+          "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
+          "model": "Modello Inverter",
+          "has_v2": "Aggiornato al Firmware V2",
+          "has_pv": "Ha Pannelli Solari (PV)",
+          "has_battery": "Ha Accumulo Batteria",
+          "has_hv_battery": "Ha Batteria HV (100v+)",
+          "has_generator": "Ha Generatore",
+          "phases": "Fasi",
+          "connection": "Tipo di Connessione",
+          "inverter_serial": "Inverter Serial"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Scrivi registro holding",
+      "description": "Scrive un valore in un registro holding",
+      "fields": {
+        "address": {
+          "name": "Indirizzo",
+          "description": "Indirizzo su cui scrivere"
+        },
+        "value": {
+          "name": "Valore",
+          "description": "Valore da scrivere"
+        },
+        "host": {
+          "name": "Inverter",
+          "description": "IP Inverter (richiesto solo se hai più inverter)"
+        }
+      }
+    },
+    "solis_read_register": {
+      "name": "Leggi registro",
+      "description": "Legge un valore da un registro",
+      "fields": {
+        "address": {
+          "name": "Indirizzo",
+          "description": "Indirizzo da leggere"
+        },
+        "host": {
+          "name": "Inverter",
+          "description": "IP Inverter (richiesto solo se hai più inverter)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Cambia l'ora di un'entità",
+      "description": "Imposta l'ora dell'entità a quella fornita",
+      "fields": {
+        "entity_id": {
+          "name": "ID Entità",
+          "description": "ID dell'entità tempo che vuoi modificare"
+        },
+        "time": {
+          "name": "Ora Desiderata",
+          "description": "Ora nel formato HH:MM o HH:MM:SS"
+        }
+      }
+    }
+  }
+}

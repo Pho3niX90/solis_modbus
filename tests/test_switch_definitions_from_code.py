@@ -13,7 +13,6 @@ async def test_switch_bit_position_requires_combinations_are_unique():
     controller.connected.return_value = True
     controller.inverter_config = MagicMock()
     controller.inverter_config.type = InverterType.HYBRID
-    controller.identification = "abc"
     controller.model = "S6"
     controller.device_identification = "XYZ"
     controller.sw_version = "1.0"

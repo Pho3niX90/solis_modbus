@@ -9,7 +9,6 @@ def mock_controller():
     controller = MagicMock()
     controller.host = "1.2.3.4"
     controller.slave = 1
-    controller.identification = None
     controller.model = "TestModel"
     controller.device_id = 1
     return controller

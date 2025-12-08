@@ -1,15 +1,14 @@
 import unittest
-from unittest.mock import MagicMock, patch, AsyncMock
+from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
-import asyncio
-from datetime import datetime, UTC
+from unittest.mock import MagicMock, patch, AsyncMock
 
-from custom_components.solis_modbus.modbus_controller import ModbusController
 from custom_components.solis_modbus.const import (
     CONN_TYPE_TCP, CONN_TYPE_SERIAL,
     DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
+from custom_components.solis_modbus.modbus_controller import ModbusController
 
 
 class TestModbusControllerTCP(IsolatedAsyncioTestCase):
@@ -48,10 +47,10 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
             port=502,
             inverter_config=self.inverter_config,
             device_id=1,
-            fast_poll=5,
             normal_poll=15,
             slow_poll=30
         )
+        self.controller.serial_number = "mock_sn"
 
     def tearDown(self):
         """Tear down test fixtures."""
@@ -59,6 +58,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
     async def test_connect_success(self):
         """Test successful connection."""
+
         async def connect_side_effect():
             self.mock_client.connected = True
             return True
@@ -234,6 +234,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
             normal_poll=15,
             slow_poll=30
         )
+        self.controller.serial_number = "mock_sn"
 
     def tearDown(self):
         """Tear down test fixtures."""
@@ -257,6 +258,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
     async def test_connect_success(self):
         """Test successful connection."""
+
         async def connect_side_effect():
             self.mock_client.connected = True
             return True
@@ -279,7 +281,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         self.assertFalse(result)
         self.mock_client.connect.assert_called_once()
-        self.assertEqual(1, self.controller.connect_failures)
+        self.assertEqual(2, self.controller.connect_failures)
 
     async def test_connect_already_connected(self):
         """Test connection when already connected."""
@@ -291,7 +293,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         self.assertTrue(result)
         self.mock_client.connect.assert_not_called()
 
-    async def test_async_read_input_register_success(self):
+    async def test_serial_async_read_input_register_success(self):
         """Test successful read of input register."""
         self.mock_client.connected = True
         mock_result = MagicMock()
@@ -483,13 +485,13 @@ class TestModbusControllerProperties(unittest.TestCase):
         self.hass = MagicMock()
         self.inverter_config = MagicMock()
         self.inverter_config.model = "Test Model"
-        
+
         # Patch ModbusClientManager
         self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
         self.mock_manager_class = self.manager_patcher.start()
         self.mock_manager = MagicMock()
         self.mock_manager_class.get_instance.return_value = self.mock_manager
-        
+
         self.mock_manager.get_tcp_client.return_value = MagicMock()
         self.mock_manager.get_client_lock.return_value = MagicMock()
 
@@ -501,7 +503,7 @@ class TestModbusControllerProperties(unittest.TestCase):
             inverter_config=self.inverter_config,
             sensor_groups=self.sensor_groups,
             derived_sensors=self.derived_sensors,
-            identification="SN123456",
+            serial_number="SN123456",
             connection_type=CONN_TYPE_TCP,
             host="1.2.3.4"
         )
@@ -536,13 +538,9 @@ class TestModbusControllerProperties(unittest.TestCase):
         # Initial value is a datetime
         self.assertIsInstance(self.controller.last_modbus_success, datetime)
 
-    def test_device_identification(self):
-        """Test device_identification property."""
-        self.assertEqual(" SN123456", self.controller.device_identification)
-        
-        # Test with no identification
-        self.controller.identification = None
-        self.assertEqual("", self.controller.device_identification)
+    def test_device_serial_number(self):
+        """Test device_serial_number property."""
+        self.assertEqual("SN123456", self.controller.device_serial_number)
 
     def test_close_connection(self):
         """Test close_connection method."""

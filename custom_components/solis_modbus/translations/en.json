@@ -3,28 +3,59 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configure Solis Modbus",
-        "description": "Enter the connection details for your Solis inverter.",
+        "title": "Select Connection Method",
+        "description": "Choose how the Solis inverter is connected to Home Assistant.",
         "data": {
-          "host": "IP address of Solis Inverter",
-          "port": "Port (default: 502)",
-          "slave": "Slave Address (default: 1)",
-          "identification": "Alias — used when configuring multiple inverters; leave empty if not applicable.",
+          "connection_type": "Connection Type"
+        }
+      },
+      "config": {
+        "title": "Inverter Configuration",
+        "description": "Please enter the Modbus settings for your inverter.",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "slave": "Modbus Slave ID",
+          "serial_port": "Serial Port",
+          "baudrate": "Baud Rate",
+          "bytesize": "Byte Size",
+          "parity": "Parity",
+          "stopbits": "Stop Bits",
+          "model": "Inverter Model",
           "poll_interval_fast": "Fast Poll Interval (seconds)",
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
+          "identification": "Identification Name",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "slave": "Modbus Slave ID",
+          "serial_port": "Serial Port",
+          "baudrate": "Baud Rate",
+          "bytesize": "Byte Size",
+          "parity": "Parity",
+          "stopbits": "Stop Bits",
           "model": "Inverter Model",
-          "has_v2": "Updated to V2 Firmware",
-          "has_pv": "Has PV (Solar Panels)",
-          "has_battery": "Has Battery Storage",
-          "has_generator": "Has Generator",
-          "phases": "Phases",
-          "connection": "Connection Type"
+          "poll_interval_fast": "Fast Poll Interval (seconds)",
+          "poll_interval_normal": "Normal Poll Interval (seconds)",
+          "poll_interval_slow": "Slow Poll Interval (seconds)",
+          "identification": "Identification Name",
+          "inverter_serial": "Inverter Serial"
         }
       }
     },
     "error": {
-      "base": "Cannot connect to the inverter. Check your settings."
+      "cannot_connect": "Failed to connect, please check your settings.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
     }
   },
   "options": {
@@ -43,7 +74,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "phases": "Phases",
-          "connection": "Connection Type"
+          "connection": "Connection Type",
+          "inverter_serial": "Inverter Serial"
         }
       }
     }

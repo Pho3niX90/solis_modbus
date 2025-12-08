@@ -25,6 +25,7 @@ CONF_BYTESIZE = "bytesize"
 CONF_PARITY = "parity"
 CONF_STOPBITS = "stopbits"
 CONF_CONNECTION_TYPE = "connection_type"
+CONF_INVERTER_SERIAL = "inverter_serial"
 
 # Default serial values (standard for Solis inverters)
 DEFAULT_BAUDRATE = 9600

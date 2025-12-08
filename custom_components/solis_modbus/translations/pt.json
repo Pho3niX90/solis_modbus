@@ -3,28 +3,59 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configurar Solis Modbus",
-        "description": "Insira os detalhes de conexão do seu inversor Solis.",
+        "title": "Selecionar Método de Conexão",
+        "description": "Escolha como o inversor Solis está conectado ao Home Assistant.",
         "data": {
-          "host": "Endereço IP do Inversor Solis",
-          "port": "Porta (padrão: 502)",
-          "slave": "Endereço escravo (padrão: 1)",
-          "identification": "Identificação para vários inversores",
+          "connection_type": "Tipo de Conexão"
+        }
+      },
+      "config": {
+        "title": "Configuração do Inversor",
+        "description": "Insira as configurações Modbus para o seu inversor.",
+        "data": {
+          "host": "Endereço IP",
+          "port": "Porta",
+          "slave": "ID Escravo Modbus",
+          "serial_port": "Porta Serial",
+          "baudrate": "Taxa de Baud (Baud Rate)",
+          "bytesize": "Tamanho do Byte",
+          "parity": "Paridade",
+          "stopbits": "Bits de Parada",
+          "model": "Modelo do Inversor",
           "poll_interval_fast": "Intervalo de pesquisa rápida (segundos)",
           "poll_interval_normal": "Intervalo de pesquisa normal (segundos)",
           "poll_interval_slow": "Intervalo de pesquisa lenta (segundos)",
+          "identification": "Nome de Identificação",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "Endereço IP",
+          "port": "Porta",
+          "slave": "ID Escravo Modbus",
+          "serial_port": "Porta Serial",
+          "baudrate": "Taxa de Baud (Baud Rate)",
+          "bytesize": "Tamanho do Byte",
+          "parity": "Paridade",
+          "stopbits": "Bits de Parada",
           "model": "Modelo do Inversor",
-          "has_v2": "Atualizado para Firmware V2",
-          "has_pv": "Possui energia solar (PV)",
-          "has_battery": "Possui armazenamento de bateria",
-          "has_hv_battery": "Armazenamento de bateria HV (100 V+)",
-          "has_generator": "Possui gerador",
-          "phases": "Fases"
+          "poll_interval_fast": "Intervalo de pesquisa rápida (segundos)",
+          "poll_interval_normal": "Intervalo de pesquisa normal (segundos)",
+          "poll_interval_slow": "Intervalo de pesquisa lenta (segundos)",
+          "identification": "Nome de Identificação",
+          "inverter_serial": "Inverter Serial"
         }
       }
     },
     "error": {
-      "base": "Não foi possível conectar ao inversor. Verifique suas configurações."
+      "cannot_connect": "Falha ao conectar, verifique suas configurações.",
+      "unknown": "Ocorreu um erro inesperado."
+    },
+    "abort": {
+      "already_configured": "Este dispositivo já está configurado."
     }
   },
   "options": {
@@ -40,8 +71,11 @@
           "has_v2": "Atualizado para Firmware V2",
           "has_pv": "Possui energia solar (PV)",
           "has_battery": "Possui armazenamento de bateria",
+          "has_hv_battery": "Armazenamento de bateria HV (100 V+)",
           "has_generator": "Possui gerador",
-          "phases": "Fases"
+          "phases": "Fases",
+          "connection": "Tipo de Conexão",
+          "inverter_serial": "Inverter Serial"
         }
       }
     }
@@ -58,6 +92,20 @@
         "value": {
           "name": "Valor",
           "description": "Valor a ser escrito"
+        },
+        "host": {
+          "name": "Inversor",
+          "description": "IP do inversor (necessário apenas se você tiver vários inversores)"
+        }
+      }
+    },
+    "solis_read_register": {
+      "name": "Ler registro",
+      "description": "Lê um valor de um registro",
+      "fields": {
+        "address": {
+          "name": "Endereço",
+          "description": "Endereço para ler"
         },
         "host": {
           "name": "Inversor",

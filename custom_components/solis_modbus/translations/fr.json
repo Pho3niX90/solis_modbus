@@ -3,28 +3,59 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configurer Solis Modbus",
-        "description": "Saisissez les détails de connexion de votre onduleur Solis.",
+        "title": "Sélectionner la méthode de connexion",
+        "description": "Choisissez comment l'onduleur Solis est connecté à Home Assistant.",
         "data": {
-          "host": "Adresse IP de l'onduleur Solis",
-          "port": "Port (par défaut : 502)",
-          "slave": "Adresse esclave (par défaut : 1)",
-          "identification": "Identification pour plusieurs onduleurs",
+          "connection_type": "Type de connexion"
+        }
+      },
+      "config": {
+        "title": "Configuration de l'onduleur",
+        "description": "Veuillez entrer les paramètres Modbus pour votre onduleur.",
+        "data": {
+          "host": "Adresse IP",
+          "port": "Port",
+          "slave": "ID esclave Modbus",
+          "serial_port": "Port série",
+          "baudrate": "Débit en bauds",
+          "bytesize": "Taille de l'octet",
+          "parity": "Parité",
+          "stopbits": "Bits d'arrêt",
+          "model": "Modèle d'onduleur",
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
+          "identification": "Nom d'identification",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "Adresse IP",
+          "port": "Port",
+          "slave": "ID esclave Modbus",
+          "serial_port": "Port série",
+          "baudrate": "Débit en bauds",
+          "bytesize": "Taille de l'octet",
+          "parity": "Parité",
+          "stopbits": "Bits d'arrêt",
           "model": "Modèle d'onduleur",
-          "has_v2": "Mise à jour vers le firmware V2",
-          "has_pv": "Possède un panneau solaire (PV)",
-          "has_battery": "Possède un stockage de batterie",
-          "has_hv_battery": "Stockage de batterie HV (100 V+)",
-          "has_generator": "Possède un générateur",
-          "phases": "Phases"
+          "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
+          "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
+          "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
+          "identification": "Nom d'identification",
+          "inverter_serial": "Inverter Serial"
         }
       }
     },
     "error": {
-      "base": "Impossible de se connecter à l'onduleur. Vérifiez vos paramètres."
+      "cannot_connect": "Échec de la connexion, veuillez vérifier vos paramètres.",
+      "unknown": "Une erreur inattendue s'est produite."
+    },
+    "abort": {
+      "already_configured": "Cet appareil est déjà configuré."
     }
   },
   "options": {
@@ -40,8 +71,11 @@
           "has_v2": "Mise à jour vers le firmware V2",
           "has_pv": "Possède un panneau solaire (PV)",
           "has_battery": "Possède un stockage de batterie",
+          "has_hv_battery": "Stockage de batterie HV (100 V+)",
           "has_generator": "Possède un générateur",
-          "phases": "Phases"
+          "phases": "Phases",
+          "connection": "Type de connexion",
+          "inverter_serial": "Inverter Serial"
         }
       }
     }
@@ -58,6 +92,20 @@
         "value": {
           "name": "Valeur",
           "description": "Valeur à écrire"
+        },
+        "host": {
+          "name": "Onduleur",
+          "description": "IP de l'onduleur (nécessaire uniquement si plusieurs onduleurs sont présents)"
+        }
+      }
+    },
+    "solis_read_register": {
+      "name": "Lire un registre",
+      "description": "Lit une valeur d'un registre",
+      "fields": {
+        "address": {
+          "name": "Adresse",
+          "description": "Adresse à lire"
         },
         "host": {
           "name": "Onduleur",

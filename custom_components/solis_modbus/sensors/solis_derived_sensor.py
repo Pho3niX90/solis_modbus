@@ -7,14 +7,14 @@ from typing import List
 
 from homeassistant.components.sensor import RestoreSensor, SensorEntity, SensorDeviceClass
 from homeassistant.core import callback, HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER, SLAVE
+from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER, SLAVE
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
 from custom_components.solis_modbus.helpers import decode_inverter_model, clock_drift_test, is_correct_controller
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
@@ -30,7 +30,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         self._register: List[int] = sensor.registrars
 
         self._device_class = sensor.device_class
-        self._unit_of_measurement  = sensor.unit_of_measurement
+        self._unit_of_measurement = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
@@ -61,14 +61,14 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         updated_controller_slave = int(event.data.get(SLAVE))
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
-            return # meant for a different sensor/inverter combo
+            return  # meant for a different sensor/inverter combo
 
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
             self._received_values[updated_register] = event.data.get(VALUE)
 
             # If we haven't received all registers yet, wait
-            filtered_registers = {reg for reg in self._register if reg not in (0, 1,90007)}
+            filtered_registers = {reg for reg in self._register if reg not in (0, 1, 90007)}
             if not all(reg in self._received_values for reg in filtered_registers):
                 _LOGGER.debug(f"not all values received yet = {self._received_values}")
                 return  # Wait until all registers are received
@@ -76,16 +76,15 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             ## start
             if 90007 in self._register:
                 is_adjusted = clock_drift_test(self.hass, self.base_sensor.controller,
-                                 self._received_values[33025],
-                                 self._received_values[33026],
-                                 self._received_values[33027],
-                                 )
+                                               self._received_values[33025],
+                                               self._received_values[33026],
+                                               self._received_values[33027],
+                                               )
                 if is_adjusted:
                     self._attr_available = True
                     self._attr_native_value = datetime.now(UTC)
                     self.schedule_update_ha_state()
                     self._received_values.clear()
-
 
             if 90006 in self._register:
                 new_value = self.base_sensor.controller.last_modbus_success
@@ -108,14 +107,16 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = round(r1_value * r2_value)
 
-            if 33079  in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
-                active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])
-                reactive_power = self.base_sensor.convert_value([self._received_values[self._register[2]], self._received_values[self._register[3]]])
+            if 33079 in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
+                active_power = self.base_sensor.convert_value(
+                    [self._received_values[self._register[0]], self._received_values[self._register[1]]])
+                reactive_power = self.base_sensor.convert_value(
+                    [self._received_values[self._register[2]], self._received_values[self._register[3]]])
 
                 if active_power == 0 or reactive_power == 0:
                     new_value = 1
                 else:
-                    new_value = round(active_power / ((active_power**2 + reactive_power**2) ** 0.5),3)
+                    new_value = round(active_power / ((active_power ** 2 + reactive_power ** 2) ** 0.5), 3)
 
             if 33135 in self._register and len(self._register) == 4:
                 registers = self._register.copy()
@@ -164,7 +165,8 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self.base_sensor.controller._model = model_description
                 new_value = model_description + f"(Protocol {protocol_version})"
 
-            if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value, str):
+            if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value,
+                                                                                                          str):
                 self._attr_available = True
                 self._attr_native_value = new_value
                 self._state = new_value
@@ -178,14 +180,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             # Clear received values after update
             self._received_values.clear()
 
-
     @property
     def device_info(self):
         """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "{}_{}_{}".format(self.base_sensor.controller.host, self.base_sensor.controller.slave, self.base_sensor.controller.identification))},
-            manufacturer=MANUFACTURER,
-            model=self.base_sensor.controller.model,
-            name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.identification}",
-            sw_version=self.base_sensor.controller.sw_version,
-        )
+        return self.base_sensor.controller.device_info

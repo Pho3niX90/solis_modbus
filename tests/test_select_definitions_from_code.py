@@ -14,7 +14,6 @@ async def test_select_bit_position_requires_combinations_are_unique():
     controller.inverter_config = MagicMock()
     controller.inverter_config.type = InverterType.HYBRID
     controller.inverter_config.features = set()  # test LV battery config
-    controller.identification = "abc"
     controller.model = "S6"
     controller.device_identification = "XYZ"
     controller.sw_version = "1.0"

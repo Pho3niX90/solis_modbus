@@ -3,10 +3,9 @@ from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
 from homeassistant.core import callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.template import is_number
 
-from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, MANUFACTURER, SLAVE
+from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, SLAVE
 from custom_components.solis_modbus.helpers import cache_get, is_correct_controller
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
@@ -26,7 +25,8 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
 
         self._register: List[int] = sensor.registrars
         _LOGGER.debug(f"read_register = {sensor.registrars} | write_register {sensor.write_register}")
-        self._write_register: int = sensor.write_register if sensor.write_register is not None else self._register[0] if len(self._register) == 1 else None
+        self._write_register: int = sensor.write_register if sensor.write_register is not None else self._register[
+            0] if len(self._register) == 1 else None
 
         self._device_class = sensor.device_class
         self._unit_of_measurement = sensor.unit_of_measurement
@@ -55,7 +55,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         state = await self.async_get_last_number_data()
         if state:
             self._attr_native_value = state.native_value
-            #self.adjust_min_max_step(state.native_min_value, state.native_max_value, state.native_step)
+            # self.adjust_min_max_step(state.native_min_value, state.native_max_value, state.native_step)
 
         # 🔥 Register event listener for real-time updates
         self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
@@ -85,7 +85,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         updated_controller_slave = int(event.data.get(SLAVE))
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
-            return # meant for a different sensor/inverter combo
+            return  # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
             updated_value = int(event.data.get(VALUE))
@@ -129,10 +129,4 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "{}_{}_{}".format(self.base_sensor.controller.host, self.base_sensor.controller.slave, self.base_sensor.controller.identification))},
-            manufacturer=MANUFACTURER,
-            model=self.base_sensor.controller.model,
-            name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.identification}",
-            sw_version=self.base_sensor.controller.sw_version,
-        )
+        return self.base_sensor.controller.device_info

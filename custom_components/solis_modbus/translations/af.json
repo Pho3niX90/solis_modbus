@@ -3,28 +3,59 @@
   "config": {
     "step": {
       "user": {
-        "title": "Konfigureer Solis Modbus",
-        "description": "Voer die verbindingsbesonderhede vir jou Solis-omsetter in.",
+        "title": "Kies Verbindings Metode",
+        "description": "Kies hoe die Solis-omsetter aan Home Assistant gekoppel is.",
+        "data": {
+          "connection_type": "Tipe Verbinding"
+        }
+      },
+      "config": {
+        "title": "Omsetter Konfigurasie",
+        "description": "Voer die Modbus-instellings vir jou omsetter in.",
         "data": {
           "host": "IP-adres van Solis-omsetter",
-          "port": "Poort (verstek: 502)",
-          "slave": "Slave Address (default: 1)",
-          "identification": "Identification for multi inverters",
+          "port": "Poort",
+          "slave": "Modbus Slave ID",
+          "serial_port": "Reeks Poort",
+          "baudrate": "Baud Rate",
+          "bytesize": "Byte Size",
+          "parity": "Parity",
+          "stopbits": "Stop Bits",
+          "model": "Omsettermodel",
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
+          "identification": "Identifikasie Naam",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "IP-adres van Solis-omsetter",
+          "port": "Poort",
+          "slave": "Modbus Slave ID",
+          "serial_port": "Reeks Poort",
+          "baudrate": "Baud Rate",
+          "bytesize": "Byte Size",
+          "parity": "Parity",
+          "stopbits": "Stop Bits",
           "model": "Omsettermodel",
-          "has_v2": "Opgedateer na V2-firmware",
-          "has_pv": "Het sonkrag (PV)",
-          "has_battery": "Het batteryberging",
-          "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Het kragopwekker",
-          "phases": "Fases"
+          "poll_interval_fast": "Vinnige polsinterval (sekondes)",
+          "poll_interval_normal": "Normale polsinterval (sekondes)",
+          "poll_interval_slow": "Stadige polsinterval (sekondes)",
+          "identification": "Identifikasie Naam",
+          "inverter_serial": "Inverter Serial"
         }
       }
     },
     "error": {
-      "base": "Kan nie aan die omsetter koppel nie. Gaan jou instellings na."
+      "cannot_connect": "Kan nie aan die omsetter koppel nie. Gaan jou instellings na.",
+      "unknown": "Onverwagte fout het voorgekom."
+    },
+    "abort": {
+      "already_configured": "Hierdie toestel is reeds gekonfigureer."
     }
   },
   "options": {
@@ -40,8 +71,11 @@
           "has_v2": "Opgedateer na V2-firmware",
           "has_pv": "Het sonkrag (PV)",
           "has_battery": "Het batteryberging",
+          "has_hv_battery": "Het HV Batteryberging (100v+)",
           "has_generator": "Het kragopwekker",
-          "phases": "Fases"
+          "phases": "Fases",
+          "connection": "Tipe Verbinding",
+          "inverter_serial": "Inverter Serial"
         }
       }
     }
@@ -58,6 +92,20 @@
         "value": {
           "name": "Waarde",
           "description": "Waarde om te skryf"
+        },
+        "host": {
+          "name": "Omsetter",
+          "description": "IP van die omsetter (slegs nodig as jy verskeie omsetters het)"
+        }
+      }
+    },
+    "solis_read_register": {
+      "name": "Lees register",
+      "description": "Lees 'n waarde van 'n houerregister",
+      "fields": {
+        "address": {
+          "name": "Adres",
+          "description": "Adres om te lees"
         },
         "host": {
           "name": "Omsetter",

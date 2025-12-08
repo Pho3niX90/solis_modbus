@@ -2,7 +2,6 @@ import logging
 from typing import Any
 
 from homeassistant.helpers.restore_state import RestoreEntity
-from sqlalchemy.orm.sync import update
 
 from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller
 from homeassistant.core import callback
@@ -27,7 +26,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._requires_any = entity_definition.get("requires_any", None)
         self._on_value = entity_definition.get("on_value", None)
         self._off_value = entity_definition.get("off_value", None)
-        self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else modbus_controller.host, self._register,
+        self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.device_serial_number, self._register,
                                                     self._on_value if self._on_value is not None else self._bit_position)
         self._attr_name = entity_definition["name"]
         self._attr_available = False
@@ -145,13 +144,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "{}_{}_{}".format(self._modbus_controller.host, self._modbus_controller.slave, self._modbus_controller.identification))},
-            manufacturer=MANUFACTURER,
-            model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.identification}",
-            sw_version=self._modbus_controller.sw_version,
-        )
+        return self._modbus_controller.device_info
 
 
 def set_bit(value, bit_position, new_bit_value):
