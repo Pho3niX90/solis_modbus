@@ -11,7 +11,6 @@ def mock_controller():
     controller = MagicMock()
     controller.connected.return_value = True
     controller.host = "10.0.0.1"
-    controller.identification = "abc"
     controller.model = "S6"
     controller.device_identification = "XYZ"
     controller.sw_version = "1.0"
