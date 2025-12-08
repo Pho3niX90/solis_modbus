@@ -19,6 +19,7 @@ class TestSensorCollision(unittest.TestCase):
         controller_a.port = 502
         controller_a.device_id = 1
         controller_a.inverter_config = self.inverter_config
+        controller_a.device_serial_number = "SN_A"
 
         # Controller B: Host 192.168.1.10, Slave 2
         controller_b = MagicMock()
@@ -26,6 +27,7 @@ class TestSensorCollision(unittest.TestCase):
         controller_b.port = 502
         controller_b.device_id = 2
         controller_b.inverter_config = self.inverter_config
+        controller_b.device_serial_number = "SN_B"
 
         definition = {
             "poll_speed": PollSpeed.NORMAL,
@@ -38,8 +40,8 @@ class TestSensorCollision(unittest.TestCase):
             ]
         }
 
-        group_a = SolisSensorGroup(self.hass, definition, controller_a, identification=None)
-        group_b = SolisSensorGroup(self.hass, definition, controller_b, identification=None)
+        group_a = SolisSensorGroup(self.hass, definition, controller_a)
+        group_b = SolisSensorGroup(self.hass, definition, controller_b)
 
         sensor_a = group_a.sensors[0]
         sensor_b = group_b.sensors[0]
@@ -56,12 +58,14 @@ class TestSensorCollision(unittest.TestCase):
         controller_a.port = 502
         controller_a.device_id = 1
         controller_a.inverter_config = self.inverter_config
+        controller_a.device_serial_number = "SN_A"
 
         controller_b = MagicMock()
         controller_b.host = "192.168.1.20" # Different IP!
         controller_b.port = 502
         controller_b.device_id = 1
         controller_b.inverter_config = self.inverter_config
+        controller_b.device_serial_number = "SN_B"
 
         entity_def = {
             "name": "Status",
@@ -73,14 +77,8 @@ class TestSensorCollision(unittest.TestCase):
         DOMAIN = "solis_modbus"
         identification = None
         
-        if not identification:
-             base_a = controller_a.host + (f"_{controller_a.port}" if hasattr(controller_a, 'port') and controller_a.port != 502 else "") + (f"_{controller_a.device_id}" if controller_a.device_id != 1 else "")
-             base_b = controller_b.host + (f"_{controller_b.port}" if hasattr(controller_b, 'port') and controller_b.port != 502 else "") + (f"_{controller_b.device_id}" if controller_b.device_id != 1 else "")
-             unique_id_a = f"{DOMAIN}_{base_a}_{entity_def['unique']}"
-             unique_id_b = f"{DOMAIN}_{base_b}_{entity_def['unique']}"
-        else:
-             unique_id_a = f"{DOMAIN}_{identification}_{entity_def['unique']}"
-             unique_id_b = f"{DOMAIN}_{identification}_{entity_def['unique']}"
+        unique_id_a = f"{DOMAIN}_{controller_a.device_serial_number}_{entity_def['unique']}"
+        unique_id_b = f"{DOMAIN}_{controller_b.device_serial_number}_{entity_def['unique']}"
 
         print(f"Derived A: {unique_id_a}")
         print(f"Derived B: {unique_id_b}")
@@ -94,12 +92,14 @@ class TestSensorCollision(unittest.TestCase):
         controller_a.port = 5001
         controller_a.device_id = 1
         controller_a.inverter_config = self.inverter_config
+        controller_a.device_serial_number = "SN_A"
 
         controller_b = MagicMock()
         controller_b.host = "192.168.1.10"
         controller_b.port = 5002
         controller_b.device_id = 1
         controller_b.inverter_config = self.inverter_config
+        controller_b.device_serial_number = "SN_B"
 
         definition = {
             "poll_speed": PollSpeed.NORMAL,
@@ -112,8 +112,8 @@ class TestSensorCollision(unittest.TestCase):
             ]
         }
 
-        group_a = SolisSensorGroup(self.hass, definition, controller_a, identification=None)
-        group_b = SolisSensorGroup(self.hass, definition, controller_b, identification=None)
+        group_a = SolisSensorGroup(self.hass, definition, controller_a)
+        group_b = SolisSensorGroup(self.hass, definition, controller_b)
 
         sensor_a = group_a.sensors[0]
         sensor_b = group_b.sensors[0]

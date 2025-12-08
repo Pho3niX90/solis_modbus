@@ -19,6 +19,7 @@ async def test_setup_entry(hass: HomeAssistant):
             "host": "1.2.3.4",
             "port": 502,
             "slave": 1,
+            "inverter_serial": "SN123456",
             "model": "S6-EH1P", # Valid model
             "poll_interval_fast": 10,
             "poll_interval_normal": 15,
@@ -55,7 +56,7 @@ async def test_setup_entry_connection_failure(hass: HomeAssistant):
     """Test setup failure on connection error."""
     config_entry = MockConfigEntry(
         domain=DOMAIN,
-        data={"host": "1.2.3.4", "port": 502, "slave": 1},
+        data={"host": "1.2.3.4", "port": 502, "slave": 1, "inverter_serial": "SN123456"},
     )
     config_entry.add_to_hass(hass)
 
