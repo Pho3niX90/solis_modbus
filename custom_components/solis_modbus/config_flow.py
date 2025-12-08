@@ -297,6 +297,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.warning(f"Connection failed attempt {attempt + 1}/5: {str(e)}")
                 if attempt < 4:
                     await asyncio.sleep(1)
+            finally:
+                modbus_controller.close_connection()
 
         _LOGGER.error(f"Connection failed after 5 attempts: {str(controller_params)}")
         return False

@@ -284,7 +284,7 @@ class ModbusController:
                 self.client.slave = self.device_id
                 result = await self.client.read_input_registers(address=register, count=count)
 
-            _LOGGER.info(
+            _LOGGER.debug(
                 f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
 
             if result.isError():

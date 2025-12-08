@@ -121,7 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         raise ConfigEntryError("Inverter Serial is missing")
 
     # Determine connection type (default to TCP for backwards compatibility with old configs)
-    connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_TCP)
+    connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_SERIAL)
 
     # Get connection-specific parameters
     host = config.get("host")
