@@ -1,13 +1,11 @@
 import logging
-
-from homeassistant.core import HomeAssistant, callback
 from datetime import datetime, timedelta, timezone
-
 from typing import List
-from homeassistant.components.sensor import RestoreSensor, SensorEntity
-from homeassistant.helpers.device_registry import DeviceInfo
 
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, SLAVE
+from homeassistant.components.sensor import RestoreSensor, SensorEntity
+from homeassistant.core import HomeAssistant, callback
+
+from custom_components.solis_modbus.const import DOMAIN, SLAVE
 from custom_components.solis_modbus.const import REGISTER, VALUE, CONTROLLER
 from custom_components.solis_modbus.data.enums import InverterType, PollSpeed
 from custom_components.solis_modbus.helpers import cache_get, is_correct_controller
@@ -15,6 +13,7 @@ from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSe
 
 _LOGGER = logging.getLogger(__name__)
 _WATCHDOG_TIMEOUT_MIN = 10
+
 
 class SolisSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus sensor."""
@@ -44,7 +43,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
         # Watchdog parameters
         self._last_update = datetime.now(timezone.utc).astimezone()
-        self._update_timeout = timedelta(minutes=self.base_sensor.controller.poll_speed.get(sensor.poll_speed, 0) + _WATCHDOG_TIMEOUT_MIN)
+        self._update_timeout = timedelta(
+            minutes=self.base_sensor.controller.poll_speed.get(sensor.poll_speed, 0) + _WATCHDOG_TIMEOUT_MIN)
 
     def decimal_count(self, number: float) -> int | None:
         """Returns the number of decimal places in a given number."""
@@ -76,7 +76,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         updated_controller_slave = int(event.data.get(SLAVE))
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
-            return # meant for a different sensor/inverter combo
+            return  # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
             # Causes issues with grid inverters going offline, and messing up energy dashboard
@@ -97,7 +97,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
             values = [self._received_values[reg] for reg in self._register]
             if None in values:
-                problematic_regs = {reg: self._received_values.get(reg) for reg in self._register if self._received_values.get(reg) is None}
+                problematic_regs = {reg: self._received_values.get(reg) for reg in self._register if
+                                    self._received_values.get(reg) is None}
                 if problematic_regs:
                     _LOGGER.debug(f"⚠️ Problematic values received in registrars: {problematic_regs}, skipping update")
                     return
@@ -117,18 +118,13 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
         now = datetime.now(timezone.utc).astimezone()
         if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
-            _LOGGER.warning(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
-            #self._attr_native_value = 0
+            _LOGGER.warning(
+                f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
+            # self._attr_native_value = 0
             self._attr_available = False  # Set attribute unavailable (if desired)
             self.schedule_update_ha_state()
 
     @property
     def device_info(self):
         """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "{}_{}_{}".format(self.base_sensor.controller.host,self.base_sensor.controller.slave, self.base_sensor.controller.identification))},
-            manufacturer=MANUFACTURER,
-            model=self.base_sensor.controller.model,
-            name=f"{MANUFACTURER} {self.base_sensor.controller.model}{self.base_sensor.controller.identification}",
-            sw_version=self.base_sensor.controller.sw_version,
-        )
+        return self.base_sensor.controller.device_info

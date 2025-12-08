@@ -1,0 +1,131 @@
+{
+  "title": "Solis Modbus",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Selecteer Verbindingsmethode",
+        "description": "Kies hoe de Solis omvormer verbonden is met Home Assistant.",
+        "data": {
+          "connection_type": "Verbindingstype"
+        }
+      },
+      "config": {
+        "title": "Omvormer Configuratie",
+        "description": "Voer de Modbus instellingen in voor uw omvormer.",
+        "data": {
+          "host": "IP Adres",
+          "port": "Poort",
+          "slave": "Modbus Slave ID",
+          "serial_port": "Seriële Poort",
+          "baudrate": "Baud Rate",
+          "bytesize": "Byte Grootte",
+          "parity": "Pariteit",
+          "stopbits": "Stop Bits",
+          "model": "Omvormer Model",
+          "poll_interval_fast": "Snel Poll Interval (seconden)",
+          "poll_interval_normal": "Normaal Poll Interval (seconden)",
+          "poll_interval_slow": "Langzaam Poll Interval (seconden)",
+          "identification": "Identificatie Naam",
+          "inverter_serial": "Inverter Serial"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Inverter",
+        "description": "Update the configuration for your Solis inverter.",
+        "data": {
+          "host": "IP Adres",
+          "port": "Poort",
+          "slave": "Modbus Slave ID",
+          "serial_port": "Seriële Poort",
+          "baudrate": "Baud Rate",
+          "bytesize": "Byte Grootte",
+          "parity": "Pariteit",
+          "stopbits": "Stop Bits",
+          "model": "Omvormer Model",
+          "poll_interval_fast": "Snel Poll Interval (seconden)",
+          "poll_interval_normal": "Normaal Poll Interval (seconden)",
+          "poll_interval_slow": "Langzaam Poll Interval (seconden)",
+          "identification": "Identificatie Naam",
+          "inverter_serial": "Inverter Serial"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbinding mislukt, controleer uw instellingen.",
+      "unknown": "Onverwachte fout opgetreden."
+    },
+    "abort": {
+      "already_configured": "Dit apparaat is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Wijzig Solis Modbus Instellingen",
+        "description": "Wijzig de instellingen voor uw Solis omvormer. (herstart aanbevolen)",
+        "data": {
+          "poll_interval_fast": "Snel Poll Interval (seconden)",
+          "poll_interval_normal": "Normaal Poll Interval (seconden)",
+          "poll_interval_slow": "Langzaam Poll Interval (seconden)",
+          "model": "Omvormer Model",
+          "has_v2": "Geüpdatet naar V2 Firmware",
+          "has_pv": "Heeft Zonnepanelen (PV)",
+          "has_battery": "Heeft Batterij Opslag",
+          "has_hv_battery": "Heeft HV Batterij Opslag (100v+)",
+          "has_generator": "Heeft Generator",
+          "phases": "Fasen",
+          "connection": "Verbindingstype",
+          "inverter_serial": "Inverter Serial"
+        }
+      }
+    }
+  },
+  "services": {
+    "solis_write_holding_register": {
+      "name": "Schrijf holding register",
+      "description": "Schrijft een waarde naar een holding register",
+      "fields": {
+        "address": {
+          "name": "Adres",
+          "description": "Adres om naar te schrijven"
+        },
+        "value": {
+          "name": "Waarde",
+          "description": "Waarde om te schrijven"
+        },
+        "host": {
+          "name": "Omvormer",
+          "description": "Omvormer IP (alleen nodig bij meerdere omvormers)"
+        }
+      }
+    },
+    "solis_read_register": {
+      "name": "Lees register",
+      "description": "Leest een waarde van een register",
+      "fields": {
+        "address": {
+          "name": "Adres",
+          "description": "Adres om te lezen"
+        },
+        "host": {
+          "name": "Omvormer",
+          "description": "Omvormer IP (alleen nodig bij meerdere omvormers)"
+        }
+      }
+    },
+    "solis_write_time": {
+      "name": "Wijzig de tijd van een entiteit",
+      "description": "Stelt de tijd van de entiteit in op de opgegeven waarde",
+      "fields": {
+        "entity_id": {
+          "name": "Entiteit ID",
+          "description": "Entiteit ID van de tijd entiteit die u wilt wijzigen"
+        },
+        "time": {
+          "name": "Gewenste Tijd",
+          "description": "Tijd in HH:MM of HH:MM:SS"
+        }
+      }
+    }
+  }
+}

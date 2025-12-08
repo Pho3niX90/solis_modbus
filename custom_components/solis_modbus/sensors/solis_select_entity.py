@@ -1,23 +1,25 @@
 import logging
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER
 from custom_components.solis_modbus import ModbusController
+from custom_components.solis_modbus.const import DOMAIN
 from custom_components.solis_modbus.helpers import cache_get, cache_save
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class SolisSelectEntity(RestoreEntity, SelectEntity):
 
     def __init__(self, hass, modbus_controller, entity_definition) -> None:
         self._hass = hass
-        self._modbus_controller: ModbusController  = modbus_controller
+        self._modbus_controller: ModbusController = modbus_controller
         self._register = entity_definition["register"]
         self._attr_name = entity_definition["name"]
-        self._attr_unique_id ="{}_{}_{}_select".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else self._modbus_controller.host, entity_definition["register"])
+        self._attr_unique_id = "{}_{}_{}_select".format(DOMAIN,
+                                                        self._modbus_controller.device_serial_number,
+                                                        entity_definition["register"])
         self._attr_options = [e["name"] for e in entity_definition["entities"]]
         self._attr_options_raw = entity_definition["entities"]
         self._current_option = None
@@ -53,7 +55,6 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
 
         return None
 
-
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         for e in self._attr_options_raw:
@@ -74,13 +75,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "{}_{}_{}".format(self._modbus_controller.host, self._modbus_controller.slave, self._modbus_controller.identification))},
-            manufacturer=MANUFACTURER,
-            model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.identification}",
-            sw_version=self._modbus_controller.sw_version,
-        )
+        return self._modbus_controller.device_info
 
     def set_register_bit(self, on_value, bit_position, conflicts_with, requires):
         """Set or clear a specific bit in the Modbus register."""
@@ -111,6 +106,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             cache_save(self._hass, self._register, new_register_value)
         self._attr_available = True
 
+
 def get_bit_bool(modbus_value, bit_position):
     """
     Decode Modbus value to boolean state for the specified bit position.
@@ -124,6 +120,7 @@ def get_bit_bool(modbus_value, bit_position):
     """
     # Check if the bit is ON by shifting 1 to the specified position and performing bitwise AND
     return (modbus_value >> bit_position) & 1 == 1
+
 
 def set_bit(value, bit_position, new_bit_value):
     """Set or clear a specific bit in an integer value."""

@@ -103,7 +103,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
         self._register: int = entity_definition["register"]
 
         # Hidden Inherited Instance Attributes
-        self._attr_unique_id = "{}_{}_{}".format(DOMAIN, modbus_controller.identification if modbus_controller.identification is not None else modbus_controller.host, self._register)
+        self._attr_unique_id = "{}_{}_{}".format(DOMAIN, modbus_controller.device_serial_number if modbus_controller.device_serial_number is not None else modbus_controller.host, self._register)
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_available = True
@@ -168,13 +168,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "{}_{}_{}".format(self._modbus_controller.host, self._modbus_controller.slave, self._modbus_controller.identification))},
-            manufacturer=MANUFACTURER,
-            model=self._modbus_controller.model,
-            name=f"{MANUFACTURER} {self._modbus_controller.model}{self._modbus_controller.identification}",
-            sw_version=self._modbus_controller.sw_version,
-        )
+        return self._modbus_controller.device_info
 
     async def async_set_value(self, value: time) -> None:
         """Set the time."""

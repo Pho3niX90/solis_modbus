@@ -13,14 +13,13 @@ from .const import (
     DOMAIN, CONTROLLER, TIME_ENTITIES,
     CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
     CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
-    CONF_CONNECTION_TYPE, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
+    CONF_CONNECTION_TYPE, CONF_INVERTER_SERIAL, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
     DEFAULT_PARITY, DEFAULT_STOPBITS
 )
 from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
 from .helpers import get_controller, set_controller
-from homeassistant.helpers import entity_registry as er
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
 from .sensors.solis_derived_sensor import SolisDerivedSensor
@@ -42,24 +41,6 @@ SCHEME_TIME_SET = vol.Schema(
         vol.Required("time"): vol.Coerce(str)
     }
 )
-
-async def async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry, host: str, port: int):
-    """Migrate legacy unique_ids (missing port) to new format."""
-    if port == 502:
-        return
-
-    _LOGGER.debug(f"Checking for unique_id migration for host {host}, port {port}")
-    registry = er.async_get(hass)
-    entries = er.async_entries_for_config_entry(registry, entry.entry_id)
-
-    old_prefix = f"{DOMAIN}_{host}_"
-    new_prefix = f"{DOMAIN}_{host}_{port}_"
-
-    for entity in entries:
-        if entity.unique_id.startswith(old_prefix) and not entity.unique_id.startswith(new_prefix):
-            new_unique_id = entity.unique_id.replace(old_prefix, new_prefix, 1)
-            _LOGGER.warning(f"Migrating entity {entity.entity_id} unique_id from {entity.unique_id} to {new_unique_id}")
-            registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
 
 
 async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
@@ -129,14 +110,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Merge data and options (options take priority)
     config = {**entry.data, **entry.options}
     slave = config.get("slave", 1)
+    inverter_serial = config.get(CONF_INVERTER_SERIAL)
+
+    if not inverter_serial:
+        hass.components.persistent_notification.async_create(
+            "Solis Modbus: Inverter Serial is missing. Please reconfigure the integration.",
+            title="Solis Modbus Configuration Issue",
+            notification_id="solis_modbus_missing_serial",
+        )
+        raise ConfigEntryError("Inverter Serial is missing")
 
     # Determine connection type (default to TCP for backwards compatibility with old configs)
-    connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_SERIAL)
+    connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_TCP)
 
     # Get connection-specific parameters
+    host = config.get("host")
+    port = config.get("port", 502)
+
     if connection_type == CONN_TYPE_TCP:
-        host = config.get("host")
-        port = config.get("port", 502)
         connection_id = f"{host}:{port}"
     else:  # Serial
         serial_port = config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0")
@@ -163,19 +154,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = entry
     _LOGGER.info(f"Loaded Solis Modbus Integration ({connection_type}) with Model: {config.get('model')}")
 
-    # Migrate unique_ids if needed (TCP only)
-    if connection_type == CONN_TYPE_TCP:
-        await async_migrate_unique_ids(hass, entry, host, port)
-
     poll_interval_fast = config.get("poll_interval_fast", 5)
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
     inverter_model = config.get("model")
-    identification = config.get("identification", None)
 
     if inverter_model is None:
         old_type = config.get("type", "hybrid")
-        inverter_model = "S6-EH3P" if old_type == "hybrid" else ("WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
+        inverter_model = "S6-EH3P" if old_type == "hybrid" else (
+            "WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
 
     inverter_config: InverterConfig = next(
         (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
@@ -213,12 +200,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     controller_params = {
         "hass": hass,
         "device_id": slave,
-        "identification": identification,
         "fast_poll": poll_interval_fast,
         "normal_poll": poll_interval_normal,
         "slow_poll": poll_interval_slow,
         "inverter_config": inverter_config,
-        "connection_type": connection_type
+        "connection_type": connection_type,
+        "serial_number": inverter_serial
     }
 
     if connection_type == CONN_TYPE_TCP:
@@ -245,7 +232,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             continue  # Skip this group
 
         # If it passes the check, add to sensor groups
-        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
+        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller))
 
     controller._derived_sensors = [
         SolisBaseSensor(
@@ -261,12 +248,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             hidden=entity.get("hidden", False),
             multiplier=entity.get("multiplier", 1),
             category=entity.get("category", None),
-            identification=entity.get("identification", None),
-            unique_id=f"{DOMAIN}_{identification}_{entity['unique']}" if identification else f"{DOMAIN}_{connection_id.replace(':', '_').replace('/', '_')}{f'_{slave}' if slave != 1 else ''}_{entity['unique']}"
+            unique_id=f"{DOMAIN}_{controller.serial_number}_{entity['unique']}" if controller.serial_number else f"{DOMAIN}_{connection_id.replace(':', '_').replace('/', '_')}{f'_{slave}' if slave != 1 else ''}_{entity['unique']}"
         )
         for entity in sensors_derived
     ]
-
 
     set_controller(hass, controller)
 

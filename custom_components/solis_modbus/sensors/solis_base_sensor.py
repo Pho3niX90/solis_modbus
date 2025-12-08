@@ -15,6 +15,7 @@ from custom_components.solis_modbus.helpers import cache_get, extract_serial_num
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class SolisBaseSensor:
     """Base class for all Solis sensors."""
 
@@ -30,15 +31,14 @@ class SolisBaseSensor:
                  unit_of_measurement: UnitOfElectricPotential | UnitOfApparentPower | UnitOfElectricCurrent | UnitOfPower = None,
                  editable: bool = False,
                  state_class: SensorStateClass = None,
-                 default = None,
-                 step = 0.1,
-                 hidden = False,
-                 enabled = True,
+                 default=None,
+                 step=0.1,
+                 hidden=False,
+                 enabled=True,
                  category: Category = None,
                  min_value: Optional[int] = None,
                  max_value: Optional[int] = None,
-                 identification = None,
-                 poll_speed = PollSpeed.NORMAL):
+                 poll_speed=PollSpeed.NORMAL):
         """
         :param name: Sensor name
         :param registrars: First register address
@@ -64,7 +64,6 @@ class SolisBaseSensor:
         self.min_value = min_value
         self.poll_speed = poll_speed
         self.category = category
-        self.identification = identification
 
         self.dynamic_adjustments()
 
@@ -89,7 +88,6 @@ class SolisBaseSensor:
             if _any_in(self.registrars, s6_registers):
                 self.multiplier = 0.01
 
-
     def adjust_max(self, max_default):
         try:
             new_max = max_default
@@ -100,7 +98,8 @@ class SolisBaseSensor:
                 new_max = self.controller.inverter_config.wattage_chosen
             elif self.unit_of_measurement == UnitOfPower.KILO_WATT:
                 new_max = self.controller.inverter_config.wattage_chosen / 1000
-            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {new_max} instead of {max_default}")
+            _LOGGER.debug(
+                f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {new_max} instead of {max_default}")
             self.max_value = new_max
         except Exception as e:
             _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s",
@@ -157,13 +156,14 @@ class SolisBaseSensor:
             "registrars": self.registrars
         }
 
+
 class SolisSensorGroup:
     sensors: List[SolisBaseSensor]
 
-    def __init__(self, hass, definition, controller, identification = None):
+    def __init__(self, hass, definition, controller):
         self._sensors = list(map(lambda entity: SolisBaseSensor(
             hass=hass,
-            name= entity.get("name", "reserve"),
+            name=entity.get("name", "reserve"),
             controller=controller,
             registrars=[int(r) for r in entity["register"]],
             write_register=entity.get("write_register", None),
@@ -175,18 +175,18 @@ class SolisSensorGroup:
             max_value=entity.get("max", 3000),
             min_value=entity.get("min", 0),
             step=entity.get("step", None),
-            identification= identification,
             category=entity.get("category", None),
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}_{}".format(DOMAIN, identification if identification is not None else (f"{controller.host}{f'_{controller.port}' if controller.port != 502 else ''}{f'_{controller.device_id}' if controller.device_id != 1 else ''}"), entity.get("unique", "reserve")),
+            unique_id="{}_{}_{}".format(DOMAIN, controller.device_serial_number, entity.get("unique", "reserve")),
             poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))
-        self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
+        self.poll_speed: PollSpeed = definition.get("poll_speed",
+                                                    PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
 
-        _LOGGER.debug(f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
+        _LOGGER.debug(
+            f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
         self.validate_sequential_registrars()
-        self.identification = identification
 
     def validate_sequential_registrars(self):
         """Ensure all registrars increase sequentially without skipping numbers."""
@@ -194,7 +194,8 @@ class SolisSensorGroup:
 
         for i in range(len(all_registrars) - 1):
             if all_registrars[i + 1] != all_registrars[i] + 1:
-                _LOGGER.error(f"🚨 Registrar sequence error! Found gap between {all_registrars[i]} and {all_registrars[i + 1]} in sensor group.")
+                _LOGGER.error(
+                    f"🚨 Registrar sequence error! Found gap between {all_registrars[i]} and {all_registrars[i + 1]} in sensor group.")
 
     @property
     def sensors_count(self):

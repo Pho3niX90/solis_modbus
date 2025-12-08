@@ -48,10 +48,10 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
             port=502,
             inverter_config=self.inverter_config,
             device_id=1,
-            fast_poll=5,
             normal_poll=15,
             slow_poll=30
         )
+        self.controller.serial_number = "mock_sn"
 
     def tearDown(self):
         """Tear down test fixtures."""
@@ -234,6 +234,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
             normal_poll=15,
             slow_poll=30
         )
+        self.controller.serial_number = "mock_sn"
 
     def tearDown(self):
         """Tear down test fixtures."""
@@ -291,7 +292,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         self.assertTrue(result)
         self.mock_client.connect.assert_not_called()
 
-    async def test_async_read_input_register_success(self):
+    async def test_serial_async_read_input_register_success(self):
         """Test successful read of input register."""
         self.mock_client.connected = True
         mock_result = MagicMock()
@@ -542,6 +543,14 @@ class TestModbusControllerProperties(unittest.TestCase):
         
         # Test with no identification
         self.controller.identification = None
+        self.assertEqual("", self.controller.device_identification)
+
+    def test_device_identification_none(self):
+        """Test device_identification property with 'none' string."""
+        self.controller.identification = "none"
+        self.assertEqual("", self.controller.device_identification)
+        
+        self.controller.identification = "None"
         self.assertEqual("", self.controller.device_identification)
 
     def test_close_connection(self):
