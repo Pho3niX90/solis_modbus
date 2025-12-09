@@ -3,9 +3,10 @@ import struct
 from datetime import datetime
 from typing import List
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_utils
-from homeassistant.config_entries import ConfigEntry
+
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import (
     DRIFT_COUNTER, VALUES, CONTROLLER,
@@ -13,6 +14,7 @@ from custom_components.solis_modbus.const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
 
 def hex_to_ascii(hex_value):
     # Convert hexadecimal to decimal
@@ -27,18 +29,43 @@ def hex_to_ascii(hex_value):
 
     return ascii_chars
 
-def unique_id_generator(controller, entity):
+
+def unique_id_generator(controller, third_value, fourth_value = None):
     # new method to generate unique id
-    if controller.device_serial_number != None:
-        return "{}_{}_{}".format(DOMAIN, controller.device_serial_number, entity.get("unique", "reserve"))
+    if fourth_value is None:
+        if controller.device_serial_number is not None:
+            return "{}_{}_{}".format(DOMAIN, controller.device_serial_number, third_value)
 
-    if controller.identification != None:
-        return "{}_{}_{}".format(DOMAIN, controller.identification, entity.get("unique", "reserve"))
+        if controller.identification is not None:
+            return "{}_{}_{}".format(DOMAIN, controller.identification, third_value)
 
-    return "{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
+        return "{}_{}_{}".format(DOMAIN, controller.host, third_value)
+    else:
+        if controller.device_serial_number is not None:
+            return "{}_{}_{}_{}".format(DOMAIN, controller.device_serial_number, third_value, fourth_value)
+
+        if controller.identification is not None:
+            return "{}_{}_{}_{}".format(DOMAIN, controller.identification, third_value, fourth_value)
+
+        return "{}_{}_{}_{}".format(DOMAIN, controller.host, third_value, fourth_value)
+
+
+def unique_id_generator_binary(controller, register, bit_position, on_value):
+    if controller.device_serial_number is not None:
+        return "{}_{}_{}_{}".format(DOMAIN, controller.device_serial_number, register,
+                                    on_value if on_value is not None else bit_position)
+    if controller.identification is not None:
+        return "{}_{}_{}_{}".format(DOMAIN, controller.identification, register,
+                                    on_value if on_value is not None else bit_position)
+
+    return "{}_{}_{}_{}".format(DOMAIN,
+                                controller.host,
+                                register,
+                                on_value if on_value is not None else bit_position)
+
 
 def extract_serial_number(values):
-    packed = struct.pack('>' + 'H'*len(values), *values)
+    packed = struct.pack('>' + 'H' * len(values), *values)
     return packed.decode('ascii', errors='ignore').strip('\x00\r\n ')
 
 
@@ -114,14 +141,18 @@ def decode_inverter_model(hex_value):
 
     return protocol_version, model_description
 
+
 def cache_save(hass: HomeAssistant, register: str | int, value):
     hass.data[DOMAIN][VALUES][str(register)] = value
+
 
 def cache_get(hass: HomeAssistant, register: str | int):
     return hass.data[DOMAIN][VALUES].get(str(register), None)
 
+
 def set_controller(hass: HomeAssistant, controller):
     hass.data[DOMAIN][CONTROLLER]["{}_{}".format(controller.host, controller.device_id)] = controller
+
 
 def get_controller_from_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Get controller from config entry (works for both TCP and Serial)."""
@@ -139,6 +170,7 @@ def get_controller_from_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     key = "{}_{}".format(controller_id, slave)
     return hass.data[DOMAIN][CONTROLLER].get(key)
 
+
 def get_controller(hass: HomeAssistant, controller_host: str, controller_slave: int):
     """Get controller by host/port and slave (legacy function for backwards compatibility)."""
     if controller_host is None:
@@ -154,15 +186,18 @@ def get_controller(hass: HomeAssistant, controller_host: str, controller_slave: 
         return controller
     return hass.data[DOMAIN][CONTROLLER].get(controller_host)
 
+
 def split_s32(s32_values: List[int]):
     high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
     low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
 
     # Combine the high and low words to form a 32-bit signed/unsigned integer
-    return  (high_word << 16) | (low_word & 0xFFFF)
+    return (high_word << 16) | (low_word & 0xFFFF)
+
 
 def _any_in(target: List[int], collection: set[int]) -> bool:
     return any(item in collection for item in target)
+
 
 def is_correct_controller(controller, host: str, slave: int):
     return controller.host == host and controller.device_id == slave

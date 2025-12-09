@@ -7,7 +7,8 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, REGISTER, VALUE, SLAVE
-from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller
+from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller, \
+    unique_id_generator_binary
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,18 +28,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._requires_any = entity_definition.get("requires_any", None)
         self._on_value = entity_definition.get("on_value", None)
         self._off_value = entity_definition.get("off_value", None)
-
-        if modbus_controller.device_serial_number is not None:
-            self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.device_serial_number, self._register,
-                                                        self._on_value if self._on_value is not None else self._bit_position)
-        if modbus_controller.identification is not None:
-            self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN, modbus_controller.identification, self._register,
-                                                        self._on_value if self._on_value is not None else self._bit_position)
-        else:
-            self._attr_unique_id = "{}_{}_{}_{}".format(DOMAIN,
-                                                        modbus_controller.host,
-                                                        self._register,
-                                                        self._on_value if self._on_value is not None else self._bit_position)
+        self._attr_unique_id = unique_id_generator_binary(modbus_controller, self._register, self._bit_position, self._on_value)
         self._attr_name = entity_definition["name"]
         self._attr_available = False
 

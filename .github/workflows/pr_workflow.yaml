@@ -1,0 +1,74 @@
+name: PR Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio homeassistant voluptuous
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Unique ID Tests
+        run: |
+          pytest tests/test_unique_id_generator.py
+
+      - name: Run Migration Tests
+        run: |
+          pytest tests/test_migration.py
+          
+      - name: Run Sensor Drift Check
+        id: drift_check
+        continue-on-error: true
+        run: |
+          pytest tests/test_sensor_drift.py
+          
+      - name: Post Drift Report
+        if: steps.drift_check.outcome == 'failure'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: drift_report.md
+          header: drift-report
+          
+      - name: Fail if drift detected
+        if: steps.drift_check.outcome == 'failure'
+        run: exit 1
+
+      - name: Update Sensor Baselines
+        if: steps.drift_check.outcome == 'success'
+        run: |
+          python tests/generate_known_sensors.py
+          
+      - name: Commit and Push Changes
+        if: steps.drift_check.outcome == 'success'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add tests/known_sensors_*.json
+          # Check if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "test: update known sensors baseline"
+            git push
+          else
+            echo "No changes to baseline."
+          fi

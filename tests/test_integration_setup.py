@@ -1,8 +1,6 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_NAME, CONF_SCAN_INTERVAL
-from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.solis_modbus.const import DOMAIN
 

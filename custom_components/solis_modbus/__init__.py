@@ -3,6 +3,7 @@ import asyncio
 import logging
 from datetime import datetime
 
+import homeassistant.helpers.entity_registry
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -14,12 +15,12 @@ from .const import (
     CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
     CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
     CONF_CONNECTION_TYPE, CONF_INVERTER_SERIAL, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
-    DEFAULT_PARITY, DEFAULT_STOPBITS
+    DEFAULT_PARITY, DEFAULT_STOPBITS, CONF_SLAVE
 )
 from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
-from .helpers import get_controller, set_controller
+from .helpers import get_controller, set_controller, unique_id_generator
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
 from .sensors.solis_derived_sensor import SolisDerivedSensor
@@ -59,7 +60,6 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             for controller in hass.data[DOMAIN][CONTROLLER].values():
                 hass.create_task(controller.async_write_holding_register(int(address), int(value)))
 
-    # @Ian-Johnston
     async def service_set_time(call: ServiceCall) -> None:
         """Service to update a Solis time entity."""
         entity_id = call.data.get("entity_id")
@@ -109,8 +109,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Merge data and options (options take priority)
     config = {**entry.data, **entry.options}
-    slave = config.get("slave", 1)
+    slave = config.get(CONF_SLAVE, 1)
     inverter_serial = config.get(CONF_INVERTER_SERIAL)
+
+    if not inverter_serial:
+        hass.components.persistent_notification.async_create(
+            "Solis Modbus: Inverter Serial is missing. Please reconfigure the integration.",
+            title="Solis Modbus Configuration Issue",
+            notification_id="solis_modbus_missing_serial",
+        )
+        raise ConfigEntryError("Inverter Serial is missing")
 
     # Determine connection type (default to TCP for backwards compatibility with old configs)
     connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_SERIAL)
@@ -226,7 +234,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             continue  # Skip this group
 
         # If it passes the check, add to sensor groups
-        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
+        controller._sensor_groups.append(
+            SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
     controller._derived_sensors = [
         SolisBaseSensor(
@@ -238,11 +247,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             state_class=entity.get("state_class", None),
             device_class=entity.get("device_class", None),
             unit_of_measurement=entity.get("unit_of_measurement", None),
+            multiplier=entity.get("multiplier", 1),
             editable=entity.get("editable", False),
             hidden=entity.get("hidden", False),
-            multiplier=entity.get("multiplier", 1),
             category=entity.get("category", None),
-            unique_id=f"{DOMAIN}_{entity['unique']}" if not identification else f"{DOMAIN}_{identification}_{entity['unique']}"
+            unique_id=unique_id_generator(controller, entity.get("unique", "reserve"))
         )
         for entity in sensors_derived
     ]
@@ -261,6 +270,144 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     return True
 
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug("Migrating from version %s", entry.version)
+
+    if entry.version == 1:
+        # Version 1 -> 2: Migrate unique IDs to use Serial Number if available
+
+        config = {**entry.data, **entry.options}
+        host = config.get("host")
+        inverter_serial = config.get(CONF_INVERTER_SERIAL)
+        identification = config.get("identification")
+
+        # If no serial number, we can't migrate to serial-based IDs.
+        if not inverter_serial:
+            _LOGGER.info("Migration to v2 skipped: No inverter serial number found.")
+            return True
+
+        # Setup the mock controller for ID generation
+        from types import SimpleNamespace
+        controller = SimpleNamespace()
+        controller.device_serial_number = inverter_serial
+        controller.identification = identification
+        controller.host = host
+
+        # Get the Entity Registry
+        ent_reg = homeassistant.helpers.entity_registry.async_get(hass)
+
+        def safe_migrate_entity(platform, old_uid, new_uid):
+            """Safely migrates an entity ID, handling collisions."""
+
+            # 1. Check if the OLD entity exists (The one we want to save)
+            old_entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, old_uid)
+            if not old_entity_id:
+                # If the old entity doesn't exist, there is nothing to migrate.
+                return
+
+            # 2. Check if the NEW entity already exists (The obstacle)
+            # This happens if the user restarted HA with the new code before migration finished.
+            new_entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, new_uid)
+
+            if new_entity_id:
+                if new_entity_id == old_entity_id:
+                    return # Already migrated!
+
+                _LOGGER.warning(
+                    "Migration collision: Removing %s (ID: %s) to migrate history from %s",
+                    new_entity_id, new_uid, old_entity_id
+                )
+                # We delete the "new" ghost entity so we can put the "old" history in its place
+                ent_reg.async_remove(new_entity_id)
+
+            # 3. Perform the Move
+            try:
+                _LOGGER.info("Migrating %s from %s -> %s", platform, old_uid, new_uid)
+                ent_reg.async_update_entity(old_entity_id, new_unique_id=new_uid)
+            except ValueError as e:
+                # Should not happen given the check above, but good practice
+                _LOGGER.error("Migration failed unexpectedly for %s: %s", old_entity_id, e)
+        # ---------------------------------------------------------
+
+        # Determine Inverter config to get sensor lists
+        inverter_model = config.get("model")
+        if inverter_model is None:
+            old_type = config.get("type", "hybrid")
+            inverter_model = "S6-EH3P" if old_type == "hybrid" else (
+                "WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
+
+        inverter_config: InverterConfig = next(
+            (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
+        )
+
+        if inverter_config:
+            # Load the correct sensor definitions
+            if inverter_config.type in [InverterType.STRING, InverterType.GRID]:
+                from .sensor_data.string_sensors import string_sensors, string_sensors_derived
+                sensors = string_sensors
+                sensors_derived = string_sensors_derived
+            else:
+                from .sensor_data.hybrid_sensors import hybrid_sensors, hybrid_sensors_derived
+                sensors = hybrid_sensors
+                sensors_derived = hybrid_sensors_derived
+
+            from .sensor_data.time_sensors import get_time_sensors
+            from .helpers import unique_id_generator
+
+            # Helper to calculate old ID string format
+            def get_old_id(uid, ctrl):
+                if ctrl.identification:
+                    return f"{DOMAIN}_{ctrl.identification}_{uid}"
+                return f"{DOMAIN}_{ctrl.host}_{uid}"
+
+            # A. Standard Sensors
+            for group in sensors:
+                feature_requirement = group.get("feature_requirement", [])
+                if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
+                    continue
+                for entity in group.get("entities", []):
+                    if entity.get("type") == "reserve": continue
+
+                    uid_key = entity.get("unique", "reserve")
+                    new_uid = unique_id_generator(controller, uid_key)
+                    old_uid = get_old_id(uid_key, controller)
+
+                    if new_uid != old_uid:
+                        # Call the helper here!
+                        safe_migrate_entity(Platform.SENSOR, old_uid, new_uid)
+
+            # B. Derived Sensors
+            for entity in sensors_derived:
+                uid_key = entity.get("unique", "reserve")
+                new_uid = unique_id_generator(controller, uid_key)
+
+                # Reconstruct old ID based on your previous logic
+                if identification:
+                    old_uid_derived = f"{DOMAIN}_{identification}_{uid_key}"
+                else:
+                    old_uid_derived = f"{DOMAIN}_{uid_key}"
+
+                if new_uid != old_uid_derived:
+                    # Call the helper here!
+                    safe_migrate_entity(Platform.SENSOR, old_uid_derived, new_uid)
+
+            # C. Time Entities
+            for entity in get_time_sensors(inverter_config):
+                uid_key = entity.get("unique", "reserve")
+                new_uid = unique_id_generator(controller, uid_key)
+                old_uid = get_old_id(uid_key, controller)
+
+                if new_uid != old_uid:
+                    # Call the helper here!
+                    safe_migrate_entity(Platform.TIME, old_uid, new_uid)
+
+        entry.version = 2
+        _LOGGER.info("Migration to v2 successful")
+        return True
+
+    return False
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""
