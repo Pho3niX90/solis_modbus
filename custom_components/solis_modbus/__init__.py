@@ -112,14 +112,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     slave = config.get("slave", 1)
     inverter_serial = config.get(CONF_INVERTER_SERIAL)
 
-    if not inverter_serial:
-        hass.components.persistent_notification.async_create(
-            "Solis Modbus: Inverter Serial is missing. Please reconfigure the integration.",
-            title="Solis Modbus Configuration Issue",
-            notification_id="solis_modbus_missing_serial",
-        )
-        raise ConfigEntryError("Inverter Serial is missing")
-
     # Determine connection type (default to TCP for backwards compatibility with old configs)
     connection_type = config.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP if "host" in config else CONN_TYPE_SERIAL)
 
