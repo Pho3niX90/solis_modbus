@@ -158,6 +158,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     poll_interval_normal = config.get("poll_interval_normal", 15)
     poll_interval_slow = config.get("poll_interval_slow", 30)
     inverter_model = config.get("model")
+    identification = config.get("identification", None)
 
     if inverter_model is None:
         old_type = config.get("type", "hybrid")
@@ -200,6 +201,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     controller_params = {
         "hass": hass,
         "device_id": slave,
+        "identification": identification,
         "fast_poll": poll_interval_fast,
         "normal_poll": poll_interval_normal,
         "slow_poll": poll_interval_slow,
@@ -232,7 +234,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             continue  # Skip this group
 
         # If it passes the check, add to sensor groups
-        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller))
+        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
     controller._derived_sensors = [
         SolisBaseSensor(
@@ -248,7 +250,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             hidden=entity.get("hidden", False),
             multiplier=entity.get("multiplier", 1),
             category=entity.get("category", None),
-            unique_id=f"{DOMAIN}_{controller.serial_number}_{entity['unique']}" if controller.serial_number else f"{DOMAIN}_{connection_id.replace(':', '_').replace('/', '_')}{f'_{slave}' if slave != 1 else ''}_{entity['unique']}"
+            unique_id=f"{DOMAIN}_{entity['unique']}" if not identification else f"{DOMAIN}_{identification}_{entity['unique']}"
         )
         for entity in sensors_derived
     ]

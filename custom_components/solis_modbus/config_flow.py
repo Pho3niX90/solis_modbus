@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -101,6 +102,14 @@ OPTIONS_SCHEMA = vol.Schema(
     }
 )
 
+
+def clean_identification(iden: str | None) -> str | None:
+    if not iden or not iden.strip():
+        return None
+    # Replace spaces and disallowed characters with underscores
+    iden = iden.strip().lower()
+    iden = re.sub(r"[^a-z0-9_]", "_", iden)
+    return re.sub(r"_+", "_", iden).strip("_")
 
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
@@ -264,6 +273,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         controller_params = {
             "hass": self.hass,
             "device_id": user_input.get("slave", 1),
+            "identification": clean_identification(user_input.get("identification", None)),
             "fast_poll": user_input.get("poll_interval_fast", 10),
             "normal_poll": user_input.get("poll_interval_normal", 15),
             "slow_poll": user_input.get("poll_interval_slow", 15),

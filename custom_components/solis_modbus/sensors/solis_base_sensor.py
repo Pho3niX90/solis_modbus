@@ -9,9 +9,9 @@ from homeassistant.const import PERCENTAGE, UnitOfElectricPotential, UnitOfAppar
 from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
-from custom_components.solis_modbus.const import DOMAIN
 from custom_components.solis_modbus.data.enums import PollSpeed, Category, InverterFeature
-from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32, _any_in
+from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32, _any_in, \
+    unique_id_generator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ class SolisBaseSensor:
                  category: Category = None,
                  min_value: Optional[int] = None,
                  max_value: Optional[int] = None,
+                 identification=None,
                  poll_speed=PollSpeed.NORMAL):
         """
         :param name: Sensor name
@@ -64,6 +65,7 @@ class SolisBaseSensor:
         self.min_value = min_value
         self.poll_speed = poll_speed
         self.category = category
+        self.identification = identification
 
         self.dynamic_adjustments()
 
@@ -160,7 +162,7 @@ class SolisBaseSensor:
 class SolisSensorGroup:
     sensors: List[SolisBaseSensor]
 
-    def __init__(self, hass, definition, controller):
+    def __init__(self, hass, definition, controller, identification=None):
         self._sensors = list(map(lambda entity: SolisBaseSensor(
             hass=hass,
             name=entity.get("name", "reserve"),
@@ -175,10 +177,11 @@ class SolisSensorGroup:
             max_value=entity.get("max", 3000),
             min_value=entity.get("min", 0),
             step=entity.get("step", None),
+            identification=identification,
             category=entity.get("category", None),
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
-            unique_id="{}_{}_{}".format(DOMAIN, controller.device_serial_number, entity.get("unique", "reserve")),
+            unique_id=unique_id_generator(controller, entity),
             poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))
         self.poll_speed: PollSpeed = definition.get("poll_speed",
@@ -187,6 +190,7 @@ class SolisSensorGroup:
         _LOGGER.debug(
             f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
         self.validate_sequential_registrars()
+        self.identification = identification
 
     def validate_sequential_registrars(self):
         """Ensure all registrars increase sequentially without skipping numbers."""

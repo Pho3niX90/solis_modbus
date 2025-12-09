@@ -5,7 +5,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import DOMAIN
-from custom_components.solis_modbus.helpers import cache_get, cache_save
+from custom_components.solis_modbus.helpers import cache_get, cache_save, unique_id_generator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +20,8 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         self._attr_unique_id = "{}_{}_{}_select".format(DOMAIN,
                                                         self._modbus_controller.device_serial_number,
                                                         entity_definition["register"])
+        self._attr_unique_id ="{}_select".format(unique_id_generator(modbus_controller, entity_definition))
+
         self._attr_options = [e["name"] for e in entity_definition["entities"]]
         self._attr_options_raw = entity_definition["entities"]
         self._current_option = None

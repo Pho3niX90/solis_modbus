@@ -27,6 +27,15 @@ def hex_to_ascii(hex_value):
 
     return ascii_chars
 
+def unique_id_generator(controller, entity):
+    # new method to generate unique id
+    if controller.device_serial_number != None:
+        return "{}_{}_{}".format(DOMAIN, controller.device_serial_number, entity.get("unique", "reserve"))
+
+    if controller.identification != None:
+        return "{}_{}_{}".format(DOMAIN, controller.identification, entity.get("unique", "reserve"))
+
+    return "{}_{}_{}".format(DOMAIN, controller.host, entity.get("unique", "reserve"))
 
 def extract_serial_number(values):
     packed = struct.pack('>' + 'H'*len(values), *values)

@@ -27,7 +27,7 @@ class ModbusController:
                  derived_sensors: List[SolisDerivedSensor] = None, device_id=1, fast_poll=5, normal_poll=15,
                  slow_poll=30, connection_type=CONN_TYPE_TCP,
                  # TCP parameters
-                 host=None, port=502,
+                 host=None, port=502, identification=None,
                  # Serial parameters
                  serial_port=None, baudrate=DEFAULT_BAUDRATE, bytesize=DEFAULT_BYTESIZE,
                  parity=DEFAULT_PARITY, stopbits=DEFAULT_STOPBITS, serial_number=None):
@@ -55,6 +55,7 @@ class ModbusController:
         self.device_id = device_id
         self.slave = device_id  # Alias for device_id
         self.serial_number = serial_number
+        self.identification = identification
 
         # Use ModbusClientManager to get shared client and lock
         manager = ModbusClientManager.get_instance()
@@ -489,6 +490,15 @@ class ModbusController:
     def device_serial_number(self):
         """Gets the device serial number."""
         return self.serial_number
+
+    @property
+    def device_identification(self):
+        """Gets the device identification string.
+
+        Returns:
+            str: The device identification string, or an empty string if not available.
+        """
+        return self.identification
 
     @property
     def device_info(self):
