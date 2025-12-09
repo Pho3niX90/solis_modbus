@@ -97,7 +97,7 @@ class TestMigration(unittest.IsolatedAsyncioTestCase):
 
     @patch("homeassistant.helpers.entity_registry.async_get")
     async def test_missing_serial(self, mock_get_registry):
-        """Test missing serial number: Should bump version but NOT migrate."""
+        """Test missing serial number: Should not bump version but NOT migrating."""
         mock_get_registry.return_value = self.registry
 
         # Remove serial from data
@@ -108,7 +108,7 @@ class TestMigration(unittest.IsolatedAsyncioTestCase):
 
         # Verify
         self.assertTrue(result)
-        self.assertEqual(self.entry.version, 2) # Still bumps version
+        self.assertEqual(self.entry.version, 1)
 
         # Ensure NO registry calls were made
         self.registry.async_update_entity.assert_not_called()
