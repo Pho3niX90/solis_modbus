@@ -10,3 +10,9 @@ Table of Contents
 *****************
 
 .. include:: table-of-contents.rst
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Advanced
+
+   migration.md
