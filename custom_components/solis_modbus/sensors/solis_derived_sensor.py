@@ -164,7 +164,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self.base_sensor.controller._sw_version = protocol_version
                 ## self.base_sensor.controller._model = model_description
                 new_value = model_description + f"(Protocol {protocol_version})"
-                self.schedule_update_ha_state()
 
             if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value,
                                                                                                           str):
