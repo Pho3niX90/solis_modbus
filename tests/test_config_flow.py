@@ -31,7 +31,7 @@ async def test_flow_user_success(hass: HomeAssistant):
         assert result["step_id"] == "user"
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP,}
+            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP}
         )
 
         # Step 2: Configure connection details
@@ -49,7 +49,7 @@ async def test_flow_user_success(hass: HomeAssistant):
             "has_battery": True,
             "has_hv_battery": False,
             "has_generator": False,
-            "inverter_serial": "sn123",
+            "inverter_serial": "sn123",  # Lowercase input
         }
 
         result = await hass.config_entries.flow.async_configure(
@@ -57,12 +57,19 @@ async def test_flow_user_success(hass: HomeAssistant):
         )
 
         assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
-        assert result["title"] == "Solis: Host 1.2.3.4, Modbus Address 1"
 
-        # Verify all data is present (including connection_type from step 1)
+        # CHANGED: The title is now based on the serial number
+        assert result["title"] == "Solis: SN123"
+
+        # Verify data
         assert result["data"]["connection_type"] == CONN_TYPE_TCP
-        for key, value in config_input.items():
-            assert result["data"][key] == value
+
+        # CHANGED: Verify Serial was converted to UPPERCASE
+        assert result["data"]["inverter_serial"] == "SN123"
+
+        # Verify other fields
+        assert result["data"]["host"] == "1.2.3.4"
+        assert result["data"]["slave"] == 1
 
         mock_connect.assert_called()
         mock_setup_entry.assert_called_once()
@@ -81,10 +88,10 @@ async def test_flow_user_connection_error(hass: HomeAssistant):
         )
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP,}
+            result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP}
         )
 
-        # Step 2: Configure connection details (with bad connection)
+        # Step 2: Configure connection details
         assert result["type"] == data_entry_flow.FlowResultType.FORM
         assert result["step_id"] == "config"
 
@@ -113,10 +120,17 @@ async def test_flow_user_connection_error(hass: HomeAssistant):
 @pytest.mark.asyncio
 async def test_flow_user_duplicates(hass: HomeAssistant):
     """Test user initialized flow with duplicate entry."""
+
+    # CHANGED: Setup existing entry with SERIAL NUMBER as unique_id
     entry = MockConfigEntry(
         domain=DOMAIN,
-        unique_id="1.2.3.4_1",
-        data={"host": "1.2.3.4", "slave": 1, "connection_type": CONN_TYPE_TCP}
+        unique_id="SN123",  # Matches uppercase serial
+        data={
+            "host": "1.2.3.4",
+            "slave": 1,
+            "connection_type": CONN_TYPE_TCP,
+            "inverter_serial": "SN123"
+        }
     )
     entry.add_to_hass(hass)
 
@@ -134,17 +148,14 @@ async def test_flow_user_duplicates(hass: HomeAssistant):
         )
 
         # Step 2: Configure connection details (duplicate config)
-        assert result["type"] == data_entry_flow.FlowResultType.FORM
-        assert result["step_id"] == "config"
-
         config_input = {
-            "host": "1.2.3.4",
+            "host": "1.2.3.4",  # Even if host is same
             "port": 502,
             "slave": 1,
             "model": "S6-EH1P",
             "connection": "S2_WL_ST",
             "has_generator": False,
-            "inverter_serial": "sn123",
+            "inverter_serial": "sn123",  # Try adding same serial (lowercase)
         }
 
         result = await hass.config_entries.flow.async_configure(

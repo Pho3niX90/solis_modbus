@@ -114,7 +114,8 @@ def clean_identification(iden: str | None) -> str | None:
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
-    VERSION = 1
+    VERSION = 2
+    MINOR_VERSION = 0
 
     def __init__(self):
         """Initialize the config flow."""
@@ -176,6 +177,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
 
         if user_input is not None:
+            if CONF_INVERTER_SERIAL in user_input:
+                user_input[CONF_INVERTER_SERIAL] = str(user_input[CONF_INVERTER_SERIAL]).upper()
+
             data = {**entry.data, **user_input}
 
             if await self._validate_config(data):
@@ -186,7 +190,6 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
 
         # Show config form with existing values pre-filled
-        # Determine schema based on existing connection type
         conn_type = entry.data.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP)
 
         if conn_type == CONN_TYPE_TCP:
@@ -198,12 +201,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         new_schema = {}
         for key, value in schema_dict.items():
             if key in entry.data:
-                # If key exists in data, use it as default
                 new_schema[key] = vol.Required(key, default=entry.data[key]) if isinstance(value,
                                                                                            vol.Required) else vol.Optional(
                     key, default=entry.data[key])
             elif key == CONF_INVERTER_SERIAL and CONF_INVERTER_SERIAL not in entry.data:
-                # If serial is missing (the problem we are solving), make it required without default (or empty string)
+                # If serial is missing (the problem we are solving), make it required without default
                 new_schema[key] = vol.Required(key)
             else:
                 new_schema[key] = value
@@ -216,6 +218,12 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _create_entry_from_input(self, user_input):
         """Create config entry from validated input."""
+
+        # --- UPPERCASE SANITIZATION ---
+        if CONF_INVERTER_SERIAL in user_input:
+            user_input[CONF_INVERTER_SERIAL] = str(user_input[CONF_INVERTER_SERIAL]).upper()
+        # ------------------------------
+
         conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
         slave = user_input["slave"]
 
@@ -223,7 +231,6 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Validation failed - show error
             errors = {"base": "Cannot connect to Modbus device. Please check your configuration."}
 
-            # Multi-step flow - return to config step without connection_type field
             if conn_type == CONN_TYPE_TCP:
                 schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
                                if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
@@ -238,11 +245,19 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         # Create unique ID based on connection type
-        if conn_type == CONN_TYPE_TCP:
+        inverter_serial = user_input.get(CONF_INVERTER_SERIAL)
+
+        if inverter_serial:
+            # BEST: Use the Serial Number (matches your V2 migration)
+            unique_id = str(inverter_serial)
+            title = f"Solis: {inverter_serial}"
+        elif conn_type == CONN_TYPE_TCP:
+            # FALLBACK: Use Host_Slave (Legacy V1 style)
             host = user_input["host"]
             unique_id = f"{host}_{slave}"
             title = f"Solis: Host {host}, Modbus Address {slave}"
-        else:  # Serial
+        else:
+            # FALLBACK: Use Port_Slave (Legacy V1 style)
             port = user_input[CONF_SERIAL_PORT]
             unique_id = f"{port}_{slave}"
             title = f"Solis: {port}, Modbus Address {slave}"
@@ -315,7 +330,6 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _get_user_schema(self, user_input=None):
         """Return the appropriate schema based on connection type selection."""
-        # If we have user input with connection_type, show the appropriate schema
         if user_input and CONF_CONNECTION_TYPE in user_input:
             conn_type = user_input[CONF_CONNECTION_TYPE]
             if conn_type == CONN_TYPE_TCP:
@@ -323,8 +337,6 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return vol.Schema(SERIAL_CONFIG_SCHEMA)
 
-        # On first render (no user input), show Serial schema by default
-        # but allow both types during validation (for tests and edge cases)
         return vol.Schema(SERIAL_CONFIG_SCHEMA)
 
     @staticmethod
