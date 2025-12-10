@@ -280,3 +280,15 @@ Solis and equivalent Axitec, Zonneplan inverters
 **Wifi Dongles Tested**
 - S2_WL_ST
 - Waveshare
+
+## Troubleshooting
+### Restoring Sensor History
+If a sensor's entity ID changes (e.g., during migration) and you lose its history, you can manually restore it using Home Assistant's statistics tool:
+
+1. Navigate to **Developer Tools** -> **Statistics**.
+2. Search for the sensor name (e.g., "Today Battery Charge Energy").
+3. You will likely see two entries:
+    - The **current** sensor (new ID, working).
+    - The **historic** sensor (old ID, typically "Status: Recalculate", missing state, or similar issue). Note down it's ID
+4. Click on the **current** sensor, click the gear icon, and now rename the "Entity ID" to the old one
+

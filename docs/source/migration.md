@@ -26,6 +26,14 @@ If you see duplicate entities (e.g., `sensor.solis_active_power` and `sensor.sol
 *   **Solution**: Delete the "New" (duplicate) entities and restart Home Assistant. The migration logic will try to rename the "Old" (original) entities again.
 *   **Logs**: Check your Home Assistant logs for messages starting with `Migration collision` or `Migrating sensor ...`.
 
+### Restoring Sensor History
+If a sensor's entity ID changes and you want to keep the old history:
+
+1. Navigate to **Developer Tools** -> **Statistics**.
+2. Search for the sensor name (e.g., "Today Battery Charge Energy").
+3. You will likely see multiple entries with similar names. Identify which is the **current** sensor and which is the **historic** one.
+4. Click on the **current** sensor, click the gear icon, and now rename the "Entity ID" to the old one
+
 ## "Identification" Field
 The old "Identification" field (used to manually override the unique ID base) is now **deprecated**.
 *   It is no longer available in the Setup/Config flow.
