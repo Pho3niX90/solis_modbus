@@ -63,15 +63,18 @@ async def test_setup_entry(hass: HomeAssistant):
 @pytest.mark.asyncio
 async def test_setup_entry_missing_serial_raises_error(hass: HomeAssistant):
     """Test setup failure when serial is missing (ConfigEntryError)."""
-    # Create an entry WITHOUT a serial number (simulating an old broken config)
+    # Create an entry WITHOUT a serial number
+    # We set version=3 to SKIP migration and force it to hit async_setup_entry
     config_entry = MockConfigEntry(
         domain=DOMAIN,
-        data={"host": "1.2.3.4", "port": 502, "slave": 1, "model": "S6-EH1P"},  # No Serial
+        data={"host": "1.2.3.4", "port": 502, "slave": 1, "model": "S6-EH1P"},
+        version=3
     )
     config_entry.add_to_hass(hass)
 
-    # In your __init__.py, missing serial raises ConfigEntryError immediately
+    # Now this will run async_setup_entry, fail the validation, and raise ConfigEntryError
     assert not await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
 
+    # ConfigEntryError results in 'setup_error'
     assert config_entry.state.value == "setup_error"

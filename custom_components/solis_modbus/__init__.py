@@ -176,6 +176,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     inverter_config.options = {
         "v2": config.get("has_v2", True),
+        "inverter_serial": inverter_serial,
         "pv": config.get("has_pv",
                          inverter_config.type in [InverterType.HYBRID, InverterType.GRID, InverterType.WAVESHARE]),
         "generator": config.get("has_generator", True),
@@ -254,6 +255,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
 
     hass.data[DOMAIN].setdefault("data_retrieval", {})
     hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
@@ -371,24 +373,21 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
 
     return True
 
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old entry."""
-    _LOGGER.debug("Migrating from version %s", entry.version)
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    _LOGGER.debug("Migrating from version %s", config_entry.version)
 
-    if entry.version == 1:
+    if config_entry.version <= 2:
         # Check if we have the serial right now
-        if entry.data.get(CONF_INVERTER_SERIAL):
-            await async_migrate_to_serial_ids(hass, entry)
+        if config_entry.data.get(CONF_INVERTER_SERIAL):
+            await async_migrate_to_serial_ids(hass, config_entry)
         else:
             _LOGGER.info("Migration deferred: Waiting for Serial Number reconfigure.")
+            return False
 
-        # --- FIX: Use async_update_entry to change the version ---
-        hass.config_entries.async_update_entry(entry, version=2)
-        # ---------------------------------------------------------
+        hass.config_entries.async_update_entry(config_entry, version = 3)
 
-        return True
-
-    return False
+    _LOGGER.info("Migration to version %s successful", config_entry.version)
+    return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""

@@ -114,7 +114,7 @@ def clean_identification(iden: str | None) -> str | None:
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
-    VERSION = 2
+    VERSION = 3
     MINOR_VERSION = 0
 
     def __init__(self):
@@ -180,6 +180,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if CONF_INVERTER_SERIAL in user_input:
                 user_input[CONF_INVERTER_SERIAL] = str(user_input[CONF_INVERTER_SERIAL]).upper()
 
+            # Update existing entry data with new input
             data = {**entry.data, **user_input}
 
             if await self._validate_config(data):
@@ -189,54 +190,52 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
 
-        # Show config form with existing values pre-filled
+        # 1. Select the correct base schema based on current connection type
         conn_type = entry.data.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP)
-
         if conn_type == CONN_TYPE_TCP:
-            schema_dict = TCP_CONFIG_SCHEMA.copy()
+            source_schema = TCP_CONFIG_SCHEMA
         else:
-            schema_dict = SERIAL_CONFIG_SCHEMA.copy()
+            source_schema = SERIAL_CONFIG_SCHEMA
 
-        # Re-create schema with defaults from entry data
+        # 2. Rebuild the schema dynamically
+        # We cannot simply copy source_schema because we need to inject CURRENT values as defaults
         new_schema = {}
-        for key, value in schema_dict.items():
-            if key in entry.data:
-                new_schema[key] = vol.Required(key, default=entry.data[key]) if isinstance(value,
-                                                                                           vol.Required) else vol.Optional(
-                    key, default=entry.data[key])
-            elif key == CONF_INVERTER_SERIAL and CONF_INVERTER_SERIAL not in entry.data:
-                # If serial is missing (the problem we are solving), make it required without default
-                new_schema[key] = vol.Required(key)
+
+        for marker, type_validator in source_schema.items():
+            key_name = marker.schema
+
+            if key_name in entry.data:
+                new_schema[vol.Required(key_name, default=entry.data[key_name])] = type_validator
+
+            elif key_name == CONF_INVERTER_SERIAL:
+                new_schema[vol.Required(key_name)] = type_validator
+
             else:
-                new_schema[key] = value
+                new_schema[marker] = type_validator
 
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=vol.Schema(new_schema),
-            errors=errors
-        )
+            return self.async_show_form(
+                step_id="reconfigure",
+                data_schema=vol.Schema(new_schema),
+                errors=errors
+            )
 
-    async def _create_entry_from_input(self, user_input):
-        """Create config entry from validated input."""
+    async def _create_entry_from_input(self, data):
+        """Validate and create the entry from input data."""
+        errors = {}
 
-        # --- UPPERCASE SANITIZATION ---
-        if CONF_INVERTER_SERIAL in user_input:
-            user_input[CONF_INVERTER_SERIAL] = str(user_input[CONF_INVERTER_SERIAL]).upper()
-        # ------------------------------
+        # 1. Sanitize Serial (Convert to Uppercase)
+        if CONF_INVERTER_SERIAL in data:
+            data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).upper()
 
-        conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
-        slave = user_input["slave"]
+        # 2. Validate Connection
+        if not await self._validate_config(data):
+            errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
 
-        if not await self._validate_config(user_input):
-            # Validation failed - show error
-            errors = {"base": "Cannot connect to Modbus device. Please check your configuration."}
-
-            if conn_type == CONN_TYPE_TCP:
-                schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
-                               if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+            # Determine which schema to show again based on connection type
+            if data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_TCP:
+                schema_dict = TCP_CONFIG_SCHEMA
             else:
-                schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items()
-                               if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+                schema_dict = SERIAL_CONFIG_SCHEMA
 
             return self.async_show_form(
                 step_id="config",
@@ -244,27 +243,16 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors=errors
             )
 
-        # Create unique ID based on connection type
-        inverter_serial = user_input.get(CONF_INVERTER_SERIAL)
+        # 3. Check for Duplicates
+        if CONF_INVERTER_SERIAL in data:
+            await self.async_set_unique_id(data[CONF_INVERTER_SERIAL])
+            self._abort_if_unique_id_configured()
 
-        if inverter_serial:
-            # BEST: Use the Serial Number (matches your V2 migration)
-            unique_id = str(inverter_serial)
-            title = f"Solis: {inverter_serial}"
-        elif conn_type == CONN_TYPE_TCP:
-            # FALLBACK: Use Host_Slave (Legacy V1 style)
-            host = user_input["host"]
-            unique_id = f"{host}_{slave}"
-            title = f"Solis: Host {host}, Modbus Address {slave}"
-        else:
-            # FALLBACK: Use Port_Slave (Legacy V1 style)
-            port = user_input[CONF_SERIAL_PORT]
-            unique_id = f"{port}_{slave}"
-            title = f"Solis: {port}, Modbus Address {slave}"
-
-        await self.async_set_unique_id(unique_id)
-        self._abort_if_unique_id_configured()
-        return self.async_create_entry(title=title, data=user_input)
+        # 4. Create the Config Entry
+        return self.async_create_entry(
+            title=f"Solis: {data[CONF_INVERTER_SERIAL]}",
+            data=data
+        )
 
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device."""
