@@ -147,12 +147,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(CONTROLLER, {})
 
-    # Updated: Store by Entry ID
-    hass.data[DOMAIN][CONTROLLER][entry.entry_id] = entry
-    # WAIT! There is a small bug in your previous paste here too.
-    # You stored 'entry' instead of 'controller' in the line above in previous turns?
-    # Let's fix that while we are here. See below.
-
     _LOGGER.info(f"Loaded Solis Modbus Integration ({connection_type}) with Model: {config.get('model')}")
 
     # ... (Config extraction ...) ...
@@ -254,11 +248,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         for entity in sensors_derived
     ]
 
-    # --- STORE CONTROLLER CORRECTLY ---
-    # In previous code you had: hass.data[DOMAIN][entry.entry_id] = entry
-    # But for controller storage we want:
     set_controller(hass, controller, entry)
-    # ----------------------------------
 
     _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
 
@@ -278,7 +268,7 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
     host = config.get("host")
     identification = config.get("identification")
 
-    # Double check we have what we need
+    # Double-check we have what we need
     if not inverter_serial:
         return False
 
