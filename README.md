@@ -292,3 +292,7 @@ If a sensor's entity ID changes (e.g., during migration) and you lose its histor
     - The **historic** sensor (old ID, typically "Status: Recalculate", missing state, or similar issue). Note down it's ID
 4. Click on the **current** sensor, click the gear icon, and now rename the "Entity ID" to the old one
 
+#### ⚠️ Note on Reconfiguration
+If the reconfiguration flow does not ask for your **Serial Number**, please delete the device and re-add it as a new device.
+* **Tip:** Rename the new device to match your old device's name and select **"Recreate Entity IDs"** during setup. This will ensure your history and dashboards remain functional. as mentioned here [Comment by 0rangutan](https://github.com/Pho3niX90/solis_modbus/pull/309#issuecomment-3638890631)
+
