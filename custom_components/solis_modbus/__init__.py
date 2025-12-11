@@ -3,7 +3,6 @@ import asyncio
 import logging
 from datetime import datetime
 
-import homeassistant.helpers.entity_registry
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -44,11 +43,13 @@ SCHEME_TIME_SET = vol.Schema(
     }
 )
 
+
 async def async_remove_config_entry_device(
         hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
 ) -> bool:
     """Remove a config entry from a device."""
     return True
+
 
 async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Modbus integration."""
@@ -262,14 +263,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-
     hass.data[DOMAIN].setdefault("data_retrieval", {})
     hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
 
     return True
 
+
 async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate entities and config entry to use Serial Number."""
+    import homeassistant.helpers.device_registry as dr
+    import homeassistant.helpers.entity_registry as er
 
     config = {**entry.data, **entry.options}
     inverter_serial = config.get(CONF_INVERTER_SERIAL)
@@ -282,6 +285,32 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
 
     _LOGGER.info("Starting migration of entities to Serial: %s", inverter_serial)
 
+    # =========================================================================
+    # NEW: Device Registry Migration (Prevention of Duplicate/Ghost Devices)
+    # =========================================================================
+    dev_reg = dr.async_get(hass)
+
+    # Get all devices associated with this config entry
+    devices = dev_reg.devices.get_devices_for_config_entry_id(entry.entry_id)
+
+    for device in devices:
+        # Check if this device is NOT using the new serial yet
+        # (This identifies the old IP-based device entry)
+        if not any(idf[1] == inverter_serial for idf in device.identifiers):
+            try:
+                _LOGGER.info("Migrating Device identifiers for %s to %s", device.name, inverter_serial)
+                dev_reg.async_update_device(
+                    device.id,
+                    new_identifiers={(DOMAIN, inverter_serial)}
+                )
+            except ValueError:
+                # This happens if a device with the new serial ALREADY exists.
+                # In that case, we can't merge them automatically, so we skip
+                # and let the old one become a ghost (user can delete it).
+                _LOGGER.warning("Could not migrate device identifiers: Target serial %s already exists",
+                                inverter_serial)
+    # =========================================================================
+
     # Setup the mock controller for ID generation
     from types import SimpleNamespace
     controller = SimpleNamespace()
@@ -290,7 +319,7 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
     controller.host = host
 
     # Get the Entity Registry
-    ent_reg = homeassistant.helpers.entity_registry.async_get(hass)
+    ent_reg = er.async_get(hass)
 
     def safe_migrate_entity(platform, old_uid, new_uid):
         """Safely migrates an entity ID, handling collisions."""
@@ -379,6 +408,7 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
 
     return True
 
+
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
@@ -390,10 +420,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             _LOGGER.info("Migration deferred: Waiting for Serial Number reconfigure.")
             return False
 
-        hass.config_entries.async_update_entry(config_entry, version = 3)
+        hass.config_entries.async_update_entry(config_entry, version=3)
 
     _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a Modbus config entry."""
