@@ -1,16 +1,17 @@
 import logging
 from datetime import datetime, UTC, time
 from typing import List
+
 from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
-from homeassistant.helpers.entity import DeviceInfo
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, MANUFACTURER, REGISTER, VALUE, CONTROLLER, TIME_ENTITIES, SLAVE
-from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
-from custom_components.solis_modbus.helpers import get_controller_from_entry, cache_get, is_correct_controller
+from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER, TIME_ENTITIES, SLAVE
+from custom_components.solis_modbus.helpers import get_controller_from_entry, cache_get, is_correct_controller, \
+    unique_id_generator
+from custom_components.solis_modbus.sensor_data.time_sensors import get_time_sensors
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,68 +23,8 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     inverter_config = modbus_controller.inverter_config
 
     timeEntities: List[SolisTimeEntity] = []
-    time_definitions = []
 
-    if inverter_config.type == InverterType.HYBRID:
-        time_definitions = [
-            {"name": "Time-Charging Charge Start (Slot 1)", "register": 43143, "enabled": True},
-            {"name": "Time-Charging Charge End (Slot 1)", "register": 43145, "enabled": True},
-            {"name": "Time-Charging Discharge Start (Slot 1)", "register": 43147, "enabled": True},
-            {"name": "Time-Charging Discharge End (Slot 1)", "register": 43149, "enabled": True},
-
-            {"name": "Time-Charging Charge Start (Slot 2)", "register": 43153, "enabled": True},
-            {"name": "Time-Charging Charge End (Slot 2)", "register": 43155, "enabled": True},
-            {"name": "Time-Charging Discharge Start (Slot 2)", "register": 43157, "enabled": True},
-            {"name": "Time-Charging Discharge End (Slot 2)", "register": 43159, "enabled": True},
-
-            {"name": "Time-Charging Charge Start (Slot 3)", "register": 43163, "enabled": True},
-            {"name": "Time-Charging Charge End (Slot 3)", "register": 43165, "enabled": True},
-            {"name": "Time-Charging Discharge Start (Slot 3)", "register": 43167, "enabled": True},
-            {"name": "Time-Charging Discharge End (Slot 3)", "register": 43169, "enabled": True},
-
-            {"name": "Time-Charging Charge Start (Slot 4)", "register": 43173, "enabled": True},
-            {"name": "Time-Charging Charge End (Slot 4)", "register": 43175, "enabled": True},
-            {"name": "Time-Charging Discharge Start (Slot 4)", "register": 43177, "enabled": True},
-            {"name": "Time-Charging Discharge End (Slot 4)", "register": 43179, "enabled": True},
-
-            {"name": "Time-Charging Charge Start (Slot 5)", "register": 43183, "enabled": True},
-            {"name": "Time-Charging Charge End (Slot 5)", "register": 43185, "enabled": True},
-            {"name": "Time-Charging Discharge Start (Slot 5)", "register": 43187, "enabled": True},
-            {"name": "Time-Charging Discharge End (Slot 5)", "register": 43189, "enabled": True},
-        ]
-
-    if inverter_config.type == InverterType.HYBRID or InverterFeature.V2 in inverter_config.features:
-        time_definitions.extend([
-            {"name": "Grid Time of Use Charge Start (Slot 1)", "register": 43711, "enabled": True},
-            {"name": "Grid Time of Use Charge End (Slot 1)", "register": 43713, "enabled": True},
-            {"name": "Grid Time of Use Discharge Start (Slot 1)", "register": 43753, "enabled": True},
-            {"name": "Grid Time of Use Discharge End (Slot 1)", "register": 43755, "enabled": True},
-
-            {"name": "Grid Time of Use Charge Start (Slot 2)", "register": 43718, "enabled": True},
-            {"name": "Grid Time of Use Charge End (Slot 2)", "register": 43720, "enabled": True},
-            {"name": "Grid Time of Use Discharge Start (Slot 2)", "register": 43760, "enabled": True},
-            {"name": "Grid Time of Use Discharge End (Slot 2)", "register": 43762, "enabled": True},
-
-            {"name": "Grid Time of Use Charge Start (Slot 3)", "register": 43725, "enabled": True},
-            {"name": "Grid Time of Use Charge End (Slot 3)", "register": 43727, "enabled": True},
-            {"name": "Grid Time of Use Discharge Start (Slot 3)", "register": 43767, "enabled": True},
-            {"name": "Grid Time of Use Discharge End (Slot 3)", "register": 43769, "enabled": True},
-
-            {"name": "Grid Time of Use Charge Start (Slot 4)", "register": 43732, "enabled": True},
-            {"name": "Grid Time of Use Charge End (Slot 4)", "register": 43734, "enabled": True},
-            {"name": "Grid Time of Use Discharge Start (Slot 4)", "register": 43774, "enabled": True},
-            {"name": "Grid Time of Use Discharge End (Slot 4)", "register": 43776, "enabled": True},
-
-            {"name": "Grid Time of Use Charge Start (Slot 5)", "register": 43739, "enabled": True},
-            {"name": "Grid Time of Use Charge End (Slot 5)", "register": 43741, "enabled": True},
-            {"name": "Grid Time of Use Discharge Start (Slot 5)", "register": 43781, "enabled": True},
-            {"name": "Grid Time of Use Discharge End (Slot 5)", "register": 43783, "enabled": True},
-
-            {"name": "Grid Time of Use Charge Start (Slot 6)", "register": 43746, "enabled": True},
-            {"name": "Grid Time of Use Charge End (Slot 6)", "register": 43748, "enabled": True},
-            {"name": "Grid Time of Use Discharge Start (Slot 6)", "register": 43788, "enabled": True},
-            {"name": "Grid Time of Use Discharge End (Slot 6)", "register": 43790, "enabled": True},
-        ])
+    time_definitions = get_time_sensors(inverter_config)
 
     for entity_definition in time_definitions:
         timeEntities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
@@ -103,7 +44,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
         self._register: int = entity_definition["register"]
 
         # Hidden Inherited Instance Attributes
-        self._attr_unique_id = "{}_{}_{}".format(DOMAIN, modbus_controller.device_serial_number if modbus_controller.device_serial_number is not None else modbus_controller.host, self._register)
+        self._attr_unique_id = unique_id_generator(modbus_controller, entity_definition)
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_available = True
@@ -130,7 +71,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
         updated_controller_slave = int(event.data.get(SLAVE))
 
         if not is_correct_controller(self._modbus_controller, updated_controller, updated_controller_slave):
-            return # meant for a different sensor/inverter combo
+            return  # meant for a different sensor/inverter combo
 
         if updated_register == self._register:
             value = event.data.get(VALUE)
@@ -152,16 +93,18 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
                     hour, minute = int(hour), int(minute)
 
                     if 0 <= minute <= 59 and 0 <= hour <= 23:
-                        _LOGGER.debug(f"✅ Time updated to {hour}:{minute}, regs = {self._register}:{self._register + 1}")
+                        _LOGGER.debug(
+                            f"✅ Time updated to {hour}:{minute}, regs = {self._register}:{self._register + 1}")
                         self._attr_native_value = time(hour=hour, minute=minute)
                         self._attr_available = True
                     else:
                         self._attr_available = False
-                        _LOGGER.debug(f"⚠️ Time disabled due to invalid values {hour}:{minute}, regs = {self._register}:{self._register + 1}")
+                        _LOGGER.debug(
+                            f"⚠️ Time disabled due to invalid values {hour}:{minute}, regs = {self._register}:{self._register + 1}")
                 else:
                     self._attr_available = False
-                    _LOGGER.debug(f"⚠️ Time disabled because hour or minute is None, regs = {self._register}:{self._register + 1}")
-
+                    _LOGGER.debug(
+                        f"⚠️ Time disabled because hour or minute is None, regs = {self._register}:{self._register + 1}")
 
                 self.schedule_update_ha_state()
 

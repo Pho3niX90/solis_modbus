@@ -39,7 +39,29 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 1. Navigate to Settings -> Devices & Services
 2. Click on "+ Add Integration"
 3. Search for "Solis Modbus"
-4. Add in the IP of your inverter in the first box, and port in the second.
+4. Follow the configuration steps:
+
+### Configuration
+**Connection Type**:
+- **TCP (WiFi Dongle)**: Use for Data Logging Sticks (DLS) or WiFi dongles. Requires IP and Port (Default 502).
+- **Serial (RS485)**: Use for direct USB-RS485 connection. Requires Serial Port path.
+
+**Inverter Serial**: (Required)
+- Enter your inverter's serial number. This is now **mandatory** for generating unique entity IDs and ensuring configuration stability.
+
+**Poll Interval**:
+- Customize how frequently sensors update. Faster polling provides more real-time data but increases Modbus load.
+
+### Version 4.0+ Migration (Important)
+As of version 4.0+, the integration uses the **Inverter Serial Number** to generate unique IDs for all entities.
+- **New Installs**: Will use Serial Number automatically.
+- **Existing Installs**:
+    - The integration will attempt to migrate your existing entities (which might use Host ID or the deprecated "Identification" string) to the new Serial Number format automatically on startup.
+    - If your configuration is missing the Serial Number, migration will be **deferred**, and a persistent notification will ask you to Reconfigure the integration to add it.
+    - **No history is lost** during this migration.
+
+**Deprecated Settings**:
+- **Identification**: This field has been removed from the setup form. If you previously used it, the integration will still read it internally to migrate your old entities, but it is no longer user-configurable.
 
 `Connection Type`: S2 is the default option, only select waveshare if you are using a waveshare device, and some sensors are higher than normal, see here https://solis-modbus.readthedocs.io/en/latest/sensors.html#waveshare
 
@@ -258,3 +280,19 @@ Solis and equivalent Axitec, Zonneplan inverters
 **Wifi Dongles Tested**
 - S2_WL_ST
 - Waveshare
+
+## Troubleshooting
+### Restoring Sensor History
+If a sensor's entity ID changes (e.g., during migration) and you lose its history, you can manually restore it using Home Assistant's statistics tool:
+
+1. Navigate to **Developer Tools** -> **Statistics**.
+2. Search for the sensor name (e.g., "Today Battery Charge Energy").
+3. You will likely see two entries:
+    - The **current** sensor (new ID, working).
+    - The **historic** sensor (old ID, typically "Status: Recalculate", missing state, or similar issue). Note down it's ID
+4. Click on the **current** sensor, click the gear icon, and now rename the "Entity ID" to the old one
+
+#### ⚠️ Note on Reconfiguration
+If the reconfiguration flow does not ask for your **Serial Number**, please delete the device and re-add it as a new device.
+* **Tip:** Rename the new device to match your old device's name and select **"Recreate Entity IDs"** during setup. This will ensure your history and dashboards remain functional. as mentioned here [Comment by 0rangutan](https://github.com/Pho3niX90/solis_modbus/pull/309#issuecomment-3638890631)
+
