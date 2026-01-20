@@ -441,8 +441,8 @@ hybrid_sensors = [
              "unit_of_measurement": UnitOfElectricPotential.VOLT, "state_class": SensorStateClass.MEASUREMENT},
             {"name": "Parallel Inverter Power", "category": Category.AC_INFORMATION,
              "unique": "solis_modbus_inverter_parallel_inverter_power",
-             "register": ['33245'], "device_class": SensorDeviceClass.POWER, "multiplier": 100.0,
-             "unit_of_measurement": UnitOfPower.WATT, "state_class": SensorStateClass.MEASUREMENT},
+             "register": ['33245'], "device_class": SensorDeviceClass.POWER, "multiplier": 0.1,
+             "unit_of_measurement": UnitOfPower.KILO_WATT, "state_class": SensorStateClass.MEASUREMENT},
         ]
     },
     {
