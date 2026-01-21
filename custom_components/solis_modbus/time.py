@@ -44,7 +44,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
         self._register: int = entity_definition["register"]
 
         # Hidden Inherited Instance Attributes
-        self._attr_unique_id = unique_id_generator(modbus_controller, entity_definition)
+        self._attr_unique_id = unique_id_generator(modbus_controller, entity_definition.get("unique", "reserve"))
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_available = True
