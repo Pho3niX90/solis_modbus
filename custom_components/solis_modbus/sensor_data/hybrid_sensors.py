@@ -659,7 +659,7 @@ hybrid_sensors = [
     {
         "register_start": 34445,
         "poll_speed": PollSpeed.SLOW,
-        "feature_requirement": [InverterFeature.AC_COUPLING]
+        "feature_requirement": [InverterFeature.AC_COUPLING],
         "entities": [
             {"name": "AC Coupling Total Power Generation", "category": Category.AC_INFORMATION,
              "unique": "solis_modbus_inverter_ac_coupling_total_power_generation",
@@ -686,7 +686,7 @@ hybrid_sensors = [
     {
         "register_start": 34496,
         "poll_speed": PollSpeed.FAST,
-        "feature_requirement": [InverterFeature.AC_COUPLING]
+        "feature_requirement": [InverterFeature.AC_COUPLING],
         "entities": [
             {"name": "AC Coupling Total Active Power", "category": Category.AC_INFORMATION,
              "unique": "solis_modbus_inverter_ac_coupling_total_active_power",
