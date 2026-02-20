@@ -2,7 +2,7 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential, \
     UnitOfTemperature, UnitOfFrequency, UnitOfReactivePower, PERCENTAGE
 
-from custom_components.solis_modbus.data.enums import PollSpeed
+from custom_components.solis_modbus.data.enums import PollSpeed, DataType
 
 # base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [
@@ -138,7 +138,7 @@ string_sensors = [
             {"name": "Inverter Temperature", "unique": "solis_modbus_inverter_temperature",
              "unit_of_measurement": UnitOfTemperature.CELSIUS, "device_class": SensorDeviceClass.TEMPERATURE,
              "state_class": SensorStateClass.MEASUREMENT,
-             "register": ['3041'], "multiplier": 0.1, "data_type": "S16"},
+             "register": ['3041'], "multiplier": 0.1, "data_type": DataType.S16},
             {"name": "Grid Frequency", "unique": "solis_modbus_grid_frequency",
              "unit_of_measurement": UnitOfFrequency.HERTZ, "device_class": SensorDeviceClass.FREQUENCY,
              "state_class": SensorStateClass.MEASUREMENT,
