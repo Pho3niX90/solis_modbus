@@ -138,7 +138,7 @@ string_sensors = [
             {"name": "Inverter Temperature", "unique": "solis_modbus_inverter_temperature",
              "unit_of_measurement": UnitOfTemperature.CELSIUS, "device_class": SensorDeviceClass.TEMPERATURE,
              "state_class": SensorStateClass.MEASUREMENT,
-             "register": ['3041'], "multiplier": 0.1},
+             "register": ['3041'], "multiplier": 0.1, "data_type": "S16"},
             {"name": "Grid Frequency", "unique": "solis_modbus_grid_frequency",
              "unit_of_measurement": UnitOfFrequency.HERTZ, "device_class": SensorDeviceClass.FREQUENCY,
              "state_class": SensorStateClass.MEASUREMENT,

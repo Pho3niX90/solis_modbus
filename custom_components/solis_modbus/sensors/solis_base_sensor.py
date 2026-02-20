@@ -39,7 +39,8 @@ class SolisBaseSensor:
                  min_value: Optional[int] = None,
                  max_value: Optional[int] = None,
                  identification=None,
-                 poll_speed=PollSpeed.NORMAL):
+                 poll_speed=PollSpeed.NORMAL,
+                 data_type: Optional[str] = None):
         """
         :param name: Sensor name
         :param registrars: First register address
@@ -54,6 +55,7 @@ class SolisBaseSensor:
         _LOGGER.debug(f" self.registrars = {self.registrars} | self.write_register = {self.write_register}")
         self.editable = editable
         self.multiplier = multiplier
+        self.data_type = data_type
         self.device_class = device_class
         self.unit_of_measurement = unit_of_measurement
         self.hidden = hidden
@@ -144,10 +146,14 @@ class SolisBaseSensor:
                 n_value = combined_value * self.multiplier
         else:
             # Treat it as a single register (U16/S16)
+            raw = values[0]
+            if getattr(self, "data_type", None) == "S16" and raw > 32767:
+                raw -= 65536
+
             if self.multiplier == 0 or self.multiplier == 1:
-                n_value = round(values[0])
+                n_value = round(raw)
             else:
-                n_value = values[0] * self.multiplier
+                n_value = raw * self.multiplier
 
         return n_value
 
@@ -181,6 +187,7 @@ class SolisSensorGroup:
             category=entity.get("category", None),
             default=entity.get("default", 0),
             multiplier=entity.get("multiplier", 1),
+            data_type=entity.get("data_type", None),
             unique_id=unique_id_generator(controller, entity),
             poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
         ), definition.get("entities", [])))

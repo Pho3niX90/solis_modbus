@@ -105,7 +105,7 @@ hybrid_sensors = [
             {"name": "Battery Temperature (BMS)", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_battery_temperature_bms",
              "register": ['33043'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT, "data_type": "S16"},
         ]
     },
     {
@@ -224,7 +224,7 @@ hybrid_sensors = [
             {"name": "Temperature", "unique": "solis_modbus_inverter_temperature",
              "category": Category.BASIC_INFORMATION,
              "register": ['33093'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT, "data_type": "S16"},
 
             {"name": "Grid Frequency", "unique": "solis_modbus_inverter_grid_frequency",
              "category": Category.AC_INFORMATION,
@@ -238,7 +238,7 @@ hybrid_sensors = [
             {"name": "Lead-acid Battery Temperature", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_lead_acid_temp",
              "register": ['33096'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT, "data_type": "S16"},
         ]
     },
     {
