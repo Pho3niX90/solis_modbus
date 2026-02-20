@@ -36,6 +36,12 @@ class TestSolisBaseSensorS16(unittest.TestCase):
         self.assertEqual(sensor._convert_raw_value([1]), 1)
         self.assertEqual(sensor._convert_raw_value([32767]), 32767)
 
+    def test_s16_decoding_with_enum_member(self):
+        sensor = self.create_sensor(data_type=DataType.S16, multiplier=1)
+        # Should normalize to string .value
+        self.assertEqual(sensor.data_type, DataType.S16.value)
+        self.assertEqual(sensor._convert_raw_value([65535]), -1)
+
     def test_s16_decoding_negative(self):
         sensor = self.create_sensor(data_type=DataType.S16.value, multiplier=1)
         # 65535 is -1 in 16-bit two's complement

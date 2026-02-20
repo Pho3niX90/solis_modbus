@@ -56,11 +56,15 @@ class SolisBaseSensor:
         self.editable = editable
         self.multiplier = multiplier
 
-        if data_type is not None and not any(data_type == item.value for item in DataType):
+        if isinstance(data_type, DataType):
+            self.data_type = data_type.value
+        elif data_type is not None and any(data_type == item.value for item in DataType):
+            self.data_type = data_type
+        elif data_type is not None:
             _LOGGER.warning(f"Invalid data_type '{data_type}' for sensor {name}, falling back to None")
             self.data_type = None
         else:
-            self.data_type = data_type
+            self.data_type = None
 
         self.device_class = device_class
         self.unit_of_measurement = unit_of_measurement
