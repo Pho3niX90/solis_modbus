@@ -9,7 +9,7 @@ from homeassistant.const import PERCENTAGE, UnitOfElectricPotential, UnitOfAppar
 from homeassistant.core import HomeAssistant
 from typing_extensions import List, Optional
 
-from custom_components.solis_modbus.data.enums import PollSpeed, Category, InverterFeature
+from custom_components.solis_modbus.data.enums import PollSpeed, Category, InverterFeature, DataType
 from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32, _any_in, \
     unique_id_generator
 
@@ -55,7 +55,13 @@ class SolisBaseSensor:
         _LOGGER.debug(f" self.registrars = {self.registrars} | self.write_register = {self.write_register}")
         self.editable = editable
         self.multiplier = multiplier
-        self.data_type = data_type
+
+        if data_type is not None and not any(data_type == item.value for item in DataType):
+            _LOGGER.warning(f"Invalid data_type '{data_type}' for sensor {name}, falling back to None")
+            self.data_type = None
+        else:
+            self.data_type = data_type
+
         self.device_class = device_class
         self.unit_of_measurement = unit_of_measurement
         self.hidden = hidden
@@ -131,7 +137,7 @@ class SolisBaseSensor:
         return self._convert_raw_value(value)
 
     def _convert_raw_value(self, values: List[int]):
-        if None in values:
+        if not values or None in values:
             return None
 
         if len(self.registrars) >= 15:
@@ -147,7 +153,7 @@ class SolisBaseSensor:
         else:
             # Treat it as a single register (U16/S16)
             raw = values[0]
-            if getattr(self, "data_type", None) == "S16" and raw > 32767:
+            if getattr(self, "data_type", None) == DataType.S16.value and raw > 32767:
                 raw -= 65536
 
             if self.multiplier == 0 or self.multiplier == 1:

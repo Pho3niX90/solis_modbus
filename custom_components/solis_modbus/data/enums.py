@@ -58,3 +58,10 @@ class Category(Enum):
     GENERATOR_SETTING = "Generator Setting"
     HISTORY_DATA_QUERY_SETTING = "History Data Query Setting"
     REMOTE_DISPATCH_SETTING = "Remote Dispatch Setting"
+
+class DataType(Enum):
+    U16 = "U16"
+    S16 = "S16"
+    U32 = "U32"
+    S32 = "S32"
+    STRING = "STRING"
