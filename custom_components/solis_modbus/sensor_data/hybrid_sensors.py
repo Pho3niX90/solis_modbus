@@ -2,7 +2,7 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.const import UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, UnitOfTime, UnitOfEnergy, \
     UnitOfReactivePower, UnitOfFrequency, UnitOfTemperature, UnitOfApparentPower, PERCENTAGE
 
-from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature, Category
+from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature, Category, DataType
 
 # based on RS485_MODBUS RTU Hybrid Inverter Protocol Ver3.2
 hybrid_sensors = [
@@ -105,7 +105,7 @@ hybrid_sensors = [
             {"name": "Battery Temperature (BMS)", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_battery_temperature_bms",
              "register": ['33043'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT, "data_type": DataType.S16},
         ]
     },
     {
@@ -224,7 +224,7 @@ hybrid_sensors = [
             {"name": "Temperature", "unique": "solis_modbus_inverter_temperature",
              "category": Category.BASIC_INFORMATION,
              "register": ['33093'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT, "data_type": DataType.S16},
 
             {"name": "Grid Frequency", "unique": "solis_modbus_inverter_grid_frequency",
              "category": Category.AC_INFORMATION,
@@ -238,7 +238,7 @@ hybrid_sensors = [
             {"name": "Lead-acid Battery Temperature", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_lead_acid_temp",
              "register": ['33096'], "device_class": SensorDeviceClass.TEMPERATURE, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfTemperature.CELSIUS, "state_class": SensorStateClass.MEASUREMENT, "data_type": DataType.S16},
         ]
     },
     {
@@ -266,7 +266,7 @@ hybrid_sensors = [
              "unique": "solis_modbus_inverter_battery_current", "register": ['33134'],
              "device_class": SensorDeviceClass.CURRENT,
              "multiplier": 0.1, "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-             "state_class": SensorStateClass.MEASUREMENT},
+             "state_class": SensorStateClass.MEASUREMENT, "data_type": DataType.S16},
             {"name": "Battery Current Direction", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_battery_current_direction",
              "register": ['33135'],
@@ -307,7 +307,7 @@ hybrid_sensors = [
             {"name": "Battery Current (BMS)", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_battery_current_bms",
              "register": ['33142'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
-             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT},
+             "unit_of_measurement": UnitOfElectricCurrent.AMPERE, "state_class": SensorStateClass.MEASUREMENT, "data_type": DataType.S16},
             {"name": "Battery Charge Current Limitation (BMS)", "category": Category.BATTERY_INFORMATION,
              "unique": "solis_modbus_inverter_battery_charge_current_limitation_bms",
              "register": ['33143'], "device_class": SensorDeviceClass.CURRENT, "multiplier": 0.1,
