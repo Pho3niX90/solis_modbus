@@ -1,7 +1,4 @@
 # Solis Modbus Integration for Home Assistant
-<a href="https://www.buymeacoffee.com/pho3nix90">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="150">
-</a>
 
 ## Description
 
