@@ -1,0 +1,24 @@
+[project]
+name = "solis-modbus"
+version = "1.0.0"
+requires-python = "~=3.12.0" # keep in sync with Home Assistant
+dependencies = [
+    "homeassistant==2025.1.4",
+    "pymodbus>=3.11.1", # keep in sync with custom_components/solis_modbus/manifest.json
+]
+
+[dependency-groups]
+dev = [
+    "pytest-homeassistant-custom-component==0.13.205", # keep in sync with Home Assistant
+]
+
+[tool.uv]
+constraint-dependencies = [
+    "aiohasupervisor==0.2.2b5", # pre-release required by homeassistant 2025.1.4
+]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
