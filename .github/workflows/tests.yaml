@@ -11,16 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version-file: "pyproject.toml"
 
       - name: Install dependencies
-        run: |
-          pip install voluptuous homeassistant pymodbus pytest pytest-asyncio pytest_homeassistant_custom_component
+        run: uv sync --all-extras --dev
 
       - name: Run all tests
-        run: PYTHONPATH=. pytest tests
+        run: uv run pytest
