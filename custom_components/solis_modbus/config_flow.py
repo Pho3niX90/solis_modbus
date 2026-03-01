@@ -8,13 +8,23 @@ from homeassistant.config_entries import OptionsFlowWithConfigEntry
 
 from . import ModbusController
 from .const import (
-    DOMAIN, CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
-    CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
-    CONF_CONNECTION_TYPE, CONF_INVERTER_SERIAL, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
-    DEFAULT_PARITY, DEFAULT_STOPBITS
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
+    CONF_CONNECTION_TYPE,
+    CONF_INVERTER_SERIAL,
+    CONF_PARITY,
+    CONF_SERIAL_PORT,
+    CONF_STOPBITS,
+    CONN_TYPE_SERIAL,
+    CONN_TYPE_TCP,
+    DEFAULT_BAUDRATE,
+    DEFAULT_BYTESIZE,
+    DEFAULT_PARITY,
+    DEFAULT_STOPBITS,
+    DOMAIN,
 )
 from .data.enums import InverterType
-from .data.solis_config import SOLIS_INVERTERS, InverterConfig, CONNECTION_METHOD
+from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig
 
 _LOGGER = logging.getLogger(__name__)
 

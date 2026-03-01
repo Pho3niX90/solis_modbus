@@ -1,12 +1,9 @@
 import unittest
 from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.solis_modbus.const import (
-    CONN_TYPE_TCP, CONN_TYPE_SERIAL,
-    DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS
-)
+from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.modbus_controller import ModbusController
 

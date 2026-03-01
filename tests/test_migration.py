@@ -1,8 +1,11 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, ANY
 from homeassistant.const import CONF_HOST, CONF_PORT
-from custom_components.solis_modbus.const import CONF_INVERTER_SERIAL, DOMAIN
+
 from custom_components.solis_modbus import async_migrate_entry
+from custom_components.solis_modbus.const import CONF_INVERTER_SERIAL, DOMAIN
+
 
 @pytest.mark.asyncio
 class TestMigration:

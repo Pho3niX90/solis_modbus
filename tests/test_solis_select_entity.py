@@ -1,10 +1,12 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 
 from custom_components.solis_modbus.sensors.solis_select_entity import (
     SolisSelectEntity,
     set_bit,
 )
+
 
 @pytest.fixture
 def mock_controller():

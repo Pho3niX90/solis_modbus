@@ -1,6 +1,5 @@
-from typing import List
 
-from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
+from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
 
 
 class InverterOptions:
@@ -14,7 +13,7 @@ class InverterOptions:
 
 
 class InverterConfig:
-    def __init__(self, model: str, wattage: List[int], phases: int, type: InverterType,
+    def __init__(self, model: str, wattage: list[int], phases: int, type: InverterType,
                  options: InverterOptions = InverterOptions(), connection="S2_WL_ST",
                  features=None):
         if features is None:

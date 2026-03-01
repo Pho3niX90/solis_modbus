@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import MagicMock
-from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
-from custom_components.solis_modbus.modbus_controller import ModbusController
+
 from custom_components.solis_modbus.data.enums import PollSpeed
-from custom_components.solis_modbus.const import DOMAIN
+from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
+
 
 class TestSensorCollision(unittest.TestCase):
     def setUp(self):
@@ -72,13 +72,12 @@ class TestSensorCollision(unittest.TestCase):
             "unique": "inverter_status",
             "register": []
         }
-        
+
         # Simulating __init__.py logic
-        DOMAIN = "solis_modbus"
-        identification = None
-        
-        unique_id_a = f"{DOMAIN}_{controller_a.device_serial_number}_{entity_def['unique']}"
-        unique_id_b = f"{DOMAIN}_{controller_b.device_serial_number}_{entity_def['unique']}"
+        domain = "solis_modbus"
+
+        unique_id_a = f"{domain}_{controller_a.device_serial_number}_{entity_def['unique']}"
+        unique_id_b = f"{domain}_{controller_b.device_serial_number}_{entity_def['unique']}"
 
         print(f"Derived A: {unique_id_a}")
         print(f"Derived B: {unique_id_b}")

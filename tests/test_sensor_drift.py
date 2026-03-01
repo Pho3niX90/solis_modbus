@@ -1,29 +1,30 @@
-import unittest
 import json
 import os
+import unittest
 
-from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors, hybrid_sensors_derived
-from custom_components.solis_modbus.helpers import unique_id_generator, unique_id_generator_binary
 from custom_components.solis_modbus.const import DOMAIN
+from custom_components.solis_modbus.helpers import unique_id_generator, unique_id_generator_binary
+from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors, hybrid_sensors_derived
+
 
 class TestSensorDrift(unittest.TestCase):
-    
+
     def check_drift(self, filename, serial=None, identification=None, host="1.2.3.4"):
         known_sensors_path = os.path.join(os.path.dirname(__file__), filename)
         if not os.path.exists(known_sensors_path):
             self.fail(f"{filename} not found. Run generate_known_sensors.py to create it.")
-            
-        with open(known_sensors_path, "r") as f:
+
+        with open(known_sensors_path) as f:
             known_sensors = set(json.load(f))
 
         class MockController:
             pass
-        
+
         controller = MockController()
         controller.device_serial_number = serial
         controller.identification = identification
         controller.host = host
-            
+
         current_sensors = set()
 
         # Standard Sensors
@@ -33,20 +34,20 @@ class TestSensorDrift(unittest.TestCase):
                      continue
                  uid = unique_id_generator(controller, entity.get("unique", "reserve"))
                  current_sensors.add(uid)
-                 
+
         # Derived Sensors
         for entity in hybrid_sensors_derived:
-             uid = f"{DOMAIN}_{entity['unique']}" 
+             uid = f"{DOMAIN}_{entity['unique']}"
              current_sensors.add(uid)
-             
+
         # New Entity Types
         from custom_components.solis_modbus.data.solis_config import InverterConfig, InverterType
-        from custom_components.solis_modbus.sensor_data.switch_sensors import get_switch_sensors
         from custom_components.solis_modbus.sensor_data.select_sensors import get_select_sensors
+        from custom_components.solis_modbus.sensor_data.switch_sensors import get_switch_sensors
         from custom_components.solis_modbus.sensor_data.time_sensors import get_time_sensors
-        
+
         config = InverterConfig(model="TEST", type=InverterType.HYBRID, wattage=[5000], phases=[1])
-        
+
         # Switch
         for group in get_switch_sensors(config):
              for entity in group['entities']:
@@ -55,22 +56,22 @@ class TestSensorDrift(unittest.TestCase):
                  on_value = entity.get("on_value")
                  uid = unique_id_generator_binary(controller, register, bit_position, on_value)
                  current_sensors.add(uid)
-                 
+
         # Select
         for entity in get_select_sensors(config):
              uid = unique_id_generator(controller, entity["register"], "select")
              current_sensors.add(uid)
-             
+
         # Time
         for entity in get_time_sensors(config):
              uid = unique_id_generator(controller, entity.get("unique", "reserve"))
              current_sensors.add(uid)
-             
+
         # Check for missing sensors (Drift)
         missing_sensors = known_sensors - current_sensors
-        
+
         new_sensors = current_sensors - known_sensors
-        
+
         if new_sensors:
             print(f"NOTICE [{filename}]: {len(new_sensors)} NEW sensors detected.")
 
@@ -79,7 +80,7 @@ class TestSensorDrift(unittest.TestCase):
             report_content += "The following sensors are missing or have been renamed:\n\n"
             for s in missing_sensors:
                 report_content += f"- `{s}`\n"
-            
+
             # Append to report
             with open("drift_report.md", "a") as f:
                 f.write(report_content + "\n")

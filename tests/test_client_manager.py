@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 from custom_components.solis_modbus.client_manager import ModbusClientManager
+
 
 class TestModbusClientManager(unittest.TestCase):
 
@@ -37,7 +39,7 @@ class TestModbusClientManager(unittest.TestCase):
 
     @patch('custom_components.solis_modbus.client_manager.AsyncModbusTcpClient')
     def test_get_client_lock(self, mock_client_cls):
-        client1 = self.manager.get_tcp_client("1.2.3.4", 502)
+        self.manager.get_tcp_client("1.2.3.4", 502)
         lock = self.manager.get_client_lock("1.2.3.4:502")
 
         self.assertIsNotNone(lock)
