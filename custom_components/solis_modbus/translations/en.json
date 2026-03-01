@@ -70,6 +70,7 @@
           "model": "Inverter Model",
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
+          "has_ac_coupling": "Has AC Coupling",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",

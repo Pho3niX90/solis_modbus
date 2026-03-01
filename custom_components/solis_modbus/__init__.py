@@ -187,6 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "pv": config.get("has_pv",
                          inverter_config.type in [InverterType.HYBRID, InverterType.GRID, InverterType.WAVESHARE]),
         "generator": config.get("has_generator", True),
+        "ac_coupling": config.get("has_ac_coupling", False),
         "battery": config.get("has_battery", True),
         "hv_battery": config.get("has_hv_battery", False),
     }
