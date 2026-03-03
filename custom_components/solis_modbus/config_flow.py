@@ -44,12 +44,12 @@ BASE_CONFIG_SCHEMA = {
     vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
     vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),
     # Boolean options (Yes/No toggle)
-    vol.Required("has_v2", default=True): vol.Coerce(bool),
-    vol.Required("has_pv", default=True): vol.Coerce(bool),
-    vol.Required("has_ac_coupling", default=False): vol.Coerce(bool),
-    vol.Required("has_battery", default=True): vol.Coerce(bool),
-    vol.Required("has_hv_battery", default=False): vol.Coerce(bool),
-    vol.Required("has_generator", default=True): vol.Coerce(bool),
+    vol.Required("has_v2", default=True): bool,
+    vol.Required("has_pv", default=True): bool,
+    vol.Required("has_ac_coupling", default=False): bool,
+    vol.Required("has_battery", default=True): bool,
+    vol.Required("has_hv_battery", default=False): bool,
+    vol.Required("has_generator", default=True): bool,
 }
 
 # Combined schema that accepts both TCP and Serial fields (all optional except connection_type)
@@ -95,12 +95,12 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
 
         # Boolean options (Yes/No toggle)
-        vol.Required("has_v2", default=True): vol.Coerce(bool),
-        vol.Required("has_pv", default=True): vol.Coerce(bool),
-        vol.Required("has_ac_coupling", default=False): vol.Coerce(bool),
-        vol.Required("has_battery", default=True): vol.Coerce(bool),
-        vol.Required("has_hv_battery", default=False): vol.Coerce(bool),
-        vol.Required("has_generator", default=True): vol.Coerce(bool),
+        vol.Required("has_v2", default=True): bool,
+        vol.Required("has_pv", default=True): bool,
+        vol.Required("has_ac_coupling", default=False): bool,
+        vol.Required("has_battery", default=True): bool,
+        vol.Required("has_hv_battery", default=False): bool,
+        vol.Required("has_generator", default=True): bool,
     }
 )
 
@@ -202,12 +202,13 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 2. Rebuild the schema dynamically
         # We cannot simply copy source_schema because we need to inject CURRENT values as defaults
         new_schema = {}
+        current_config = {**entry.data, **entry.options}
 
         for marker, type_validator in source_schema.items():
             key_name = marker.schema
 
-            if key_name in entry.data:
-                new_schema[vol.Required(key_name, default=entry.data[key_name])] = type_validator
+            if key_name in current_config:
+                new_schema[vol.Required(key_name, default=current_config[key_name])] = type_validator
 
             elif key_name == CONF_INVERTER_SERIAL:
                 new_schema[vol.Required(key_name)] = type_validator
@@ -215,11 +216,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 new_schema[marker] = type_validator
 
-            return self.async_show_form(
-                step_id="reconfigure",
-                data_schema=vol.Schema(new_schema),
-                errors=errors
-            )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(new_schema),
+            errors=errors
+        )
 
     async def _create_entry_from_input(self, data):
         """Validate and create the entry from input data."""

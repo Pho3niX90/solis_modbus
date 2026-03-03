@@ -26,7 +26,13 @@
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
           "identification": "Identification Name",
-          "inverter_serial": "Inverter Serial"
+          "inverter_serial": "Inverter Serial",
+          "has_v2": "Updated to V2 Firmware",
+          "has_pv": "Has PV (Solar Panels)",
+          "has_ac_coupling": "Has AC Coupling",
+          "has_battery": "Has Battery Storage",
+          "has_hv_battery": "Has HV Battery Storage (100v+)",
+          "has_generator": "Has Generator"
         }
       },
       "reconfigure": {
@@ -46,7 +52,13 @@
           "poll_interval_normal": "Normal Poll Interval (seconds)",
           "poll_interval_slow": "Slow Poll Interval (seconds)",
           "identification": "Identification Name",
-          "inverter_serial": "Inverter Serial"
+          "inverter_serial": "Inverter Serial",
+          "has_v2": "Updated to V2 Firmware",
+          "has_pv": "Has PV (Solar Panels)",
+          "has_ac_coupling": "Has AC Coupling",
+          "has_battery": "Has Battery Storage",
+          "has_hv_battery": "Has HV Battery Storage (100v+)",
+          "has_generator": "Has Generator"
         }
       }
     },
