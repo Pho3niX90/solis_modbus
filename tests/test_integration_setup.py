@@ -4,7 +4,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN
 
 
 @pytest.fixture(autouse=True)

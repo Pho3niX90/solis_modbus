@@ -1,11 +1,13 @@
-import pytest
 import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from custom_components.solis_modbus.sensors.solis_binary_sensor import (
     SolisBinaryEntity,
     set_bit,
 )
+
 
 @pytest.fixture
 def controller():

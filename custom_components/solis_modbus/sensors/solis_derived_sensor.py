@@ -2,15 +2,14 @@ import decimal
 import fractions
 import logging
 import numbers
-from datetime import datetime, UTC
-from typing import List
+from datetime import UTC, datetime
 
-from homeassistant.components.sensor import RestoreSensor, SensorEntity, SensorDeviceClass
-from homeassistant.core import callback, HomeAssistant
+from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass, SensorEntity
+from homeassistant.core import HomeAssistant, callback
 
-from custom_components.solis_modbus.const import DOMAIN, REGISTER, VALUE, CONTROLLER, SLAVE
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
-from custom_components.solis_modbus.helpers import decode_inverter_model, clock_drift_test, is_correct_controller
+from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         self._attr_has_entity_name = True
         self._attr_unique_id = sensor.unique_id
 
-        self._register: List[int] = sensor.registrars
+        self._register: list[int] = sensor.registrars
 
         self._device_class = sensor.device_class
         self._unit_of_measurement = sensor.unit_of_measurement

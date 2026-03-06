@@ -1,18 +1,14 @@
 import asyncio
 import logging
 import time
-from datetime import datetime, UTC
-from typing import List, Union
+from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.template import is_number
-from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from custom_components.solis_modbus.client_manager import ModbusClientManager
-from custom_components.solis_modbus.const import (
-    DOMAIN, REGISTER, VALUE, CONTROLLER, SLAVE,
-    CONN_TYPE_TCP, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS, MANUFACTURER
-)
+from custom_components.solis_modbus.const import CONN_TYPE_TCP, CONTROLLER, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS, DOMAIN, MANUFACTURER, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.helpers import cache_save
@@ -23,8 +19,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ModbusController:
-    def __init__(self, hass, inverter_config: InverterConfig, sensor_groups: List[SolisSensorGroup] = None,
-                 derived_sensors: List[SolisDerivedSensor] = None, device_id=1, fast_poll=5, normal_poll=15,
+    def __init__(self, hass, inverter_config: InverterConfig, sensor_groups: list[SolisSensorGroup] = None,
+                 derived_sensors: list[SolisDerivedSensor] = None, device_id=1, fast_poll=5, normal_poll=15,
                  slow_poll=30, connection_type=CONN_TYPE_TCP,
                  # TCP parameters
                  host=None, port=502, identification=None,
@@ -67,7 +63,7 @@ class ModbusController:
             self.host = host
             self.port = port
             self.connection_id = f"{host}:{port}"
-            self.client: Union[AsyncModbusTcpClient, AsyncModbusSerialClient] = manager.get_tcp_client(host, port)
+            self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port)
             self.poll_lock = manager.get_client_lock(self.connection_id)
         else:  # CONN_TYPE_SERIAL
             if not serial_port:
@@ -80,7 +76,7 @@ class ModbusController:
             self.connection_id = serial_port
             # For serial, set host to serial_port for backwards compatibility with logging
             self.host = serial_port
-            self.client: Union[AsyncModbusTcpClient, AsyncModbusSerialClient] = manager.get_serial_client(
+            self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_serial_client(
                 serial_port, baudrate, bytesize, parity, stopbits
             )
             self.poll_lock = manager.get_client_lock(self.connection_id)

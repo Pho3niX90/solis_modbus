@@ -2,7 +2,7 @@
 def decode_grid_serial(registers):
     # Registers: [0x4321, 0x8765, 0xCBA9, 0x0FED]
     # Expected: 123456789ABCDEF0
-    
+
     serial = ""
     for reg in registers:
         # Convert to hex string, e.g. "4321"

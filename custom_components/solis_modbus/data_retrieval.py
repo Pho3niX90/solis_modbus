@@ -6,10 +6,10 @@ from datetime import timedelta
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
-from typing_extensions import List
 
-from custom_components.solis_modbus.const import REGISTER, VALUE, DOMAIN, CONTROLLER, SLAVE
-from custom_components.solis_modbus.helpers import cache_save, cache_get
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.helpers import cache_get, cache_save
+
 from .data.enums import PollSpeed
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup
@@ -188,7 +188,7 @@ class DataRetrieval:
             [g for g in self.controller.sensor_groups if g.poll_speed in (PollSpeed.NORMAL, PollSpeed.ONCE)],
             PollSpeed.NORMAL)
 
-    async def get_modbus_updates(self, groups: List[SolisSensorGroup], speed: PollSpeed):
+    async def get_modbus_updates(self, groups: list[SolisSensorGroup], speed: PollSpeed):
         """Read registers from the Modbus controller, ensuring no concurrent runs.
 
         This method reads register values for the specified sensor groups and

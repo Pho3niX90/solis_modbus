@@ -1,4 +1,5 @@
-from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
+from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
+
 
 def get_select_sensors(inverter_config):
     sensor_groups = []
@@ -123,5 +124,5 @@ def get_select_sensors(inverter_config):
     # Add unique key to all
     for x in sensor_groups:
         x['unique'] = f"select_entity_{x['register']}"
-        
+
     return sensor_groups
