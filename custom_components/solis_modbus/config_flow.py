@@ -44,11 +44,12 @@ BASE_CONFIG_SCHEMA = {
     vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
     vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),
     # Boolean options (Yes/No toggle)
-    vol.Required("has_v2", default=True): vol.Coerce(bool),
-    vol.Required("has_pv", default=True): vol.Coerce(bool),
-    vol.Required("has_battery", default=True): vol.Coerce(bool),
-    vol.Required("has_hv_battery", default=False): vol.Coerce(bool),
-    vol.Required("has_generator", default=True): vol.Coerce(bool),
+    vol.Required("has_v2", default=True): bool,
+    vol.Required("has_pv", default=True): bool,
+    vol.Required("has_ac_coupling", default=False): bool,
+    vol.Required("has_battery", default=True): bool,
+    vol.Required("has_hv_battery", default=False): bool,
+    vol.Required("has_generator", default=True): bool,
 }
 
 # Combined schema that accepts both TCP and Serial fields (all optional except connection_type)
@@ -94,11 +95,12 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
 
         # Boolean options (Yes/No toggle)
-        vol.Required("has_v2", default=True): vol.Coerce(bool),
-        vol.Required("has_pv", default=True): vol.Coerce(bool),
-        vol.Required("has_battery", default=True): vol.Coerce(bool),
-        vol.Required("has_hv_battery", default=False): vol.Coerce(bool),
-        vol.Required("has_generator", default=True): vol.Coerce(bool),
+        vol.Required("has_v2", default=True): bool,
+        vol.Required("has_pv", default=True): bool,
+        vol.Required("has_ac_coupling", default=False): bool,
+        vol.Required("has_battery", default=True): bool,
+        vol.Required("has_hv_battery", default=False): bool,
+        vol.Required("has_generator", default=True): bool,
     }
 )
 
@@ -178,46 +180,42 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             if CONF_INVERTER_SERIAL in user_input:
-                user_input[CONF_INVERTER_SERIAL] = str(user_input[CONF_INVERTER_SERIAL]).upper()
+                user_input[CONF_INVERTER_SERIAL] = str(user_input[CONF_INVERTER_SERIAL]).strip().upper()
 
             # Update existing entry data with new input
             data = {**entry.data, **user_input}
 
-            if await self._validate_config(data):
-                return self.async_update_reload_and_abort(
-                    entry, data=data
-                )
+            # Require serial and model so the form always collects them
+            if not (data.get(CONF_INVERTER_SERIAL) or "").strip():
+                errors["base"] = "Inverter serial number is required."
+            elif not data.get("model"):
+                errors["base"] = "Please select an inverter model."
+            else:
+                valid, err_msg = await self._validate_config(data)
+                if valid:
+                    return self.async_update_reload_and_abort(
+                        entry, data=data
+                    )
+                errors["base"] = err_msg or "Cannot connect to Modbus device. Please check your configuration."
 
-            errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
-
-        # 1. Select the correct base schema based on current connection type
+        # 1. Select the full schema (TCP or Serial) so reconfigure shows all fields
         conn_type = entry.data.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP)
         if conn_type == CONN_TYPE_TCP:
             source_schema = TCP_CONFIG_SCHEMA
         else:
             source_schema = SERIAL_CONFIG_SCHEMA
 
-        # 2. Rebuild the schema dynamically
-        # We cannot simply copy source_schema because we need to inject CURRENT values as defaults
-        new_schema = {}
+        # 2. Pre-fill form with current entry data/options (serial, model, host, etc.)
+        current_config = {**entry.data, **entry.options}
+        schema_with_suggestions = self.add_suggested_values_to_schema(
+            vol.Schema(source_schema), current_config
+        )
 
-        for marker, type_validator in source_schema.items():
-            key_name = marker.schema
-
-            if key_name in entry.data:
-                new_schema[vol.Required(key_name, default=entry.data[key_name])] = type_validator
-
-            elif key_name == CONF_INVERTER_SERIAL:
-                new_schema[vol.Required(key_name)] = type_validator
-
-            else:
-                new_schema[marker] = type_validator
-
-            return self.async_show_form(
-                step_id="reconfigure",
-                data_schema=vol.Schema(new_schema),
-                errors=errors
-            )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=schema_with_suggestions,
+            errors=errors
+        )
 
     async def _create_entry_from_input(self, data):
         """Validate and create the entry from input data."""
@@ -228,8 +226,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).upper()
 
         # 2. Validate Connection
-        if not await self._validate_config(data):
-            errors["base"] = "Cannot connect to Modbus device. Please check your configuration."
+        valid, err_msg = await self._validate_config(data)
+        if not valid:
+            errors["base"] = err_msg or "Cannot connect to Modbus device. Please check your configuration."
 
             # Determine which schema to show again based on connection type
             if data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_TCP:
@@ -255,15 +254,22 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def _validate_config(self, user_input):
-        """Validate the configuration by trying to connect to the Modbus device."""
+        """Validate the configuration by trying to connect to the Modbus device.
+        Returns (True, None) on success, (False, error_message) on failure.
+        """
         inverter_model = user_input.get("model")
-        inverter_config: InverterConfig = next(
+        inverter_config: InverterConfig | None = next(
             (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
         )
+
+        if inverter_config is None:
+            _LOGGER.warning("Invalid or unknown inverter model: %s", inverter_model)
+            return False, "Invalid or unknown inverter model. Please select a model from the list."
 
         inverter_config.options = {
             "v2": user_input.get("has_v2", True),
             "pv": user_input.get("has_pv", True),
+            "ac_coupling": user_input.get("has_ac_coupling", False),
             "generator": user_input.get("has_generator", True),
             "battery": user_input.get("has_battery", True),
             "hv_battery": user_input.get("has_hv_battery", False),
@@ -305,7 +311,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     await modbus_controller.async_read_input_register(35000, 1)
 
-                return True
+                return True, None
             except Exception as e:
                 _LOGGER.warning(f"Connection failed attempt {attempt + 1}/5: {str(e)}")
                 if attempt < 4:
@@ -314,7 +320,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 modbus_controller.close_connection()
 
         _LOGGER.error(f"Connection failed after 5 attempts: {str(controller_params)}")
-        return False
+        return False, "Cannot connect to Modbus device. Please check your configuration."
 
     def _get_user_schema(self, user_input=None):
         """Return the appropriate schema based on connection type selection."""
