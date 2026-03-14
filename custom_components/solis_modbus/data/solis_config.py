@@ -46,6 +46,8 @@ class InverterConfig:
 
 # TODO: Need to find a naming convention, and a better way to handle sub models to more finely control the power
 SOLIS_INVERTERS = [
+    InverterConfig(model="S6-EA1P(3.6-6)K-L", wattage=[3600, 4500, 5000, 6000], phases=1, type=InverterType.ENERGY,
+                    features=[InverterFeature.SMART_PORT]),
     InverterConfig(model="S6-EH1P", wattage=[3000, 3600, 5000, 6000, 8000], phases=1, type=InverterType.HYBRID,
                    features=[InverterFeature.SMART_PORT]),
     InverterConfig(model="S6-EH2P", wattage=[9600, 11400, 12000, 14000, 16000], phases=3, type=InverterType.HYBRID,
