@@ -1,9 +1,9 @@
 import asyncio
 import logging
-from typing import Dict, Tuple, Union
-from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient
 
-from custom_components.solis_modbus.const import CONN_TYPE_TCP, CONN_TYPE_SERIAL
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
+
+from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class ModbusClientManager:
 
     def __init__(self):
         # Key: connection_id (str), Value: {'client': AsyncModbusTcpClient|AsyncModbusSerialClient, 'ref_count': int, 'lock': asyncio.Lock, 'type': str}
-        self._clients: Dict[str, Dict] = {}
+        self._clients: dict[str, dict] = {}
 
     @classmethod
     def get_instance(cls):
@@ -53,7 +53,7 @@ class ModbusClientManager:
 
     def get_client(self, host: str = None, port: int = 502, serial_port: str = None,
                    baudrate: int = 9600, bytesize: int = 8, parity: str = 'N',
-                   stopbits: int = 1) -> Union[AsyncModbusTcpClient, AsyncModbusSerialClient]:
+                   stopbits: int = 1) -> AsyncModbusTcpClient | AsyncModbusSerialClient:
         """
         Get a Modbus client (backwards compatible method).
         If host is provided, returns TCP client. If serial_port is provided, returns Serial client.

@@ -1,5 +1,5 @@
 from custom_components.solis_modbus.data.enums import InverterType
-from custom_components.solis_modbus.const import ENTITIES
+
 
 def get_switch_sensors(inverter_config):
     switch_sensors = [
@@ -140,7 +140,7 @@ def get_switch_sensors(inverter_config):
            suffix = child_entity.get('bit_position')
            if suffix is None:
                suffix = child_entity.get('on_value')
-           
+
            child_entity['unique'] = f"switch_{register}_{suffix}"
 
     return switch_sensors

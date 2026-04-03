@@ -1,8 +1,7 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfPower, UnitOfTime, UnitOfEnergy, UnitOfElectricCurrent, UnitOfElectricPotential, \
-    UnitOfTemperature, UnitOfFrequency, UnitOfReactivePower, PERCENTAGE
+from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfEnergy, UnitOfFrequency, UnitOfPower, UnitOfReactivePower, UnitOfTemperature, UnitOfTime
 
-from custom_components.solis_modbus.data.enums import PollSpeed, DataType
+from custom_components.solis_modbus.data.enums import DataType, PollSpeed
 
 # base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [

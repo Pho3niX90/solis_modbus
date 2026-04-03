@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN
 from custom_components.solis_modbus.data.enums import InverterType
 from custom_components.solis_modbus.select import async_setup_entry
 

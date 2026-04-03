@@ -6,9 +6,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER, REGISTER, VALUE, SLAVE
-from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller, \
-    unique_id_generator_binary
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller, unique_id_generator_binary
 
 _LOGGER = logging.getLogger(__name__)
 

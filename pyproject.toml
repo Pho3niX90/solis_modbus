@@ -10,6 +10,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest-homeassistant-custom-component==0.13.205", # keep in sync with Home Assistant
+    "ruff",
 ]
 
 [tool.uv]
@@ -22,3 +23,25 @@ pythonpath = "."
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+# TODO: decrease to 120
+line-length = 200
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+# TODO: enable flake8 rules
+#    "ANN", # flake8-annotations
+#    "ARG", # flake8-argument-names    
+#    "B",   # flake8-bugbear
+#    "C4",  # flake8-comprehensions
+#    "TCH", # flake8-type-checking
+#    "PYI", # flake8-pyi
+#    "Q",   # flake8-quotes    
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+]

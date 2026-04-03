@@ -5,7 +5,7 @@ from homeassistant import config_entries, data_entry_flow
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solis_modbus.const import DOMAIN, CONN_TYPE_TCP
+from custom_components.solis_modbus.const import CONN_TYPE_TCP, DOMAIN
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +81,7 @@ async def test_flow_user_connection_error(hass: HomeAssistant):
     with patch(
             "custom_components.solis_modbus.modbus_controller.ModbusController.connect",
             return_value=False,
-    ) as mock_connect:
+    ):
         # Step 1: Select connection type
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
