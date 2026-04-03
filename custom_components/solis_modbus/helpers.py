@@ -21,7 +21,7 @@ def hex_to_ascii(hex_value):
     byte2 = decimal_value & 0xFF
 
     # Convert bytes to ASCII characters
-    ascii_chars = ''.join([chr(byte) for byte in [byte1, byte2]])
+    ascii_chars = "".join([chr(byte) for byte in [byte1, byte2]])
 
     return ascii_chars
 
@@ -56,16 +56,13 @@ def unique_id_generator_binary(controller, register, bit_position, on_value):
 
 
 def extract_serial_number(values):
-    packed = struct.pack('>' + 'H' * len(values), *values)
-    return packed.decode('ascii', errors='ignore').strip('\x00\r\n ')
+    packed = struct.pack(">" + "H" * len(values), *values)
+    return packed.decode("ascii", errors="ignore").strip("\x00\r\n ")
 
 
 def clock_drift_test(hass, controller, hours, minutes, seconds):
     current_time = dt_utils.now()
-    device_time = datetime(
-        current_time.year, current_time.month, current_time.day, hours, minutes, seconds,
-        tzinfo=current_time.tzinfo
-    )
+    device_time = datetime(current_time.year, current_time.month, current_time.day, hours, minutes, seconds, tzinfo=current_time.tzinfo)
     total_drift = (current_time - device_time).total_seconds()
 
     # Ensure structure
@@ -77,9 +74,7 @@ def clock_drift_test(hass, controller, hours, minutes, seconds):
     if abs(total_drift) > 60:
         if drift_counter > 5:
             if controller.connected():
-                hass.create_task(controller.async_write_holding_registers(
-                    43003, [current_time.hour, current_time.minute, current_time.second]
-                ))
+                hass.create_task(controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second]))
                 clock_adjusted = True
         else:
             hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1

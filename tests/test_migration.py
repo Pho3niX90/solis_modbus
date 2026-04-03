@@ -14,12 +14,7 @@ class TestMigration:
         self.entry = MagicMock()
         self.entry.version = 1
         self.entry.domain = DOMAIN
-        self.entry.data = {
-            CONF_HOST: "192.168.1.10",
-            CONF_PORT: 502,
-            "slave": 1,
-            CONF_INVERTER_SERIAL: "SN123456"
-        }
+        self.entry.data = {CONF_HOST: "192.168.1.10", CONF_PORT: 502, "slave": 1, CONF_INVERTER_SERIAL: "SN123456"}
         self.entry.unique_id = "192.168.1.10_1"
         self.registry = MagicMock()
 
@@ -49,9 +44,7 @@ class TestMigration:
         assert result is True
 
         # FIX 2: Remove 'data=ANY' (your code only updates the version)
-        self.hass.config_entries.async_update_entry.assert_called_with(
-            self.entry, version=3
-        )
+        self.hass.config_entries.async_update_entry.assert_called_with(self.entry, version=3)
 
     @patch("homeassistant.helpers.entity_registry.async_get")
     async def test_migrate_collision(self, mock_get_registry):
@@ -73,9 +66,7 @@ class TestMigration:
 
         assert result is True
 
-        self.hass.config_entries.async_update_entry.assert_called_with(
-            self.entry, version=3
-        )
+        self.hass.config_entries.async_update_entry.assert_called_with(self.entry, version=3)
 
     @patch("homeassistant.helpers.entity_registry.async_get")
     async def test_missing_serial(self, mock_get_registry):

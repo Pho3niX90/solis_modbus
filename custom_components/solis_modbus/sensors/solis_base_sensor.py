@@ -3,11 +3,23 @@ import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.switch import SwitchDeviceClass
-from homeassistant.const import PERCENTAGE, UnitOfApparentPower, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfPower
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfApparentPower,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
 
 from custom_components.solis_modbus.data.enums import Category, DataType, InverterFeature, PollSpeed
-from custom_components.solis_modbus.helpers import _any_in, cache_get, extract_serial_number, split_s32, unique_id_generator
+from custom_components.solis_modbus.helpers import (
+    _any_in,
+    cache_get,
+    extract_serial_number,
+    split_s32,
+    unique_id_generator,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,28 +27,30 @@ _LOGGER = logging.getLogger(__name__)
 class SolisBaseSensor:
     """Base class for all Solis sensors."""
 
-    def __init__(self,
-                 hass: HomeAssistant,
-                 controller,
-                 unique_id: str,
-                 name: str,
-                 registrars: list[int],
-                 write_register: int,
-                 multiplier: float,
-                 device_class: SwitchDeviceClass | SensorDeviceClass | str = None,
-                 unit_of_measurement: UnitOfElectricPotential | UnitOfApparentPower | UnitOfElectricCurrent | UnitOfPower = None,
-                 editable: bool = False,
-                 state_class: SensorStateClass = None,
-                 default=None,
-                 step=0.1,
-                 hidden=False,
-                 enabled=True,
-                 category: Category = None,
-                 min_value: int | None = None,
-                 max_value: int | None = None,
-                 identification=None,
-                 poll_speed=PollSpeed.NORMAL,
-                 data_type: str | None = None):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        controller,
+        unique_id: str,
+        name: str,
+        registrars: list[int],
+        write_register: int,
+        multiplier: float,
+        device_class: SwitchDeviceClass | SensorDeviceClass | str = None,
+        unit_of_measurement: UnitOfElectricPotential | UnitOfApparentPower | UnitOfElectricCurrent | UnitOfPower = None,
+        editable: bool = False,
+        state_class: SensorStateClass = None,
+        default=None,
+        step=0.1,
+        hidden=False,
+        enabled=True,
+        category: Category = None,
+        min_value: int | None = None,
+        max_value: int | None = None,
+        identification=None,
+        poll_speed=PollSpeed.NORMAL,
+        data_type: str | None = None,
+    ):
         """
         :param name: Sensor name
         :param registrars: First register address
@@ -102,18 +116,15 @@ class SolisBaseSensor:
         try:
             new_max = max_default
             if self.unit_of_measurement == UnitOfElectricCurrent.AMPERE:
-                new_max = round(
-                    (self.controller.inverter_config.wattage_chosen / 44) / 5) * 5
+                new_max = round((self.controller.inverter_config.wattage_chosen / 44) / 5) * 5
             elif self.unit_of_measurement == UnitOfPower.WATT:
                 new_max = self.controller.inverter_config.wattage_chosen
             elif self.unit_of_measurement == UnitOfPower.KILO_WATT:
                 new_max = self.controller.inverter_config.wattage_chosen / 1000
-            _LOGGER.debug(
-                f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {new_max} instead of {max_default}")
+            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {new_max} instead of {max_default}")
             self.max_value = new_max
         except Exception as e:
-            _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s",
-                          self.controller.inverter_config.wattage_chosen, e)
+            _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s", self.controller.inverter_config.wattage_chosen, e)
 
     def get_step(self, wanted_step):
         if wanted_step is not None:
@@ -165,43 +176,45 @@ class SolisBaseSensor:
 
     def get_info(self):
         """Return basic sensor information."""
-        return {
-            "name": self.name,
-            "registrars": self.registrars
-        }
+        return {"name": self.name, "registrars": self.registrars}
 
 
 class SolisSensorGroup:
     sensors: list[SolisBaseSensor]
 
     def __init__(self, hass, definition, controller, identification=None):
-        self._sensors = list(map(lambda entity: SolisBaseSensor(
-            hass=hass,
-            name=entity.get("name", "reserve"),
-            controller=controller,
-            registrars=[int(r) for r in entity["register"]],
-            write_register=entity.get("write_register", None),
-            state_class=entity.get("state_class", None),
-            device_class=entity.get("device_class", None),
-            unit_of_measurement=entity.get("unit_of_measurement", None),
-            hidden=entity.get("hidden", False),
-            editable=entity.get("editable", False),
-            max_value=entity.get("max", 3000),
-            min_value=entity.get("min", 0),
-            step=entity.get("step", None),
-            identification=identification,
-            category=entity.get("category", None),
-            default=entity.get("default", 0),
-            multiplier=entity.get("multiplier", 1),
-            data_type=entity.get("data_type", None),
-            unique_id=unique_id_generator(controller, entity),
-            poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
-        ), definition.get("entities", [])))
-        self.poll_speed: PollSpeed = definition.get("poll_speed",
-                                                    PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
+        self._sensors = list(
+            map(
+                lambda entity: SolisBaseSensor(
+                    hass=hass,
+                    name=entity.get("name", "reserve"),
+                    controller=controller,
+                    registrars=[int(r) for r in entity["register"]],
+                    write_register=entity.get("write_register", None),
+                    state_class=entity.get("state_class", None),
+                    device_class=entity.get("device_class", None),
+                    unit_of_measurement=entity.get("unit_of_measurement", None),
+                    hidden=entity.get("hidden", False),
+                    editable=entity.get("editable", False),
+                    max_value=entity.get("max", 3000),
+                    min_value=entity.get("min", 0),
+                    step=entity.get("step", None),
+                    identification=identification,
+                    category=entity.get("category", None),
+                    default=entity.get("default", 0),
+                    multiplier=entity.get("multiplier", 1),
+                    data_type=entity.get("data_type", None),
+                    unique_id=unique_id_generator(controller, entity),
+                    poll_speed=definition.get("poll_speed", PollSpeed.NORMAL),
+                ),
+                definition.get("entities", []),
+            )
+        )
+        self.poll_speed: PollSpeed = definition.get("poll_speed", PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
 
         _LOGGER.debug(
-            f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}")
+            f"Sensor group creation. start registrar = {self.start_register}, sensor count = {self.sensors_count}, registrar count = {self.registrar_count}"
+        )
         self.validate_sequential_registrars()
         self.identification = identification
 
@@ -211,8 +224,7 @@ class SolisSensorGroup:
 
         for i in range(len(all_registrars) - 1):
             if all_registrars[i + 1] != all_registrars[i] + 1:
-                _LOGGER.error(
-                    f"🚨 Registrar sequence error! Found gap between {all_registrars[i]} and {all_registrars[i + 1]} in sensor group.")
+                _LOGGER.error(f"🚨 Registrar sequence error! Found gap between {all_registrars[i]} and {all_registrars[i + 1]} in sensor group.")
 
     @property
     def sensors_count(self):

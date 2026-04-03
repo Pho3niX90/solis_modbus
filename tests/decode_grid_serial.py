@@ -1,4 +1,3 @@
-
 def decode_grid_serial(registers):
     # Registers: [0x4321, 0x8765, 0xCBA9, 0x0FED]
     # Expected: 123456789ABCDEF0
@@ -12,6 +11,7 @@ def decode_grid_serial(registers):
         reversed_hex = hex_val[::-1]
         serial += reversed_hex
     return serial
+
 
 registers = [0x4321, 0x8765, 0xCBA9, 0x0FED]
 decoded = decode_grid_serial(registers)

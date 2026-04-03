@@ -74,11 +74,13 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
             ## start
             if 90007 in self._register:
-                is_adjusted = clock_drift_test(self.hass, self.base_sensor.controller,
-                                               self._received_values[33025],
-                                               self._received_values[33026],
-                                               self._received_values[33027],
-                                               )
+                is_adjusted = clock_drift_test(
+                    self.hass,
+                    self.base_sensor.controller,
+                    self._received_values[33025],
+                    self._received_values[33026],
+                    self._received_values[33027],
+                )
                 if is_adjusted:
                     self._attr_available = True
                     self._attr_native_value = datetime.now(UTC)
@@ -107,15 +109,13 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 new_value = round(r1_value * r2_value)
 
             if 33079 in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
-                active_power = self.base_sensor.convert_value(
-                    [self._received_values[self._register[0]], self._received_values[self._register[1]]])
-                reactive_power = self.base_sensor.convert_value(
-                    [self._received_values[self._register[2]], self._received_values[self._register[3]]])
+                active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])
+                reactive_power = self.base_sensor.convert_value([self._received_values[self._register[2]], self._received_values[self._register[3]]])
 
                 if active_power == 0 or reactive_power == 0:
                     new_value = 1
                 else:
-                    new_value = round(active_power / ((active_power ** 2 + reactive_power ** 2) ** 0.5), 3)
+                    new_value = round(active_power / ((active_power**2 + reactive_power**2) ** 0.5), 3)
 
             if 33135 in self._register and len(self._register) == 4:
                 registers = self._register.copy()
@@ -164,8 +164,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 ## self.base_sensor.controller._model = model_description
                 new_value = model_description + f"(Protocol {protocol_version})"
 
-            if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value,
-                                                                                                          str):
+            if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value, str):
                 self._attr_available = True
                 self._attr_native_value = new_value
                 self._state = new_value

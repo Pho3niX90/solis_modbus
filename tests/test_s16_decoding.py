@@ -10,8 +10,10 @@ class MockController:
             model = "TEST"
             features = []
             wattage_chosen = 5000
+
         self.inverter_config = MockConfig()
         self.connected = lambda: True
+
 
 class TestSolisBaseSensorS16(unittest.TestCase):
     def setUp(self):
@@ -27,7 +29,7 @@ class TestSolisBaseSensorS16(unittest.TestCase):
             registrars=[33093],
             write_register=None,
             multiplier=multiplier,
-            data_type=data_type
+            data_type=data_type,
         )
 
     def test_s16_decoding_positive(self):
@@ -68,5 +70,6 @@ class TestSolisBaseSensorS16(unittest.TestCase):
         self.assertIsNone(sensor._convert_raw_value([]))
         self.assertIsNone(sensor._convert_raw_value([None]))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

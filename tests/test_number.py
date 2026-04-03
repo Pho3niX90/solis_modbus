@@ -12,6 +12,7 @@ def mock_controller():
     controller.async_write_holding_register = AsyncMock()
     return controller
 
+
 @pytest.fixture
 def mock_base_sensor(mock_controller):
     sensor = MagicMock(spec=SolisBaseSensor)
@@ -33,6 +34,7 @@ def mock_base_sensor(mock_controller):
     sensor.default = 50
     return sensor
 
+
 @pytest.mark.asyncio
 async def test_solis_number_entity(hass, mock_base_sensor, mock_controller):
     """Test SolisNumberEntity initialization and value setting."""
@@ -53,6 +55,7 @@ async def test_solis_number_entity(hass, mock_base_sensor, mock_controller):
     entity.set_native_value(60)
     await hass.async_block_till_done()
     mock_controller.async_write_holding_register.assert_called_with(100, 60)
+
 
 @pytest.mark.asyncio
 async def test_solis_number_entity_updates(hass, mock_controller):
@@ -84,7 +87,7 @@ async def test_solis_number_entity_updates(hass, mock_controller):
     event = MagicMock()
     event.data = {
         "register": 100,
-        "controller": str(mock_controller), # Logic uses str(controller) comparison?
+        "controller": str(mock_controller),  # Logic uses str(controller) comparison?
         # helpers.is_correct_controller checks this.
         # We need mock_controller to match expected.
         # Let's mock is_correct_controller checks for simplicity or mock attributes properly.
@@ -101,4 +104,3 @@ async def test_solis_number_entity_updates(hass, mock_controller):
     await hass.async_block_till_done()
     # write_register is None, so return.
     assert not mock_controller.async_write_holding_register.called
-

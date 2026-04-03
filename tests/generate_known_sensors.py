@@ -25,10 +25,10 @@ def generate_scenario(filename, serial=None, identification=None, host="1.2.3.4"
     # Process standard sensors
     for group in hybrid_sensors:
         for entity in group.get("entities", []):
-             if entity.get("type") == "reserve":
-                 continue
-             uid = unique_id_generator(controller, entity.get("unique", "reserve"))
-             known_sensors.append(uid)
+            if entity.get("type") == "reserve":
+                continue
+            uid = unique_id_generator(controller, entity.get("unique", "reserve"))
+            known_sensors.append(uid)
 
     for entity in hybrid_sensors_derived:
         uid = f"{DOMAIN}_{entity['unique']}"
@@ -44,35 +44,36 @@ def generate_scenario(filename, serial=None, identification=None, host="1.2.3.4"
     # Switch
     switch_groups = get_switch_sensors(config)
     for group in switch_groups:
-         for entity in group['entities']:
-             # Logic from SolisBinaryEntity
-             # Switch entities get their register injected from the group in switch.py
-             register = group.get("register", group.get("read_register")) + entity.get("offset", 0)
-             bit_position = entity.get("bit_position")
-             on_value = entity.get("on_value")
-             uid = unique_id_generator_binary(controller, register, bit_position, on_value)
-             known_sensors.append(uid)
+        for entity in group["entities"]:
+            # Logic from SolisBinaryEntity
+            # Switch entities get their register injected from the group in switch.py
+            register = group.get("register", group.get("read_register")) + entity.get("offset", 0)
+            bit_position = entity.get("bit_position")
+            on_value = entity.get("on_value")
+            uid = unique_id_generator_binary(controller, register, bit_position, on_value)
+            known_sensors.append(uid)
 
     # Select
     select_groups = get_select_sensors(config)
     for entity in select_groups:
-         # Logic from SolisSelectEntity
-         # unique_id_generator(modbus_controller, entity_definition["register"], "select")
-         uid = unique_id_generator(controller, entity["register"], "select")
-         known_sensors.append(uid)
+        # Logic from SolisSelectEntity
+        # unique_id_generator(modbus_controller, entity_definition["register"], "select")
+        uid = unique_id_generator(controller, entity["register"], "select")
+        known_sensors.append(uid)
 
     # Time
     time_sensors = get_time_sensors(config)
     for entity in time_sensors:
-         # Logic from SolisTimeEntity: unique_id_generator(controller, entity.get("unique", "reserve"))
-         uid = unique_id_generator(controller, entity.get("unique", "reserve"))
-         known_sensors.append(uid)
+        # Logic from SolisTimeEntity: unique_id_generator(controller, entity.get("unique", "reserve"))
+        uid = unique_id_generator(controller, entity.get("unique", "reserve"))
+        known_sensors.append(uid)
 
     known_sensors.sort()
 
     with open(f"tests/{filename}", "w") as f:
         json.dump(known_sensors, f, indent=2)
         print(f"Generated {len(known_sensors)} known sensors to tests/{filename}")
+
 
 def generate_known_sensors():
     # 1. Serial Number Scenario (Priority 1)
@@ -82,7 +83,8 @@ def generate_known_sensors():
     generate_scenario("known_sensors_identification.json", serial=None, identification="ID_SNAPSHOT", host="FAIL_IP")
 
     # 3. Host Scenario (Priority 3)
-    generate_scenario("known_sensors_host.json", serial=None, identification=None, host="1.2.3.4") # Use a 'real-looking' IP
+    generate_scenario("known_sensors_host.json", serial=None, identification=None, host="1.2.3.4")  # Use a 'real-looking' IP
+
 
 if __name__ == "__main__":
     generate_known_sensors()

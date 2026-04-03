@@ -7,18 +7,21 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
-from custom_components.solis_modbus.helpers import cache_get, cache_save, is_correct_controller, unique_id_generator_binary
+from custom_components.solis_modbus.helpers import (
+    cache_get,
+    cache_save,
+    is_correct_controller,
+    unique_id_generator_binary,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class SolisBinaryEntity(RestoreEntity, SwitchEntity):
-
     def __init__(self, hass, modbus_controller, entity_definition):
         self._hass = hass
         self._modbus_controller: ModbusController = modbus_controller
-        self._register: int = entity_definition.get("register",
-                                                    entity_definition.get("read_register")) + entity_definition.get("offset", 0)
+        self._register: int = entity_definition.get("register", entity_definition.get("read_register")) + entity_definition.get("offset", 0)
         write_register = entity_definition.get("write_register", None)
         self._write_register: int = self._register if write_register is None else write_register + entity_definition.get("offset", 0)
         self._bit_position = entity_definition.get("bit_position", None)
@@ -52,11 +55,11 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             updated_value = int(event.data.get(VALUE))
 
             if self._bit_position is not None:
-                _LOGGER.debug(
-                    f"Sensor update received, register = {updated_register}, value = {updated_value}, get_bit_bool = {get_bit_bool(updated_value, self._bit_position)}")
+                bit_bool = get_bit_bool(updated_value, self._bit_position)
+                _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, get_bit_bool = {bit_bool}")
             else:
-                _LOGGER.debug(
-                    f"Sensor update received, register = {updated_register}, value = {updated_value}, on_value = {self._on_value}, is_on = {self._on_value == updated_value}, ")
+                is_on = self._on_value == updated_value
+                _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, on_value = {self._on_value}, is_on = {is_on}, ")
 
             if self._register == 5:
                 self._attr_is_on = self._modbus_controller.enabled
@@ -131,9 +134,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             else:
                 new_register_value = int(value)
 
-        _LOGGER.debug(
-            f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}"
-        )
+        _LOGGER.debug(f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
 
         if current_register_value != new_register_value and controller.connected():
             target_register = self._write_register

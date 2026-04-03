@@ -41,8 +41,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
         # Watchdog parameters
         self._last_update = datetime.now(UTC).astimezone()
-        self._update_timeout = timedelta(
-            minutes=self.base_sensor.controller.poll_speed.get(sensor.poll_speed, 0) + _WATCHDOG_TIMEOUT_MIN)
+        self._update_timeout = timedelta(minutes=self.base_sensor.controller.poll_speed.get(sensor.poll_speed, 0) + _WATCHDOG_TIMEOUT_MIN)
 
     def decimal_count(self, number: float) -> int | None:
         """Returns the number of decimal places in a given number."""
@@ -51,8 +50,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
         if number == int(number):  # Whole number
             return 0
 
-        str_number = str(number).rstrip('0')  # Convert to string and remove trailing zeros
-        decimal_part = str_number.split('.')[-1]  # Get the decimal part
+        str_number = str(number).rstrip("0")  # Convert to string and remove trailing zeros
+        decimal_part = str_number.split(".")[-1]  # Get the decimal part
 
         return len(decimal_part)
 
@@ -95,8 +94,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
             values = [self._received_values[reg] for reg in self._register]
             if None in values:
-                problematic_regs = {reg: self._received_values.get(reg) for reg in self._register if
-                                    self._received_values.get(reg) is None}
+                problematic_regs = {reg: self._received_values.get(reg) for reg in self._register if self._received_values.get(reg) is None}
                 if problematic_regs:
                     _LOGGER.debug(f"⚠️ Problematic values received in registrars: {problematic_regs}, skipping update")
                     return
@@ -116,8 +114,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
         now = datetime.now(UTC).astimezone()
         if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
-            _LOGGER.warning(
-                f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
+            _LOGGER.warning(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
             # self._attr_native_value = 0
             self._attr_available = False  # Set attribute unavailable (if desired)
             self.schedule_update_ha_state()

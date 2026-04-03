@@ -23,11 +23,7 @@ class TestDataRetrieval(unittest.TestCase):
         self.controller.slave = 1
         self.controller.enabled = True
         self.controller.connected = MagicMock(return_value=True)
-        self.controller.poll_speed = {
-            PollSpeed.FAST: 5,
-            PollSpeed.NORMAL: 15,
-            PollSpeed.SLOW: 30
-        }
+        self.controller.poll_speed = {PollSpeed.FAST: 5, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
 
         # Create sensor groups for testing
         self.fast_group = MagicMock(spec=SolisSensorGroup)
@@ -51,15 +47,10 @@ class TestDataRetrieval(unittest.TestCase):
         self.once_group.registrar_count = 10
 
         # Set up the controller's sensor groups
-        self.controller.sensor_groups = [
-            self.fast_group,
-            self.normal_group,
-            self.slow_group,
-            self.once_group
-        ]
+        self.controller.sensor_groups = [self.fast_group, self.normal_group, self.slow_group, self.once_group]
 
         # Create the DataRetrieval instance
-        with patch('custom_components.solis_modbus.data_retrieval.async_track_time_interval') as self.mock_track_time:
+        with patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval") as self.mock_track_time:
             self.data_retrieval = DataRetrieval(self.hass, self.controller)
 
     async def test_check_connection_already_connected(self):
@@ -219,13 +210,13 @@ class TestDataRetrieval(unittest.TestCase):
         self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 50))
 
         # Spike check: value 0 should be ignored initially
-        with patch('custom_components.solis_modbus.data_retrieval.cache_get', return_value=50):
-             # 1st spike
-             self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 0))
-             # 2nd spike
-             self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 0))
-             # 3rd spike (accepted)
-             self.assertEqual(0, self.data_retrieval.spike_filtering(reg, 0))
+        with patch("custom_components.solis_modbus.data_retrieval.cache_get", return_value=50):
+            # 1st spike
+            self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 0))
+            # 2nd spike
+            self.assertEqual(50, self.data_retrieval.spike_filtering(reg, 0))
+            # 3rd spike (accepted)
+            self.assertEqual(0, self.data_retrieval.spike_filtering(reg, 0))
 
     async def test_concurrency_lock(self):
         """Test that get_modbus_updates respects concurrency."""
@@ -247,8 +238,8 @@ class TestDataRetrieval(unittest.TestCase):
         self.controller.sensor_groups = [self.once_group, self.normal_group]
         self.controller.enabled = True
         self.controller.connected.return_value = True
-        self.controller.async_read_holding_register = AsyncMock(return_value=[1]*10)
-        self.controller.async_read_input_register = AsyncMock(return_value=[1]*10)
+        self.controller.async_read_holding_register = AsyncMock(return_value=[1] * 10)
+        self.controller.async_read_input_register = AsyncMock(return_value=[1] * 10)
 
         await self.data_retrieval.get_modbus_updates([self.once_group], PollSpeed.NORMAL)
 

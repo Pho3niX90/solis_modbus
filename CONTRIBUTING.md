@@ -13,6 +13,15 @@ Check code style:
 uv run ruff check
 ```
 
+
+## Code formatting
+
+Format code:
+
+```bash
+uv run ruff format
+```
+
 ## Testing
 
 Run all tests:
