@@ -7,6 +7,15 @@ def get_select_sensors(inverter_config):
     if inverter_config.type == InverterType.HYBRID:
         sensor_groups = [
             {
+                "register": 43132,
+                "name": "RC Grid Adjustment",
+                "entities": [
+                    {"name": "OFF", "on_value": 0},
+                    {"name": "System Grid Connection Point", "on_value": 1},
+                    {"name": "Inverter AC Grid Port", "on_value": 2},
+                ]
+            },
+            {
                 "register": 43135,
                 "name": "RC Force Charge/Discharge",
                 "entities": [

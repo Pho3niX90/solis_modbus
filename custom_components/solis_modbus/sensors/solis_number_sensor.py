@@ -115,6 +115,9 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
             return
 
         register_value = round(value / self._multiplier)
+        if self.base_sensor.data_type == "S16":
+            register_value = max(-32768, min(32767, register_value))
+            register_value &= 0xFFFF
 
         # Write to Modbus controller
         self._hass.create_task(self.base_sensor.controller.async_write_holding_register(self._write_register, int(register_value)))
