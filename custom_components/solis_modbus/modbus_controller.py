@@ -10,20 +10,16 @@ from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from custom_components.solis_modbus.client_manager import ModbusClientManager
 from custom_components.solis_modbus.const import (
     CONN_TYPE_TCP,
-    CONTROLLER,
     DEFAULT_BAUDRATE,
     DEFAULT_BYTESIZE,
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
     MANUFACTURER,
-    REGISTER,
-    SLAVE,
-    VALUE,
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
-from custom_components.solis_modbus.helpers import cache_save
+from custom_components.solis_modbus.helpers import cache_save, notify_register_update
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 
@@ -189,10 +185,7 @@ class ModbusController:
                     return None
 
                 cache_save(self.hass, int_register, result.registers[0])
-                self.hass.bus.async_fire(
-                    DOMAIN,
-                    {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host, SLAVE: self.device_id},
-                )
+                notify_register_update(self.hass, self, int_register, result.registers[0])
 
                 return result
         except Exception as e:
@@ -232,11 +225,9 @@ class ModbusController:
                     return None
 
                 for i, value in enumerate(values):
-                    cache_save(self.hass, start_register + i, value)
-                    self.hass.bus.async_fire(
-                        DOMAIN,
-                        {REGISTER: start_register + i, VALUE: value, CONTROLLER: self.host, SLAVE: self.device_id},
-                    )
+                    reg_addr = start_register + i
+                    cache_save(self.hass, reg_addr, value)
+                    notify_register_update(self.hass, self, reg_addr, value)
                 return result
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")

@@ -6,10 +6,11 @@ from datetime import UTC, datetime
 
 from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
-from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller
+from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller, register_update_signal
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,22 +50,28 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self._attr_native_value = datetime.now(UTC)
         self.is_added_to_hass = True
 
-        # 🔥 Register event listener for real-time updates
-        self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
+        for reg in set(self._register):
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    self._hass,
+                    register_update_signal(self.base_sensor.controller, reg),
+                    self.handle_modbus_update,
+                )
+            )
 
     @callback
-    def handle_modbus_update(self, event):
-        """Callback function that updates sensor when new register data is available."""
-        updated_register = int(event.data.get(REGISTER))
-        updated_controller = str(event.data.get(CONTROLLER))
-        updated_controller_slave = int(event.data.get(SLAVE))
+    def handle_modbus_update(self, data):
+        """Callback when register data is available (per-register dispatcher)."""
+        updated_register = int(data.get(REGISTER))
+        updated_controller = str(data.get(CONTROLLER))
+        updated_controller_slave = int(data.get(SLAVE))
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
             return  # meant for a different sensor/inverter combo
 
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
-            self._received_values[updated_register] = event.data.get(VALUE)
+            self._received_values[updated_register] = data.get(VALUE)
 
             # If we haven't received all registers yet, wait
             filtered_registers = {reg for reg in self._register if reg not in (0, 1, 90007)}

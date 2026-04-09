@@ -4,10 +4,11 @@ from datetime import datetime
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_utils
 
 from custom_components.solis_modbus import DOMAIN
-from custom_components.solis_modbus.const import CONTROLLER, DRIFT_COUNTER, VALUES
+from custom_components.solis_modbus.const import CONN_TYPE_TCP, CONTROLLER, DRIFT_COUNTER, REGISTER, SLAVE, VALUE, VALUES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -174,3 +175,26 @@ def _any_in(target: list[int], collection: set[int]) -> bool:
 
 def is_correct_controller(controller, host: str, slave: int):
     return controller.host == host and controller.device_id == slave
+
+
+def register_update_signal(controller, register: int) -> str:
+    """Dispatcher signal for one Modbus register on a specific controller (not recorded by the HA recorder)."""
+    cid = getattr(controller, "connection_id", None)
+    if isinstance(cid, str):
+        scope = f"{cid}_{int(controller.device_id)}"
+    elif isinstance(getattr(controller, "connection_type", None), str) and controller.connection_type == CONN_TYPE_TCP:
+        scope = f"{controller.host}_{int(controller.port)}_{int(controller.device_id)}"
+    else:
+        scope = f"{controller.host}_{int(controller.device_id)}"
+    return f"{DOMAIN}_{scope}_{int(register)}"
+
+
+def notify_register_update(hass: HomeAssistant, controller, register: int, value) -> None:
+    """Notify listeners for a single register; replaces bus.async_fire(DOMAIN, ...) for Modbus data."""
+    payload = {
+        REGISTER: register,
+        VALUE: value,
+        CONTROLLER: controller.host,
+        SLAVE: int(controller.device_id),
+    }
+    async_dispatcher_send(hass, register_update_signal(controller, register), payload)

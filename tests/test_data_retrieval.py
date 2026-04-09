@@ -14,13 +14,14 @@ class TestDataRetrieval(unittest.TestCase):
         # Mock Home Assistant
         self.hass = MagicMock()
         self.hass.is_running = True
-        self.hass.bus.async_fire = MagicMock()
         self.hass.create_task = MagicMock()
 
         # Mock the ModbusController
         self.controller = MagicMock()
         self.controller.host = "192.168.1.100"
         self.controller.slave = 1
+        self.controller.device_id = 1
+        self.controller.connection_id = "192.168.1.100:502"
         self.controller.enabled = True
         self.controller.connected = MagicMock(return_value=True)
         self.controller.poll_speed = {PollSpeed.FAST: 5, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
@@ -49,9 +50,14 @@ class TestDataRetrieval(unittest.TestCase):
         # Set up the controller's sensor groups
         self.controller.sensor_groups = [self.fast_group, self.normal_group, self.slow_group, self.once_group]
 
-        # Create the DataRetrieval instance
-        with patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval") as self.mock_track_time:
-            self.data_retrieval = DataRetrieval(self.hass, self.controller)
+        # Create the DataRetrieval instance (keep patches active for the whole test)
+        self._patcher_track = patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval")
+        self.mock_track_time = self._patcher_track.start()
+        self.addCleanup(self._patcher_track.stop)
+        self._patcher_notify = patch("custom_components.solis_modbus.data_retrieval.notify_register_update")
+        self.mock_notify = self._patcher_notify.start()
+        self.addCleanup(self._patcher_notify.stop)
+        self.data_retrieval = DataRetrieval(self.hass, self.controller)
 
     async def test_check_connection_already_connected(self):
         """Test check_connection when already connected."""
@@ -60,7 +66,7 @@ class TestDataRetrieval(unittest.TestCase):
 
         await self.data_retrieval.check_connection()
 
-        self.hass.bus.async_fire.assert_called_once()
+        self.mock_notify.assert_called_once()
         self.controller.connected.assert_called_once()
         # Should not attempt to connect if already connected
         self.controller.connect.assert_not_called()
@@ -73,7 +79,7 @@ class TestDataRetrieval(unittest.TestCase):
 
         await self.data_retrieval.check_connection()
 
-        self.hass.bus.async_fire.assert_called_once()
+        self.mock_notify.assert_called_once()
         self.controller.connected.assert_called()
         self.controller.connect.assert_called_once()
 
@@ -122,8 +128,7 @@ class TestDataRetrieval(unittest.TestCase):
         args, kwargs = self.data_retrieval.get_modbus_updates.call_args
         self.assertEqual(PollSpeed.FAST, args[1])
 
-        # Verify event was fired
-        self.hass.bus.async_fire.assert_called_once()
+        self.mock_notify.assert_called_once()
 
     async def test_modbus_update_normal(self):
         """Test modbus_update_normal method."""
