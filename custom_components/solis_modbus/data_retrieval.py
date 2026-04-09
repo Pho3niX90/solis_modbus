@@ -16,6 +16,7 @@ from .sensors.solis_base_sensor import SolisSensorGroup
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class DataRetrieval:
     def __init__(self, hass: HomeAssistant, controller: ModbusController):
         self._spike_counter = {}
@@ -70,9 +71,15 @@ class DataRetrieval:
         self.connection_check = True
 
         # Emit controller status
-        self.hass.bus.async_fire(DOMAIN,
-                                 {REGISTER: 90005, VALUE: self.controller.enabled, CONTROLLER: self.controller.host,
-                                  SLAVE: self.controller.slave})
+        self.hass.bus.async_fire(
+            DOMAIN,
+            {
+                REGISTER: 90005,
+                VALUE: self.controller.enabled,
+                CONTROLLER: self.controller.host,
+                SLAVE: self.controller.slave,
+            },
+        )
 
         if self.controller.connected():
             if self.first_poll:
@@ -84,11 +91,9 @@ class DataRetrieval:
         while not self.controller.connected():
             try:
                 if await self.controller.connect():
-                    _LOGGER.info(
-                        f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
+                    _LOGGER.info(f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
                     break
-                _LOGGER.debug(
-                    f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
+                _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
             except Exception as e:
                 _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
 
@@ -119,12 +124,23 @@ class DataRetrieval:
 
         # Start periodic polling
         self._unsub_listeners.append(async_track_time_interval(self.hass, self.check_connection, timedelta(minutes=2)))
-        self._unsub_listeners.append(async_track_time_interval(self.hass, self.modbus_update_fast, timedelta(
-            seconds=self.controller.poll_speed.get(PollSpeed.FAST, 5))))
-        self._unsub_listeners.append(async_track_time_interval(self.hass, self.modbus_update_normal, timedelta(
-            seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15))))
-        self._unsub_listeners.append(async_track_time_interval(self.hass, self.modbus_update_slow, timedelta(
-            seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30))))
+        self._unsub_listeners.append(
+            async_track_time_interval(self.hass, self.modbus_update_fast, timedelta(seconds=self.controller.poll_speed.get(PollSpeed.FAST, 5)))
+        )
+        self._unsub_listeners.append(
+            async_track_time_interval(
+                self.hass,
+                self.modbus_update_normal,
+                timedelta(seconds=self.controller.poll_speed.get(PollSpeed.NORMAL, 15)),
+            )
+        )
+        self._unsub_listeners.append(
+            async_track_time_interval(
+                self.hass,
+                self.modbus_update_slow,
+                timedelta(seconds=self.controller.poll_speed.get(PollSpeed.SLOW, 30)),
+            )
+        )
 
         self.hass.create_task(self.controller.process_write_queue())
 
@@ -153,10 +169,16 @@ class DataRetrieval:
         Returns:
             None
         """
-        await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST],
-                                      PollSpeed.FAST)
-        self.hass.bus.async_fire(DOMAIN, {REGISTER: 90006, VALUE: self.controller.last_modbus_success,
-                                          CONTROLLER: self.controller.host, SLAVE: self.controller.slave})
+        await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.FAST], PollSpeed.FAST)
+        self.hass.bus.async_fire(
+            DOMAIN,
+            {
+                REGISTER: 90006,
+                VALUE: self.controller.last_modbus_success,
+                CONTROLLER: self.controller.host,
+                SLAVE: self.controller.slave,
+            },
+        )
 
     async def modbus_update_slow(self, now=None):
         """Updates sensor groups with slow poll speed.
@@ -169,8 +191,7 @@ class DataRetrieval:
         Returns:
             None
         """
-        await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.SLOW],
-                                      PollSpeed.SLOW)
+        await self.get_modbus_updates([g for g in self.controller.sensor_groups if g.poll_speed == PollSpeed.SLOW], PollSpeed.SLOW)
 
     async def modbus_update_normal(self, now=None):
         """Updates sensor groups with normal poll speed.
@@ -186,7 +207,8 @@ class DataRetrieval:
         """
         await self.get_modbus_updates(
             [g for g in self.controller.sensor_groups if g.poll_speed in (PollSpeed.NORMAL, PollSpeed.ONCE)],
-            PollSpeed.NORMAL)
+            PollSpeed.NORMAL,
+        )
 
     async def get_modbus_updates(self, groups: list[SolisSensorGroup], speed: PollSpeed):
         """Read registers from the Modbus controller, ensuring no concurrent runs.
@@ -208,8 +230,7 @@ class DataRetrieval:
         group_hash = frozenset({group.start_register for group in groups})
 
         if group_hash in self.poll_updating[speed]:
-            _LOGGER.debug(
-                f"⚠️({self.controller.host}.{self.controller.slave}) Skipping {speed.name} update: A previous instance is still running")
+            _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Skipping {speed.name} update: A previous instance is still running")
             return
 
         self.poll_updating[speed][group_hash] = True
@@ -223,11 +244,11 @@ class DataRetrieval:
                 for sensor_group in groups:
                     start_register = sensor_group.start_register
                     count = sensor_group.registrar_count
+                    end_register = start_register + count - 1
                     total_registrars += count
                     total_groups += 1
 
-                    _LOGGER.debug(
-                        f"Group {start_register} starting for ({self.controller.host}.{self.controller.slave})")
+                    _LOGGER.debug(f"Group {start_register} starting for ({self.controller.host}.{self.controller.slave})")
 
                     values = await (
                         self.controller.async_read_holding_register(start_register, count)
@@ -237,12 +258,13 @@ class DataRetrieval:
 
                     if values is None:
                         _LOGGER.debug(
-                            f"⚠️ Received None for register {start_register} - {start_register + count - 1}, fro ({self.controller.host}.{self.controller.slave}), skipping.")
+                            f"⚠️ Received None for register {start_register} - {end_register}, for ({self.controller.host}.{self.controller.slave}), skipping."
+                        )
                         continue
                     if len(values) != count:
                         _LOGGER.debug(
                             f"⚠️ Modbus read mismatch: Received {len(values)} values, expected {count} from ({self.controller.host}.{self.controller.slave}) "
-                            f"for register {start_register} - {start_register + count - 1}. Skipping because linking them is uncertain."
+                            f"for register {start_register} - {end_register}. Skipping because linking them is uncertain."
                         )
                         continue
 
@@ -251,9 +273,15 @@ class DataRetrieval:
                         _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
                         corrected_value = self.spike_filtering(reg, value)
                         cache_save(self.hass, reg, corrected_value)
-                        self.hass.bus.async_fire(DOMAIN, {REGISTER: reg, VALUE: corrected_value,
-                                                          CONTROLLER: self.controller.host,
-                                                          SLAVE: self.controller.slave})
+                        self.hass.bus.async_fire(
+                            DOMAIN,
+                            {
+                                REGISTER: reg,
+                                VALUE: corrected_value,
+                                CONTROLLER: self.controller.host,
+                                SLAVE: self.controller.slave,
+                            },
+                        )
 
                     if sensor_group.poll_speed == PollSpeed.ONCE:
                         marked_for_removal.append(sensor_group)
@@ -261,8 +289,7 @@ class DataRetrieval:
                     self.controller._data_received = True
 
                 # Remove "ONCE" poll speed groups
-                self.controller._sensor_groups = [g for g in self.controller.sensor_groups if
-                                                  g not in marked_for_removal]
+                self.controller._sensor_groups = [g for g in self.controller.sensor_groups if g not in marked_for_removal]
 
                 total_duration = time.perf_counter() - total_start_time
                 _LOGGER.debug(f"✅ {speed.name} update completed in {total_duration:.4f}s")
@@ -299,9 +326,7 @@ class DataRetrieval:
                 )
                 return cached_value if cached_value is not None else value
             else:
-                _LOGGER.debug(
-                    f"Accepting persistent spike value {value} for battery SOC sensor after {self._spike_counter[register]} cycles"
-                )
+                _LOGGER.debug(f"Accepting persistent spike value {value} for battery SOC sensor after {self._spike_counter[register]} cycles")
                 self._spike_counter[register] = 0
 
         return value

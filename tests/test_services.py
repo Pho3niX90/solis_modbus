@@ -14,6 +14,7 @@ def mock_controller():
     controller.async_write_holding_register = AsyncMock(return_value=None)
     return controller
 
+
 @pytest.mark.asyncio
 async def test_service_write_holding_register(hass: HomeAssistant, mock_controller):
     """Test solis_write_holding_register service."""
@@ -24,20 +25,16 @@ async def test_service_write_holding_register(hass: HomeAssistant, mock_controll
     hass.data[DOMAIN][CONTROLLER] = {"1.2.3.4_1": mock_controller}
 
     with patch("custom_components.solis_modbus.get_controller", return_value=mock_controller):
-
         # Register the services (requires setting up the integration or manually registering)
         from custom_components.solis_modbus import async_setup
+
         await async_setup(hass, {})
 
         # Call service
-        await hass.services.async_call(
-            DOMAIN,
-            "solis_write_holding_register",
-            {"address": 123, "value": 456, "host": "1.2.3.4"},
-            blocking=True
-        )
+        await hass.services.async_call(DOMAIN, "solis_write_holding_register", {"address": 123, "value": 456, "host": "1.2.3.4"}, blocking=True)
 
         mock_controller.async_write_holding_register.assert_called_with(123, 456)
+
 
 @pytest.mark.asyncio
 async def test_service_write_holding_register_no_host(hass: HomeAssistant, mock_controller):
@@ -48,16 +45,13 @@ async def test_service_write_holding_register_no_host(hass: HomeAssistant, mock_
     hass.data[DOMAIN] = {CONTROLLER: {"1.2.3.4_1": mock_controller}}
 
     from custom_components.solis_modbus import async_setup
+
     await async_setup(hass, {})
 
-    await hass.services.async_call(
-        DOMAIN,
-        "solis_write_holding_register",
-        {"address": 123, "value": 456},
-        blocking=True
-    )
+    await hass.services.async_call(DOMAIN, "solis_write_holding_register", {"address": 123, "value": 456}, blocking=True)
 
     mock_controller.async_write_holding_register.assert_called_with(123, 456)
+
 
 @pytest.mark.asyncio
 async def test_service_set_time(hass: HomeAssistant):
@@ -69,23 +63,21 @@ async def test_service_set_time(hass: HomeAssistant):
     mock_entity = MagicMock()
     mock_entity.entity_id = "time.test_time"
     mock_entity.async_set_value = MagicMock(return_value=None)
+
     # async_set_value must be awaitable
     async def async_set_value(val):
         pass
+
     mock_entity.async_set_value = MagicMock(side_effect=async_set_value)
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][TIME_ENTITIES] = [mock_entity]
 
     from custom_components.solis_modbus import async_setup
+
     await async_setup(hass, {})
 
-    await hass.services.async_call(
-        DOMAIN,
-        "solis_write_time",
-        {"entity_id": "time.test_time", "time": "12:30:00"},
-        blocking=True
-    )
+    await hass.services.async_call(DOMAIN, "solis_write_time", {"entity_id": "time.test_time", "time": "12:30:00"}, blocking=True)
 
     # Check if called with correct time object
     mock_entity.async_set_value.assert_called()

@@ -12,9 +12,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        async_add_devices,
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_devices,
 ) -> None:
     controller: ModbusController = get_controller_from_entry(hass, config_entry)
     # We only want this platform to be set up via discovery.

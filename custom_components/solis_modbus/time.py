@@ -8,7 +8,12 @@ from homeassistant.core import callback
 
 from custom_components.solis_modbus import ModbusController
 from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, TIME_ENTITIES, VALUE
-from custom_components.solis_modbus.helpers import cache_get, get_controller_from_entry, is_correct_controller, unique_id_generator
+from custom_components.solis_modbus.helpers import (
+    cache_get,
+    get_controller_from_entry,
+    is_correct_controller,
+    unique_id_generator,
+)
 from custom_components.solis_modbus.sensor_data.time_sensors import get_time_sensors
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,18 +96,15 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
                     hour, minute = int(hour), int(minute)
 
                     if 0 <= minute <= 59 and 0 <= hour <= 23:
-                        _LOGGER.debug(
-                            f"✅ Time updated to {hour}:{minute}, regs = {self._register}:{self._register + 1}")
+                        _LOGGER.debug(f"✅ Time updated to {hour}:{minute}, regs = {self._register}:{self._register + 1}")
                         self._attr_native_value = time(hour=hour, minute=minute)
                         self._attr_available = True
                     else:
                         self._attr_available = False
-                        _LOGGER.debug(
-                            f"⚠️ Time disabled due to invalid values {hour}:{minute}, regs = {self._register}:{self._register + 1}")
+                        _LOGGER.debug(f"⚠️ Time disabled due to invalid values {hour}:{minute}, regs = {self._register}:{self._register + 1}")
                 else:
                     self._attr_available = False
-                    _LOGGER.debug(
-                        f"⚠️ Time disabled because hour or minute is None, regs = {self._register}:{self._register + 1}")
+                    _LOGGER.debug(f"⚠️ Time disabled because hour or minute is None, regs = {self._register}:{self._register + 1}")
 
                 self.schedule_update_ha_state()
 
@@ -113,7 +115,7 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
 
     async def async_set_value(self, value: time) -> None:
         """Set the time."""
-        _LOGGER.debug(f'async_set_value : register = {self._register}, value = {value}')
+        _LOGGER.debug(f"async_set_value : register = {self._register}, value = {value}")
         await self._modbus_controller.async_write_holding_registers(self._register, [value.hour, value.minute])
         self._attr_native_value = value
         self.async_write_ha_state()

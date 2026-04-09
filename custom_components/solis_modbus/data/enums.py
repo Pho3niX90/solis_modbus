@@ -8,12 +8,14 @@ class PollSpeed(Enum):
     NORMAL = "normal"
     SLOW = "slow"
 
+
 class InverterType(Enum):
     HYBRID = "hybrid"
     STRING = "string"
     GRID = "grid"
     ENERGY = "energy"
     WAVESHARE = "waveshare"
+
 
 class InverterFeature(Enum):
     PV = "pv"
@@ -28,6 +30,7 @@ class InverterFeature(Enum):
     LV_BATTERY = "low_voltage_battery"
     ZONNEPLAN = "zonneplan"
     AC_COUPLING = "ac_coupling"
+
 
 class Category(Enum):
     BASIC_INFORMATION = "Basic Information"
@@ -59,6 +62,7 @@ class Category(Enum):
     GENERATOR_SETTING = "Generator Setting"
     HISTORY_DATA_QUERY_SETTING = "History Data Query Setting"
     REMOTE_DISPATCH_SETTING = "Remote Dispatch Setting"
+
 
 class DataType(Enum):
     U16 = "U16"

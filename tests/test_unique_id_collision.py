@@ -31,13 +31,7 @@ class TestSensorCollision(unittest.TestCase):
 
         definition = {
             "poll_speed": PollSpeed.NORMAL,
-            "entities": [
-                {
-                    "name": "Active Power",
-                    "register": [3000],
-                    "unique": "active_power"
-                }
-            ]
+            "entities": [{"name": "Active Power", "register": [3000], "unique": "active_power"}],
         }
 
         group_a = SolisSensorGroup(self.hass, definition, controller_a)
@@ -61,17 +55,13 @@ class TestSensorCollision(unittest.TestCase):
         controller_a.device_serial_number = "SN_A"
 
         controller_b = MagicMock()
-        controller_b.host = "192.168.1.20" # Different IP!
+        controller_b.host = "192.168.1.20"  # Different IP!
         controller_b.port = 502
         controller_b.device_id = 1
         controller_b.inverter_config = self.inverter_config
         controller_b.device_serial_number = "SN_B"
 
-        entity_def = {
-            "name": "Status",
-            "unique": "inverter_status",
-            "register": []
-        }
+        entity_def = {"name": "Status", "unique": "inverter_status", "register": []}
 
         # Simulating __init__.py logic
         domain = "solis_modbus"
@@ -102,13 +92,7 @@ class TestSensorCollision(unittest.TestCase):
 
         definition = {
             "poll_speed": PollSpeed.NORMAL,
-            "entities": [
-                {
-                    "name": "Active Power",
-                    "register": [3000],
-                    "unique": "active_power"
-                }
-            ]
+            "entities": [{"name": "Active Power", "register": [3000], "unique": "active_power"}],
         }
 
         group_a = SolisSensorGroup(self.hass, definition, controller_a)
@@ -121,6 +105,7 @@ class TestSensorCollision(unittest.TestCase):
         print(f"Sensor B Unique ID: {sensor_b.unique_id}")
 
         self.assertNotEqual(sensor_a.unique_id, sensor_b.unique_id, "Unique IDs should distinguish by Port if Host is same")
+
 
 if __name__ == "__main__":
     unittest.main()
