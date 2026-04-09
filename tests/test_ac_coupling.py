@@ -1,6 +1,5 @@
-import pytest
-from custom_components.solis_modbus.data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterOptions
 from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
+from custom_components.solis_modbus.data.solis_config import InverterConfig, InverterOptions
 
 
 def test_ac_coupling_feature_enabled():
