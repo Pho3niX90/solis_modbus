@@ -192,9 +192,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 valid, err_msg = await self._validate_config(data)
                 if valid:
-                    return self.async_update_reload_and_abort(
-                        entry, data=data
-                    )
+                    return self.async_update_reload_and_abort(entry, data=data)
                 errors["base"] = err_msg or "Cannot connect to Modbus device. Please check your configuration."
 
         # 1. Select the full schema (TCP or Serial) so reconfigure shows all fields
@@ -206,15 +204,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 2. Pre-fill form with current entry data/options (serial, model, host, etc.)
         current_config = {**entry.data, **entry.options}
-        schema_with_suggestions = self.add_suggested_values_to_schema(
-            vol.Schema(source_schema), current_config
-        )
+        schema_with_suggestions = self.add_suggested_values_to_schema(vol.Schema(source_schema), current_config)
 
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=schema_with_suggestions,
-            errors=errors
-        )
+        return self.async_show_form(step_id="reconfigure", data_schema=schema_with_suggestions, errors=errors)
 
     async def _create_entry_from_input(self, data):
         """Validate and create the entry from input data."""
