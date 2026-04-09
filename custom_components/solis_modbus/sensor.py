@@ -37,4 +37,5 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     @callback
     def update(now):
         """Update Modbus data periodically."""
+
     return True

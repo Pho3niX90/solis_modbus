@@ -25,8 +25,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
-# TODO: decrease to 120
-line-length = 200
+line-length = 160
 
 [tool.ruff.lint]
 select = [

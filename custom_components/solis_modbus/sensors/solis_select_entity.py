@@ -10,7 +10,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SolisSelectEntity(RestoreEntity, SelectEntity):
-
     def __init__(self, hass, modbus_controller, entity_definition) -> None:
         self._hass = hass
         self._modbus_controller: ModbusController = modbus_controller
@@ -29,11 +28,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             return
 
         # Sort by number of requires descending to prioritize more specific matches
-        sorted_options = sorted(
-            self._attr_options_raw,
-            key=lambda e: len(e.get("requires", [])) if "requires" in e else 0,
-            reverse=True
-        )
+        sorted_options = sorted(self._attr_options_raw, key=lambda e: len(e.get("requires", [])) if "requires" in e else 0, reverse=True)
 
         for e in sorted_options:
             on_value = e.get("on_value")
@@ -96,8 +91,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         else:
             new_register_value: int = on_value
 
-        _LOGGER.debug(
-            f"Attempting bit {bit_position} to {True} in register {self._register}. New value for register {new_register_value}")
+        _LOGGER.debug(f"Attempting bit {bit_position} to {True} in register {self._register}. New value for register {new_register_value}")
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
             self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))

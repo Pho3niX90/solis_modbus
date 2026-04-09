@@ -8,7 +8,19 @@ from homeassistant.helpers.template import is_number
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from custom_components.solis_modbus.client_manager import ModbusClientManager
-from custom_components.solis_modbus.const import CONN_TYPE_TCP, CONTROLLER, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS, DOMAIN, MANUFACTURER, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.const import (
+    CONN_TYPE_TCP,
+    CONTROLLER,
+    DEFAULT_BAUDRATE,
+    DEFAULT_BYTESIZE,
+    DEFAULT_PARITY,
+    DEFAULT_STOPBITS,
+    DOMAIN,
+    MANUFACTURER,
+    REGISTER,
+    SLAVE,
+    VALUE,
+)
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
 from custom_components.solis_modbus.helpers import cache_save
@@ -19,14 +31,29 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ModbusController:
-    def __init__(self, hass, inverter_config: InverterConfig, sensor_groups: list[SolisSensorGroup] = None,
-                 derived_sensors: list[SolisDerivedSensor] = None, device_id=1, fast_poll=5, normal_poll=15,
-                 slow_poll=30, connection_type=CONN_TYPE_TCP,
-                 # TCP parameters
-                 host=None, port=502, identification=None,
-                 # Serial parameters
-                 serial_port=None, baudrate=DEFAULT_BAUDRATE, bytesize=DEFAULT_BYTESIZE,
-                 parity=DEFAULT_PARITY, stopbits=DEFAULT_STOPBITS, serial_number=None):
+    def __init__(
+        self,
+        hass,
+        inverter_config: InverterConfig,
+        sensor_groups: list[SolisSensorGroup] = None,
+        derived_sensors: list[SolisDerivedSensor] = None,
+        device_id=1,
+        fast_poll=5,
+        normal_poll=15,
+        slow_poll=30,
+        connection_type=CONN_TYPE_TCP,
+        # TCP parameters
+        host=None,
+        port=502,
+        identification=None,
+        # Serial parameters
+        serial_port=None,
+        baudrate=DEFAULT_BAUDRATE,
+        bytesize=DEFAULT_BYTESIZE,
+        parity=DEFAULT_PARITY,
+        stopbits=DEFAULT_STOPBITS,
+        serial_number=None,
+    ):
         """
         Initialize ModbusController with support for both TCP and Serial connections.
 
@@ -76,9 +103,7 @@ class ModbusController:
             self.connection_id = serial_port
             # For serial, set host to serial_port for backwards compatibility with logging
             self.host = serial_port
-            self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_serial_client(
-                serial_port, baudrate, bytesize, parity, stopbits
-            )
+            self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_serial_client(serial_port, baudrate, bytesize, parity, stopbits)
             self.poll_lock = manager.get_client_lock(self.connection_id)
 
         self.connect_failures = 0
@@ -151,23 +176,23 @@ class ModbusController:
 
                 # Different pymodbus APIs for TCP vs Serial
                 if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.write_register(address=int_register, value=int_value,
-                                                              device_id=self.device_id)
+                    result = await self.client.write_register(address=int_register, value=int_value, device_id=self.device_id)
                 else:
                     self.client.slave = self.device_id
                     result = await self.client.write_register(address=int_register, value=int_value)
                 _LOGGER.debug(
-                    f"({self.host}.{self.device_id}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}")
+                    f"({self.host}.{self.device_id}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}"
+                )
 
                 if result.isError():
-                    _LOGGER.error(
-                        f"({self.host}.{self.device_id}) Failed to write holding register {register} with value {value}: {result}")
+                    _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding register {register} with value {value}: {result}")
                     return None
 
                 cache_save(self.hass, int_register, result.registers[0])
-                self.hass.bus.async_fire(DOMAIN,
-                                         {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host,
-                                          SLAVE: self.device_id})
+                self.hass.bus.async_fire(
+                    DOMAIN,
+                    {REGISTER: int_register, VALUE: result.registers[0], CONTROLLER: self.host, SLAVE: self.device_id},
+                )
 
                 return result
         except Exception as e:
@@ -194,13 +219,13 @@ class ModbusController:
 
                 # Different pymodbus APIs for TCP vs Serial
                 if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.write_registers(address=start_register, values=values,
-                                                               device_id=self.device_id)
+                    result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
                 else:
                     self.client.slave = self.device_id
                     result = await self.client.write_registers(address=start_register, values=values)
                 _LOGGER.debug(
-                    f"({self.host}.{self.device_id}) Write Holding Register block for {len(values)} registers starting at register = {start_register}")
+                    f"({self.host}.{self.device_id}) Write Holding Register block for {len(values)} registers starting at register = {start_register}"
+                )
 
                 if result.isError():
                     _LOGGER.error(f"({self.host}.{self.device_id}) Write block failed: {result}")
@@ -208,13 +233,13 @@ class ModbusController:
 
                 for i, value in enumerate(values):
                     cache_save(self.hass, start_register + i, value)
-                    self.hass.bus.async_fire(DOMAIN,
-                                             {REGISTER: start_register + i, VALUE: value, CONTROLLER: self.host,
-                                              SLAVE: self.device_id})
+                    self.hass.bus.async_fire(
+                        DOMAIN,
+                        {REGISTER: start_register + i, VALUE: value, CONTROLLER: self.host, SLAVE: self.device_id},
+                    )
                 return result
         except Exception as e:
-            _LOGGER.error(
-                f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
+            _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
             return None
 
     async def async_write_holding_register(self, register, value):
@@ -280,12 +305,10 @@ class ModbusController:
                 self.client.slave = self.device_id
                 result = await self.client.read_input_registers(address=register, count=count)
 
-            _LOGGER.debug(
-                f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
+            _LOGGER.debug(f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
 
             if result.isError():
-                _LOGGER.error(
-                    f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
+                _LOGGER.error(f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
                 return None
 
             self._last_modbus_success = datetime.now(UTC)
@@ -308,8 +331,7 @@ class ModbusController:
             await self.connect()
             return await self._async_read_input_register_raw(register, count)
         except Exception as e:
-            _LOGGER.error(
-                f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
+            _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
             return None
 
     async def async_read_holding_register(self, register, count):
@@ -333,26 +355,22 @@ class ModbusController:
                 # Different pymodbus APIs for TCP vs Serial
                 if self.connection_type == CONN_TYPE_TCP:
                     # TCP: pass slave as parameter
-                    result = await self.client.read_holding_registers(address=register, count=count,
-                                                                      device_id=self.device_id)
+                    result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
                 else:
                     # Serial: set slave on client, then call without slave parameter
                     self.client.slave = self.device_id
                     result = await self.client.read_holding_registers(address=register, count=count)
 
-                _LOGGER.debug(
-                    f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
+                _LOGGER.debug(f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
 
                 if result.isError():
-                    _LOGGER.error(
-                        f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
+                    _LOGGER.error(f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
                     return None
 
                 self._last_modbus_success = datetime.now(UTC)
                 return result.registers
         except Exception as e:
-            _LOGGER.error(
-                f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
+            _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
             return None
 
     async def connect(self):
@@ -381,8 +399,7 @@ class ModbusController:
                 return True
             else:
                 self.connect_failures += 1
-                _LOGGER.debug(
-                    f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
+                _LOGGER.debug(f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
                 return False
         except Exception as e:
             self.connect_failures += 1
@@ -445,7 +462,7 @@ class ModbusController:
         return {
             PollSpeed.FAST: self._poll_interval_fast,
             PollSpeed.NORMAL: self._poll_interval_normal,
-            PollSpeed.SLOW: self._poll_interval_slow
+            PollSpeed.SLOW: self._poll_interval_slow,
         }
 
     @property

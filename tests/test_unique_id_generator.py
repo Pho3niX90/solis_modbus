@@ -50,5 +50,6 @@ class TestUniqueIdGenerator(unittest.TestCase):
         expected_id = f"{DOMAIN}_SN123456_test_sensor"
         self.assertEqual(unique_id, expected_id, "Serial Number should take precedence over Identification")
 
+
 if __name__ == "__main__":
     unittest.main()
