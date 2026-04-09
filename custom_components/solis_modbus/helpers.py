@@ -1,16 +1,13 @@
 import logging
 import struct
 from datetime import datetime
-from typing import List
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_utils
 
 from custom_components.solis_modbus import DOMAIN
-from custom_components.solis_modbus.const import (
-    DRIFT_COUNTER, VALUES, CONTROLLER
-)
+from custom_components.solis_modbus.const import CONTROLLER, DRIFT_COUNTER, VALUES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +21,7 @@ def hex_to_ascii(hex_value):
     byte2 = decimal_value & 0xFF
 
     # Convert bytes to ASCII characters
-    ascii_chars = ''.join([chr(byte) for byte in [byte1, byte2]])
+    ascii_chars = "".join([chr(byte) for byte in [byte1, byte2]])
 
     return ascii_chars
 
@@ -33,47 +30,39 @@ def unique_id_generator(controller, third_value, fourth_value=None):
     # new method to generate unique id
     if fourth_value is None:
         if controller.device_serial_number is not None:
-            return "{}_{}_{}".format(DOMAIN, controller.device_serial_number, third_value)
+            return f"{DOMAIN}_{controller.device_serial_number}_{third_value}"
 
         if controller.identification is not None:
-            return "{}_{}_{}".format(DOMAIN, controller.identification, third_value)
+            return f"{DOMAIN}_{controller.identification}_{third_value}"
 
-        return "{}_{}_{}".format(DOMAIN, controller.host, third_value)
+        return f"{DOMAIN}_{controller.host}_{third_value}"
     else:
         if controller.device_serial_number is not None:
-            return "{}_{}_{}_{}".format(DOMAIN, controller.device_serial_number, third_value, fourth_value)
+            return f"{DOMAIN}_{controller.device_serial_number}_{third_value}_{fourth_value}"
 
         if controller.identification is not None:
-            return "{}_{}_{}_{}".format(DOMAIN, controller.identification, third_value, fourth_value)
+            return f"{DOMAIN}_{controller.identification}_{third_value}_{fourth_value}"
 
-        return "{}_{}_{}_{}".format(DOMAIN, controller.host, third_value, fourth_value)
+        return f"{DOMAIN}_{controller.host}_{third_value}_{fourth_value}"
 
 
 def unique_id_generator_binary(controller, register, bit_position, on_value):
     if controller.device_serial_number is not None:
-        return "{}_{}_{}_{}".format(DOMAIN, controller.device_serial_number, register,
-                                    on_value if on_value is not None else bit_position)
+        return f"{DOMAIN}_{controller.device_serial_number}_{register}_{on_value if on_value is not None else bit_position}"
     if controller.identification is not None:
-        return "{}_{}_{}_{}".format(DOMAIN, controller.identification, register,
-                                    on_value if on_value is not None else bit_position)
+        return f"{DOMAIN}_{controller.identification}_{register}_{on_value if on_value is not None else bit_position}"
 
-    return "{}_{}_{}_{}".format(DOMAIN,
-                                controller.host,
-                                register,
-                                on_value if on_value is not None else bit_position)
+    return f"{DOMAIN}_{controller.host}_{register}_{on_value if on_value is not None else bit_position}"
 
 
 def extract_serial_number(values):
-    packed = struct.pack('>' + 'H' * len(values), *values)
-    return packed.decode('ascii', errors='ignore').strip('\x00\r\n ')
+    packed = struct.pack(">" + "H" * len(values), *values)
+    return packed.decode("ascii", errors="ignore").strip("\x00\r\n ")
 
 
 def clock_drift_test(hass, controller, hours, minutes, seconds):
     current_time = dt_utils.now()
-    device_time = datetime(
-        current_time.year, current_time.month, current_time.day, hours, minutes, seconds,
-        tzinfo=current_time.tzinfo
-    )
+    device_time = datetime(current_time.year, current_time.month, current_time.day, hours, minutes, seconds, tzinfo=current_time.tzinfo)
     total_drift = (current_time - device_time).total_seconds()
 
     # Ensure structure
@@ -85,9 +74,7 @@ def clock_drift_test(hass, controller, hours, minutes, seconds):
     if abs(total_drift) > 60:
         if drift_counter > 5:
             if controller.connected():
-                hass.create_task(controller.async_write_holding_registers(
-                    43003, [current_time.hour, current_time.minute, current_time.second]
-                ))
+                hass.create_task(controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second]))
                 clock_adjusted = True
         else:
             hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
@@ -173,7 +160,7 @@ def get_controller(hass: HomeAssistant, host: str, slave: int = 1):
     return None
 
 
-def split_s32(s32_values: List[int]):
+def split_s32(s32_values: list[int]):
     high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
     low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
 
@@ -181,7 +168,7 @@ def split_s32(s32_values: List[int]):
     return (high_word << 16) | (low_word & 0xFFFF)
 
 
-def _any_in(target: List[int], collection: set[int]) -> bool:
+def _any_in(target: list[int], collection: set[int]) -> bool:
     return any(item in collection for item in target)
 
 

@@ -1,11 +1,8 @@
-from typing import List
-
-from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
+from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
 
 
 class InverterOptions:
-    def __init__(self, pv: bool = True, battery: bool = True, hv_battery: bool = False, generator: bool = False,
-                 v2: bool = True):
+    def __init__(self, pv: bool = True, battery: bool = True, hv_battery: bool = False, generator: bool = False, v2: bool = True):
         self.pv = pv
         self.battery = battery
         self.hv_battery = hv_battery
@@ -14,9 +11,16 @@ class InverterOptions:
 
 
 class InverterConfig:
-    def __init__(self, model: str, wattage: List[int], phases: int, type: InverterType,
-                 options: InverterOptions = InverterOptions(), connection="S2_WL_ST",
-                 features=None):
+    def __init__(
+        self,
+        model: str,
+        wattage: list[int],
+        phases: int,
+        type: InverterType,
+        options: InverterOptions = InverterOptions(),
+        connection="S2_WL_ST",
+        features=None,
+    ):
         if features is None:
             features = []
         self.model = model
@@ -46,47 +50,67 @@ class InverterConfig:
 
 # TODO: Need to find a naming convention, and a better way to handle sub models to more finely control the power
 SOLIS_INVERTERS = [
-    InverterConfig(model="S6-EH1P", wattage=[3000, 3600, 5000, 6000, 8000], phases=1, type=InverterType.HYBRID,
-                   features=[InverterFeature.SMART_PORT]),
-    InverterConfig(model="S6-EH2P", wattage=[9600, 11400, 12000, 14000, 16000], phases=3, type=InverterType.HYBRID,
-                   features=[InverterFeature.SMART_PORT]),
-    InverterConfig(model="S6-EH3P", wattage=[8000, 10000, 12000, 15000], phases=3, type=InverterType.HYBRID,
-                   features=[InverterFeature.SMART_PORT]),
-    InverterConfig(model="S6-EO1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID,
-                   features=[InverterFeature.SMART_PORT]),
-    InverterConfig(model="S6-GR1P", wattage=[3000, 3600, 4000, 4600, 5000, 6000], phases=1, type=InverterType.GRID,
-                   features=[InverterFeature.SMART_PORT]),
-    InverterConfig(model="S6-EH3P10K-H-ZP", wattage=[10000], phases=3, type=InverterType.HYBRID,
-                   features=[InverterFeature.SMART_PORT, InverterFeature.TCP, InverterFeature.ZONNEPLAN]),
-    InverterConfig(model="S5-EH1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID,
-                   features=[]),
-    InverterConfig(model="S5-EO1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID,
-                   features=[]),
-    InverterConfig(model="S5-GR1P", wattage=[7000, 10000, 10000], phases=1, type=InverterType.GRID,
-                   features=[]),
-    InverterConfig(model="S5-GR3P", wattage=[5000, 10000], phases=3, type=InverterType.GRID,
-                   features=[]),
-    InverterConfig(model="S5-GC", wattage=[25000, 30000, 33000, 36000, 40000, 50000, 60000], phases=3,
-                   type=InverterType.GRID,
-                   features=[]),
-    InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID,
-                   features=[]),
-    InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID,
-                   features=[]),
-    InverterConfig(model="RHI-3P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID,
-                   features=[]),
-    InverterConfig(model="RAI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.ENERGY,
-                   features=[]),
-    InverterConfig(model="RAI-3K-48ES-5G", wattage=[3000], phases=1, type=InverterType.HYBRID,
-                   features=[]),
-
-    InverterConfig(model="3P(3-20)K-4G",
-                   wattage=[3000, 4000, 5000, 6000, 8000, 9000, 10000, 12000, 15000, 17000, 20000], phases=3,
-                   type=InverterType.GRID,
-                   features=[InverterFeature.PV]),
-    InverterConfig(model="1P(2.5-6)K-4G", wattage=[2500, 3000, 4000, 5000, 6000], phases=1, type=InverterType.GRID,
-                   features=[]),
-
+    InverterConfig(
+        model="S6-EH1P",
+        wattage=[3000, 3600, 5000, 6000, 8000],
+        phases=1,
+        type=InverterType.HYBRID,
+        features=[InverterFeature.SMART_PORT],
+    ),
+    InverterConfig(
+        model="S6-EH2P",
+        wattage=[9600, 11400, 12000, 14000, 16000],
+        phases=3,
+        type=InverterType.HYBRID,
+        features=[InverterFeature.SMART_PORT],
+    ),
+    InverterConfig(
+        model="S6-EH3P",
+        wattage=[8000, 10000, 12000, 15000, 29900, 30000, 40000, 49000, 50000, 60000],
+        phases=3,
+        type=InverterType.HYBRID,
+        features=[InverterFeature.SMART_PORT],
+    ),
+    InverterConfig(model="S6-EO1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID, features=[InverterFeature.SMART_PORT]),
+    InverterConfig(
+        model="S6-GR1P",
+        wattage=[3000, 3600, 4000, 4600, 5000, 6000],
+        phases=1,
+        type=InverterType.GRID,
+        features=[InverterFeature.SMART_PORT],
+    ),
+    InverterConfig(model="S6-EA1P", wattage=[3600, 4500, 5000, 6000], phases=1, type=InverterType.ENERGY, features=[InverterFeature.SMART_PORT]),
+    InverterConfig(
+        model="S6-EH3P10K-H-ZP",
+        wattage=[10000],
+        phases=3,
+        type=InverterType.HYBRID,
+        features=[InverterFeature.SMART_PORT, InverterFeature.TCP, InverterFeature.ZONNEPLAN],
+    ),
+    InverterConfig(model="S5-EH1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="S5-EO1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="S5-GR1P", wattage=[7000, 10000, 10000], phases=1, type=InverterType.GRID, features=[]),
+    InverterConfig(model="S5-GR3P", wattage=[5000, 10000], phases=3, type=InverterType.GRID, features=[]),
+    InverterConfig(
+        model="S5-GC",
+        wattage=[25000, 30000, 33000, 36000, 40000, 50000, 60000],
+        phases=3,
+        type=InverterType.GRID,
+        features=[],
+    ),
+    InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="RHI-3P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="RAI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.ENERGY, features=[]),
+    InverterConfig(model="RAI-3K-48ES-5G", wattage=[3000], phases=1, type=InverterType.HYBRID, features=[]),
+    InverterConfig(
+        model="3P(3-20)K-4G",
+        wattage=[3000, 4000, 5000, 6000, 8000, 9000, 10000, 12000, 15000, 17000, 20000],
+        phases=3,
+        type=InverterType.GRID,
+        features=[InverterFeature.PV],
+    ),
+    InverterConfig(model="1P(2.5-6)K-4G", wattage=[2500, 3000, 4000, 5000, 6000], phases=1, type=InverterType.GRID, features=[]),
     InverterConfig(model="WAVESHARE", wattage=[10000], phases=3, type=InverterType.HYBRID),
 ]
 

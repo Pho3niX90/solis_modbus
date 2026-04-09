@@ -8,13 +8,23 @@ from homeassistant.config_entries import OptionsFlowWithConfigEntry
 
 from . import ModbusController
 from .const import (
-    DOMAIN, CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
-    CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
-    CONF_CONNECTION_TYPE, CONF_INVERTER_SERIAL, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
-    DEFAULT_PARITY, DEFAULT_STOPBITS
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
+    CONF_CONNECTION_TYPE,
+    CONF_INVERTER_SERIAL,
+    CONF_PARITY,
+    CONF_SERIAL_PORT,
+    CONF_STOPBITS,
+    CONN_TYPE_SERIAL,
+    CONN_TYPE_TCP,
+    DEFAULT_BAUDRATE,
+    DEFAULT_BYTESIZE,
+    DEFAULT_PARITY,
+    DEFAULT_STOPBITS,
+    DOMAIN,
 )
 from .data.enums import InverterType
-from .data.solis_config import SOLIS_INVERTERS, InverterConfig, CONNECTION_METHOD
+from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,17 +32,10 @@ _LOGGER = logging.getLogger(__name__)
 SOLIS_MODELS = {inverter.model: inverter.model for inverter in SOLIS_INVERTERS}
 
 # Connection type options
-CONNECTION_TYPES = {
-    CONN_TYPE_TCP: "TCP (WiFi Dongle)",
-    CONN_TYPE_SERIAL: "Serial (RS485)"
-}
+CONNECTION_TYPES = {CONN_TYPE_TCP: "TCP (WiFi Dongle)", CONN_TYPE_SERIAL: "Serial (RS485)"}
 
 # Parity options
-PARITY_OPTIONS = {
-    "N": "None",
-    "E": "Even",
-    "O": "Odd"
-}
+PARITY_OPTIONS = {"N": "None", "E": "Even", "O": "Odd"}
 
 # Base schema with common fields (for both TCP and Serial)
 BASE_CONFIG_SCHEMA = {
@@ -93,7 +96,6 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("poll_interval_slow"): vol.All(int, vol.Range(min=30)),
         vol.Required("model"): vol.In(SOLIS_MODELS),
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
-
         # Boolean options (Yes/No toggle)
         vol.Required("has_v2", default=True): bool,
         vol.Required("has_pv", default=True): bool,
@@ -112,6 +114,7 @@ def clean_identification(iden: str | None) -> str | None:
     iden = iden.strip().lower()
     iden = re.sub(r"[^a-z0-9_]", "_", iden)
     return re.sub(r"_+", "_", iden).strip("_")
+
 
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
@@ -140,10 +143,12 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Show connection type selector only
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_TCP): vol.In(CONNECTION_TYPES),
-            }),
-            errors=errors
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_TCP): vol.In(CONNECTION_TYPES),
+                }
+            ),
+            errors=errors,
         )
 
     async def async_step_config(self, user_input=None):
@@ -158,20 +163,14 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Remove connection_type from schema since we already have it
         if self._connection_type == CONN_TYPE_TCP:
             # Create TCP schema without connection_type field
-            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items()
-                           if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
             schema = vol.Schema(schema_dict)
         else:
             # Create Serial schema without connection_type field
-            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items()
-                           if not (hasattr(k, 'schema') and k.schema == CONF_CONNECTION_TYPE)}
+            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
             schema = vol.Schema(schema_dict)
 
-        return self.async_show_form(
-            step_id="config",
-            data_schema=schema,
-            errors=errors
-        )
+        return self.async_show_form(step_id="config", data_schema=schema, errors=errors)
 
     async def async_step_reconfigure(self, user_input=None):
         """Handle reconfiguration."""
@@ -236,11 +235,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 schema_dict = SERIAL_CONFIG_SCHEMA
 
-            return self.async_show_form(
-                step_id="config",
-                data_schema=vol.Schema(schema_dict),
-                errors=errors
-            )
+            return self.async_show_form(step_id="config", data_schema=vol.Schema(schema_dict), errors=errors)
 
         # 3. Check for Duplicates
         if CONF_INVERTER_SERIAL in data:
@@ -248,19 +243,14 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
         # 4. Create the Config Entry
-        return self.async_create_entry(
-            title=f"Solis: {data[CONF_INVERTER_SERIAL]}",
-            data=data
-        )
+        return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=data)
 
     async def _validate_config(self, user_input):
         """Validate the configuration by trying to connect to the Modbus device.
         Returns (True, None) on success, (False, error_message) on failure.
         """
         inverter_model = user_input.get("model")
-        inverter_config: InverterConfig | None = next(
-            (inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None
-        )
+        inverter_config: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
         if inverter_config is None:
             _LOGGER.warning("Invalid or unknown inverter model: %s", inverter_model)
@@ -287,7 +277,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "normal_poll": user_input.get("poll_interval_normal", 15),
             "slow_poll": user_input.get("poll_interval_slow", 15),
             "inverter_config": inverter_config,
-            "connection_type": conn_type
+            "connection_type": conn_type,
         }
 
         if conn_type == CONN_TYPE_TCP:
@@ -350,6 +340,8 @@ class ModbusOptionsFlowHandler(OptionsFlowWithConfigEntry):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        return self.async_show_form(step_id="init", data_schema=self.add_suggested_values_to_schema(
-            OPTIONS_SCHEMA, self.config_entry.options
-        ), errors=errors)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, self.config_entry.options),
+            errors=errors,
+        )

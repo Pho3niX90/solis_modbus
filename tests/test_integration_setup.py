@@ -4,7 +4,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solis_modbus.const import DOMAIN, CONTROLLER
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN
 
 
 @pytest.fixture(autouse=True)
@@ -26,19 +26,25 @@ async def test_setup_entry(hass: HomeAssistant):
             "model": "S6-EH1P",
             "poll_interval_fast": 10,
             "poll_interval_normal": 15,
-            "poll_interval_slow": 30
+            "poll_interval_slow": 30,
         },
-        title="Solis Inverter"
+        title="Solis Inverter",
     )
     config_entry.add_to_hass(hass)
 
-    with patch("custom_components.solis_modbus.modbus_controller.ModbusController.connect", return_value=True), \
-            patch("custom_components.solis_modbus.modbus_controller.ModbusController.connected", return_value=True), \
-            patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_input_register",
-                  return_value=[1, 2, 3]), \
-            patch("custom_components.solis_modbus.modbus_controller.ModbusController.process_write_queue"), \
-            patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_holding_register",
-                  return_value=[1, 2, 3]):
+    with (
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connect", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connected", return_value=True),
+        patch(
+            "custom_components.solis_modbus.modbus_controller.ModbusController.async_read_input_register",
+            return_value=[1, 2, 3],
+        ),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.process_write_queue"),
+        patch(
+            "custom_components.solis_modbus.modbus_controller.ModbusController.async_read_holding_register",
+            return_value=[1, 2, 3],
+        ),
+    ):
         # Setup the config entry
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
@@ -65,11 +71,7 @@ async def test_setup_entry_missing_serial_raises_error(hass: HomeAssistant):
     """Test setup failure when serial is missing (ConfigEntryError)."""
     # Create an entry WITHOUT a serial number
     # We set version=3 to SKIP migration and force it to hit async_setup_entry
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={"host": "1.2.3.4", "port": 502, "slave": 1, "model": "S6-EH1P"},
-        version=3
-    )
+    config_entry = MockConfigEntry(domain=DOMAIN, data={"host": "1.2.3.4", "port": 502, "slave": 1, "model": "S6-EH1P"}, version=3)
     config_entry.add_to_hass(hass)
 
     # Now this will run async_setup_entry, fail the validation, and raise ConfigEntryError

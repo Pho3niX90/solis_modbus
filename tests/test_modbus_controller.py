@@ -1,11 +1,15 @@
 import unittest
 from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.solis_modbus.const import (
-    CONN_TYPE_TCP, CONN_TYPE_SERIAL,
-    DEFAULT_BAUDRATE, DEFAULT_BYTESIZE, DEFAULT_PARITY, DEFAULT_STOPBITS
+    CONN_TYPE_SERIAL,
+    CONN_TYPE_TCP,
+    DEFAULT_BAUDRATE,
+    DEFAULT_BYTESIZE,
+    DEFAULT_PARITY,
+    DEFAULT_STOPBITS,
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.modbus_controller import ModbusController
@@ -24,7 +28,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         self.inverter_config.model = "Test Model"
 
         # Create a patcher for ModbusClientManager
-        self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
+        self.manager_patcher = patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager")
         self.mock_manager_class = self.manager_patcher.start()
         self.mock_manager = MagicMock()
         self.mock_manager_class.get_instance.return_value = self.mock_manager
@@ -48,7 +52,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
             inverter_config=self.inverter_config,
             device_id=1,
             normal_poll=15,
-            slow_poll=30
+            slow_poll=30,
         )
         self.controller.serial_number = "mock_sn"
 
@@ -161,11 +165,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
-        expected = {
-            PollSpeed.FAST: 5,
-            PollSpeed.NORMAL: 15,
-            PollSpeed.SLOW: 30
-        }
+        expected = {PollSpeed.FAST: 5, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
         self.assertEqual(expected, self.controller.poll_speed)
 
     def test_model(self):
@@ -204,7 +204,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         self.inverter_config.model = "Test Model"
 
         # Create a patcher for ModbusClientManager
-        self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
+        self.manager_patcher = patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager")
         self.mock_manager_class = self.manager_patcher.start()
         self.mock_manager = MagicMock()
         self.mock_manager_class.get_instance.return_value = self.mock_manager
@@ -232,7 +232,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
             device_id=1,
             fast_poll=5,
             normal_poll=15,
-            slow_poll=30
+            slow_poll=30,
         )
         self.controller.serial_number = "mock_sn"
 
@@ -363,11 +363,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
-        expected = {
-            PollSpeed.FAST: 5,
-            PollSpeed.NORMAL: 15,
-            PollSpeed.SLOW: 30
-        }
+        expected = {PollSpeed.FAST: 5, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
         self.assertEqual(expected, self.controller.poll_speed)
 
     def test_model(self):
@@ -403,7 +399,7 @@ class TestModbusControllerInitialization(unittest.TestCase):
         self.inverter_config.model = "Test Model"
 
         # Patch ModbusClientManager
-        self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
+        self.manager_patcher = patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager")
         self.mock_manager_class = self.manager_patcher.start()
         self.mock_manager = MagicMock()
         self.mock_manager_class.get_instance.return_value = self.mock_manager
@@ -426,7 +422,7 @@ class TestModbusControllerInitialization(unittest.TestCase):
             connection_type=CONN_TYPE_TCP,
             host="192.168.1.100",
             port=502,
-            inverter_config=self.inverter_config
+            inverter_config=self.inverter_config,
         )
 
         self.assertEqual(CONN_TYPE_TCP, controller.connection_type)
@@ -443,37 +439,27 @@ class TestModbusControllerInitialization(unittest.TestCase):
             serial_port="/dev/ttyUSB0",
             baudrate=9600,
             bytesize=8,
-            parity='N',
+            parity="N",
             stopbits=1,
-            inverter_config=self.inverter_config
+            inverter_config=self.inverter_config,
         )
 
         self.assertEqual(CONN_TYPE_SERIAL, controller.connection_type)
         self.assertEqual("/dev/ttyUSB0", controller.serial_port)
         self.assertEqual(9600, controller.baudrate)
         self.assertEqual("/dev/ttyUSB0", controller.connection_id)
-        self.mock_manager.get_serial_client.assert_called_once_with("/dev/ttyUSB0", 9600, 8, 'N', 1)
+        self.mock_manager.get_serial_client.assert_called_once_with("/dev/ttyUSB0", 9600, 8, "N", 1)
 
     def test_tcp_without_host_raises_error(self):
         """Test that TCP connection without host raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            ModbusController(
-                hass=self.hass,
-                connection_type=CONN_TYPE_TCP,
-                port=502,
-                inverter_config=self.inverter_config
-            )
+            ModbusController(hass=self.hass, connection_type=CONN_TYPE_TCP, port=502, inverter_config=self.inverter_config)
         self.assertIn("host is required", str(context.exception))
 
     def test_serial_without_port_raises_error(self):
         """Test that Serial connection without serial_port raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            ModbusController(
-                hass=self.hass,
-                connection_type=CONN_TYPE_SERIAL,
-                baudrate=9600,
-                inverter_config=self.inverter_config
-            )
+            ModbusController(hass=self.hass, connection_type=CONN_TYPE_SERIAL, baudrate=9600, inverter_config=self.inverter_config)
         self.assertIn("serial_port is required", str(context.exception))
 
 
@@ -487,7 +473,7 @@ class TestModbusControllerProperties(unittest.TestCase):
         self.inverter_config.model = "Test Model"
 
         # Patch ModbusClientManager
-        self.manager_patcher = patch('custom_components.solis_modbus.modbus_controller.ModbusClientManager')
+        self.manager_patcher = patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager")
         self.mock_manager_class = self.manager_patcher.start()
         self.mock_manager = MagicMock()
         self.mock_manager_class.get_instance.return_value = self.mock_manager
@@ -505,7 +491,7 @@ class TestModbusControllerProperties(unittest.TestCase):
             derived_sensors=self.derived_sensors,
             serial_number="SN123456",
             connection_type=CONN_TYPE_TCP,
-            host="1.2.3.4"
+            host="1.2.3.4",
         )
 
     def tearDown(self):

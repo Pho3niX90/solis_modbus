@@ -1,4 +1,3 @@
-
 def decode_serial(registers):
     serial = ""
     for reg in registers:
@@ -6,9 +5,12 @@ def decode_serial(registers):
         # Check if 0 to skip
         b1 = (reg >> 8) & 0xFF
         b2 = reg & 0xFF
-        if b1: serial += chr(b1)
-        if b2: serial += chr(b2)
+        if b1:
+            serial += chr(b1)
+        if b2:
+            serial += chr(b2)
     return serial.strip()
+
 
 # Example: "1402..."
 # '1' = 0x31, '4' = 0x34 -> 0x3134 = 12596

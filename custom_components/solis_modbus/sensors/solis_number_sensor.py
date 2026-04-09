@@ -1,11 +1,10 @@
 import logging
-from typing import List
 
 from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
 from homeassistant.core import callback
 from homeassistant.helpers.template import is_number
 
-from custom_components.solis_modbus.const import REGISTER, DOMAIN, VALUE, CONTROLLER, SLAVE
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.helpers import cache_get, is_correct_controller
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
@@ -23,10 +22,9 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._attr_has_entity_name = True
         self._attr_unique_id = sensor.unique_id
 
-        self._register: List[int] = sensor.registrars
+        self._register: list[int] = sensor.registrars
         _LOGGER.debug(f"read_register = {sensor.registrars} | write_register {sensor.write_register}")
-        self._write_register: int = sensor.write_register if sensor.write_register is not None else self._register[
-            0] if len(self._register) == 1 else None
+        self._write_register: int = sensor.write_register if sensor.write_register is not None else self._register[0] if len(self._register) == 1 else None
 
         self._device_class = sensor.device_class
         self._unit_of_measurement = sensor.unit_of_measurement
@@ -119,9 +117,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         register_value = round(value / self._multiplier)
 
         # Write to Modbus controller
-        self._hass.create_task(
-            self.base_sensor.controller.async_write_holding_register(self._write_register, int(register_value))
-        )
+        self._hass.create_task(self.base_sensor.controller.async_write_holding_register(self._write_register, int(register_value)))
 
         self._attr_native_value = value
         self.schedule_update_ha_state()
