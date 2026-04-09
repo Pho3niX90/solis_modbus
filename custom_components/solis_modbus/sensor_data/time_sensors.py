@@ -1,4 +1,5 @@
-from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
+from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
+
 
 def get_time_sensors(inverter_config):
     time_definitions = []
@@ -63,9 +64,9 @@ def get_time_sensors(inverter_config):
             {"name": "Grid Time of Use Discharge Start (Slot 6)", "register": 43788, "enabled": True},
             {"name": "Grid Time of Use Discharge End (Slot 6)", "register": 43790, "enabled": True},
         ])
-    
+
     # Add unique key to all - unique key based on register
     for x in time_definitions:
         x['unique'] = f"time_entity_{x['register']}"
-        
+
     return time_definitions

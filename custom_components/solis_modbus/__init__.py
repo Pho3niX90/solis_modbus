@@ -11,19 +11,29 @@ from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
-    DOMAIN, CONTROLLER, TIME_ENTITIES,
-    CONN_TYPE_TCP, CONN_TYPE_SERIAL, CONF_SERIAL_PORT,
-    CONF_BAUDRATE, CONF_BYTESIZE, CONF_PARITY, CONF_STOPBITS,
-    CONF_CONNECTION_TYPE, CONF_INVERTER_SERIAL, DEFAULT_BAUDRATE, DEFAULT_BYTESIZE,
-    DEFAULT_PARITY, DEFAULT_STOPBITS, CONF_SLAVE
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
+    CONF_CONNECTION_TYPE,
+    CONF_INVERTER_SERIAL,
+    CONF_PARITY,
+    CONF_SERIAL_PORT,
+    CONF_SLAVE,
+    CONF_STOPBITS,
+    CONN_TYPE_SERIAL,
+    CONN_TYPE_TCP,
+    CONTROLLER,
+    DEFAULT_BAUDRATE,
+    DEFAULT_BYTESIZE,
+    DEFAULT_PARITY,
+    DEFAULT_STOPBITS,
+    DOMAIN,
+    TIME_ENTITIES,
 )
-from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
 from .data_retrieval import DataRetrieval
 from .helpers import get_controller, set_controller, unique_id_generator
 from .modbus_controller import ModbusController
-from .sensors.solis_base_sensor import SolisSensorGroup, SolisBaseSensor
-from .sensors.solis_derived_sensor import SolisDerivedSensor
+from .sensors.solis_base_sensor import SolisBaseSensor, SolisSensorGroup
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -175,7 +185,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # defaulting
     if inverter_config is None:
         hass.components.persistent_notification.async_create(
-            f"Your Solis Modbus configuration is invalid. Please reconfigure the integration.",
+            "Your Solis Modbus configuration is invalid. Please reconfigure the integration.",
             title="Solis Modbus Configuration Issue",
             notification_id="solis_modbus_invalid_config",
         )
@@ -361,8 +371,8 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
             sensors = hybrid_sensors
             sensors_derived = hybrid_sensors_derived
 
-        from .sensor_data.time_sensors import get_time_sensors
         from .helpers import unique_id_generator
+        from .sensor_data.time_sensors import get_time_sensors
 
         def get_old_id(uid, ctrl):
             if ctrl.identification:
@@ -375,7 +385,8 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
             if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
                 continue
             for entity in group.get("entities", []):
-                if entity.get("type") == "reserve": continue
+                if entity.get("type") == "reserve":
+                    continue
                 uid_key = entity.get("unique", "reserve")
                 new_uid = unique_id_generator(controller, uid_key)
                 old_uid = get_old_id(uid_key, controller)

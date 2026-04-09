@@ -1,17 +1,13 @@
 # solis_base.py
 import logging
-from typing import Union
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.switch import SwitchDeviceClass
-from homeassistant.const import PERCENTAGE, UnitOfElectricPotential, UnitOfApparentPower, UnitOfPower, \
-    UnitOfElectricCurrent
+from homeassistant.const import PERCENTAGE, UnitOfApparentPower, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfPower
 from homeassistant.core import HomeAssistant
-from typing_extensions import List, Optional
 
-from custom_components.solis_modbus.data.enums import PollSpeed, Category, InverterFeature, DataType
-from custom_components.solis_modbus.helpers import cache_get, extract_serial_number, split_s32, _any_in, \
-    unique_id_generator
+from custom_components.solis_modbus.data.enums import Category, DataType, InverterFeature, PollSpeed
+from custom_components.solis_modbus.helpers import _any_in, cache_get, extract_serial_number, split_s32, unique_id_generator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,10 +20,10 @@ class SolisBaseSensor:
                  controller,
                  unique_id: str,
                  name: str,
-                 registrars: List[int],
+                 registrars: list[int],
                  write_register: int,
                  multiplier: float,
-                 device_class: Union[SwitchDeviceClass, SensorDeviceClass, str] = None,
+                 device_class: SwitchDeviceClass | SensorDeviceClass | str = None,
                  unit_of_measurement: UnitOfElectricPotential | UnitOfApparentPower | UnitOfElectricCurrent | UnitOfPower = None,
                  editable: bool = False,
                  state_class: SensorStateClass = None,
@@ -36,11 +32,11 @@ class SolisBaseSensor:
                  hidden=False,
                  enabled=True,
                  category: Category = None,
-                 min_value: Optional[int] = None,
-                 max_value: Optional[int] = None,
+                 min_value: int | None = None,
+                 max_value: int | None = None,
                  identification=None,
                  poll_speed=PollSpeed.NORMAL,
-                 data_type: Optional[str] = None):
+                 data_type: str | None = None):
         """
         :param name: Sensor name
         :param registrars: First register address
@@ -137,10 +133,10 @@ class SolisBaseSensor:
     def get_value(self):
         return self._convert_raw_value(self.get_raw_values)
 
-    def convert_value(self, value: List[int]):
+    def convert_value(self, value: list[int]):
         return self._convert_raw_value(value)
 
-    def _convert_raw_value(self, values: List[int]):
+    def _convert_raw_value(self, values: list[int]):
         if not values or None in values:
             return None
 
@@ -176,7 +172,7 @@ class SolisBaseSensor:
 
 
 class SolisSensorGroup:
-    sensors: List[SolisBaseSensor]
+    sensors: list[SolisBaseSensor]
 
     def __init__(self, hass, definition, controller, identification=None):
         self._sensors = list(map(lambda entity: SolisBaseSensor(

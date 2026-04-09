@@ -1,12 +1,10 @@
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.components.sensor import RestoreSensor, SensorEntity
 from homeassistant.core import HomeAssistant, callback
 
-from custom_components.solis_modbus.const import DOMAIN, SLAVE
-from custom_components.solis_modbus.const import REGISTER, VALUE, CONTROLLER
+from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.data.enums import InverterType, PollSpeed
 from custom_components.solis_modbus.helpers import cache_get, is_correct_controller
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
@@ -26,7 +24,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._attr_has_entity_name = True
         self._attr_unique_id = sensor.unique_id
 
-        self._register: List[int] = sensor.registrars
+        self._register: list[int] = sensor.registrars
 
         self._device_class = sensor.device_class
         self._unit_of_measurement = sensor.unit_of_measurement
@@ -42,7 +40,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self.poll_speed = sensor.poll_speed
 
         # Watchdog parameters
-        self._last_update = datetime.now(timezone.utc).astimezone()
+        self._last_update = datetime.now(UTC).astimezone()
         self._update_timeout = timedelta(
             minutes=self.base_sensor.controller.poll_speed.get(sensor.poll_speed, 0) + _WATCHDOG_TIMEOUT_MIN)
 
@@ -84,7 +82,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
                 if cache_get(self.hass, 3043) == 2:
                     self._attr_native_value = 0
                     self.schedule_update_ha_state()
-                    self._last_update = datetime.now(timezone.utc).astimezone()
+                    self._last_update = datetime.now(UTC).astimezone()
                     return
 
             updated_value = int(event.data.get(VALUE))
@@ -111,12 +109,12 @@ class SolisSensor(RestoreSensor, SensorEntity):
             if new_value is not None:
                 self._attr_native_value = new_value
                 self._attr_available = True
-                self._last_update = datetime.now(timezone.utc).astimezone()
+                self._last_update = datetime.now(UTC).astimezone()
                 self.schedule_update_ha_state()
 
     async def async_update(self):
         """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
-        now = datetime.now(timezone.utc).astimezone()
+        now = datetime.now(UTC).astimezone()
         if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
             _LOGGER.warning(
                 f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")

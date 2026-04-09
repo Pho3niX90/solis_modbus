@@ -1,8 +1,18 @@
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfElectricPotential, UnitOfElectricCurrent, UnitOfPower, UnitOfTime, UnitOfEnergy, \
-    UnitOfReactivePower, UnitOfFrequency, UnitOfTemperature, UnitOfApparentPower, PERCENTAGE
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfApparentPower,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfFrequency,
+    UnitOfPower,
+    UnitOfReactivePower,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 
-from custom_components.solis_modbus.data.enums import PollSpeed, InverterFeature, Category, DataType
+from custom_components.solis_modbus.data.enums import Category, DataType, InverterFeature, PollSpeed
 
 # based on RS485_MODBUS RTU Hybrid Inverter Protocol Ver3.2
 hybrid_sensors = [

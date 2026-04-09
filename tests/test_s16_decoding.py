@@ -1,8 +1,8 @@
 import unittest
-from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfTemperature
+
+from custom_components.solis_modbus.data.enums import DataType
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
-from custom_components.solis_modbus.data.enums import PollSpeed, DataType
+
 
 class MockController:
     def __init__(self):
@@ -17,7 +17,7 @@ class TestSolisBaseSensorS16(unittest.TestCase):
     def setUp(self):
         self.hass = None
         self.controller = MockController()
-        
+
     def create_sensor(self, data_type, multiplier=1):
         return SolisBaseSensor(
             hass=self.hass,
@@ -29,7 +29,7 @@ class TestSolisBaseSensorS16(unittest.TestCase):
             multiplier=multiplier,
             data_type=data_type
         )
-        
+
     def test_s16_decoding_positive(self):
         sensor = self.create_sensor(data_type=DataType.S16.value, multiplier=1)
         self.assertEqual(sensor._convert_raw_value([0]), 0)
@@ -56,7 +56,7 @@ class TestSolisBaseSensorS16(unittest.TestCase):
         self.assertEqual(sensor._convert_raw_value([1]), 0.1)
         self.assertEqual(sensor._convert_raw_value([65535]), -0.1)
         self.assertEqual(sensor._convert_raw_value([65526]), -1.0)
-        
+
     def test_u16_decoding(self):
         sensor = self.create_sensor(data_type=DataType.U16.value, multiplier=1)
         self.assertEqual(sensor._convert_raw_value([0]), 0)

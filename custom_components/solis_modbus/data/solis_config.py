@@ -1,6 +1,5 @@
-from typing import List
 
-from custom_components.solis_modbus.data.enums import InverterType, InverterFeature
+from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
 
 
 class InverterOptions:
@@ -14,7 +13,7 @@ class InverterOptions:
 
 
 class InverterConfig:
-    def __init__(self, model: str, wattage: List[int], phases: int, type: InverterType,
+    def __init__(self, model: str, wattage: list[int], phases: int, type: InverterType,
                  options: InverterOptions = InverterOptions(), connection="S2_WL_ST",
                  features=None):
         if features is None:
@@ -50,7 +49,7 @@ SOLIS_INVERTERS = [
                    features=[InverterFeature.SMART_PORT]),
     InverterConfig(model="S6-EH2P", wattage=[9600, 11400, 12000, 14000, 16000], phases=3, type=InverterType.HYBRID,
                    features=[InverterFeature.SMART_PORT]),
-    InverterConfig(model="S6-EH3P", wattage=[8000, 10000, 12000, 15000], phases=3, type=InverterType.HYBRID,
+    InverterConfig(model="S6-EH3P", wattage=[8000, 10000, 12000, 15000, 29900, 30000, 40000, 49000, 50000, 60000], phases=3, type=InverterType.HYBRID,
                    features=[InverterFeature.SMART_PORT]),
     InverterConfig(model="S6-EO1P", wattage=[4000, 5000], phases=1, type=InverterType.HYBRID,
                    features=[InverterFeature.SMART_PORT]),
