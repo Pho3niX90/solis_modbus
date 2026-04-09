@@ -51,7 +51,6 @@ def make_entity(data_type, multiplier=10):
 
 
 class TestS16Encoding(unittest.TestCase):
-
     def _written_value(self, controller):
         args, _ = controller.async_write_holding_register.call_args
         return args[1]

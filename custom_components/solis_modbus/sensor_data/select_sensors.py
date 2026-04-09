@@ -13,7 +13,7 @@ def get_select_sensors(inverter_config):
                     {"name": "OFF", "on_value": 0},
                     {"name": "System Grid Connection Point", "on_value": 1},
                     {"name": "Inverter AC Grid Port", "on_value": 2},
-                ]
+                ],
             },
             {
                 "register": 43135,
