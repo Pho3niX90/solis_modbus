@@ -32,6 +32,7 @@ def mock_base_sensor(mock_controller):
     sensor.hidden = False
     sensor.unique_id = "test_unique_id"
     sensor.default = 50
+    sensor.data_type = None
     return sensor
 
 
@@ -77,6 +78,7 @@ async def test_solis_number_entity_updates(hass, mock_controller):
     sensor.device_class = "battery"
     sensor.unit_of_measurement = "%"
     sensor.state_class = "measurement"
+    sensor.data_type = None
 
     entity = SolisNumberEntity(hass, sensor)
     assert entity._hass is not None
