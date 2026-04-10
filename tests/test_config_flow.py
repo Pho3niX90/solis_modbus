@@ -146,3 +146,61 @@ async def test_flow_user_duplicates(hass: HomeAssistant):
 
         assert result["type"] == data_entry_flow.FlowResultType.ABORT
         assert result["reason"] == "already_configured"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_suggestions_use_merged_data_and_options(hass: HomeAssistant):
+    """Feature toggles live in entry.data until options are saved; the form must pre-fill from data."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="SNOPT1",
+        version=3,
+        data={
+            "connection_type": CONN_TYPE_TCP,
+            "inverter_serial": "SNOPT1",
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "model": "S6-EH1P",
+            "connection": "S2_WL_ST",
+            "has_v2": True,
+            "has_pv": True,
+            "has_ac_coupling": True,
+            "has_battery": True,
+            "has_hv_battery": False,
+            "has_generator": True,
+            "poll_interval_fast": 10,
+            "poll_interval_normal": 15,
+            "poll_interval_slow": 30,
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "init"
+
+    schema = result["data_schema"]
+    ac_key = next(k for k in schema.schema if getattr(k, "schema", None) == "has_ac_coupling")
+    gen_key = next(k for k in schema.schema if getattr(k, "schema", None) == "has_generator")
+    assert (ac_key.description or {}).get("suggested_value") is True
+    assert (gen_key.description or {}).get("suggested_value") is True
+
+    user_input = {
+        "poll_interval_fast": 10,
+        "poll_interval_normal": 15,
+        "poll_interval_slow": 30,
+        "model": "S6-EH1P",
+        "connection": "S2_WL_ST",
+        "has_v2": True,
+        "has_pv": True,
+        "has_ac_coupling": True,
+        "has_battery": True,
+        "has_hv_battery": False,
+        "has_generator": True,
+    }
+    result = await hass.config_entries.options.async_configure(result["flow_id"], user_input=user_input)
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert entry.options["has_ac_coupling"] is True
+    assert entry.options["has_generator"] is True

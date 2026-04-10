@@ -24,7 +24,7 @@ from .const import (
     DOMAIN,
 )
 from .data.enums import InverterType
-from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig
+from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig, inverter_options_from_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -242,21 +242,14 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         Returns (True, None) on success, (False, error_message) on failure.
         """
         inverter_model = user_input.get("model")
-        inverter_config: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
+        inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
-        if inverter_config is None:
+        if inverter_template is None:
             _LOGGER.warning("Invalid or unknown inverter model: %s", inverter_model)
             return False, "Invalid or unknown inverter model. Please select a model from the list."
 
-        inverter_config.options = {
-            "v2": user_input.get("has_v2", True),
-            "pv": user_input.get("has_pv", True),
-            "ac_coupling": user_input.get("has_ac_coupling", False),
-            "generator": user_input.get("has_generator", True),
-            "battery": user_input.get("has_battery", True),
-            "hv_battery": user_input.get("has_hv_battery", False),
-        }
-        inverter_config.connection = user_input.get("connection", "S2_WL_ST")
+        user_options = inverter_options_from_config(user_input, inverter_template)
+        inverter_config = inverter_template.clone_with_options(user_options, user_input.get("connection", "S2_WL_ST"))
 
         conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
 
@@ -330,10 +323,12 @@ class ModbusOptionsFlowHandler(OptionsFlowWithConfigEntry):
         errors = {}
 
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            merged = {**self.config_entry.options, **user_input}
+            return self.async_create_entry(title="", data=merged)
 
+        current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(
             step_id="init",
-            data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, self.config_entry.options),
+            data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, current),
             errors=errors,
         )
