@@ -116,7 +116,7 @@ class SolisBaseSensor:
         try:
             new_max = max_default
             if self.unit_of_measurement == UnitOfElectricCurrent.AMPERE:
-                new_max = round((self.controller.inverter_config.wattage_chosen / 44) / 10) * 10
+                new_max = round((self.controller.inverter_config.wattage_chosen / 44) / 10) * 20
             elif self.unit_of_measurement == UnitOfPower.WATT:
                 new_max = self.controller.inverter_config.wattage_chosen
             elif self.unit_of_measurement == UnitOfPower.KILO_WATT:
