@@ -1,5 +1,10 @@
 from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
-from custom_components.solis_modbus.data.solis_config import InverterConfig, InverterOptions
+from custom_components.solis_modbus.data.solis_config import (
+    SOLIS_INVERTERS,
+    InverterConfig,
+    InverterOptions,
+    inverter_options_from_config,
+)
 
 
 def test_ac_coupling_feature_enabled():
@@ -15,6 +20,27 @@ def test_ac_coupling_feature_disabled_by_default():
     config = InverterConfig(model="S6-EH1P", wattage=[8000], phases=1, type=InverterType.HYBRID)
 
     assert InverterFeature.AC_COUPLING not in config.features
+
+
+def test_clone_applies_user_options_and_leaves_templates_untouched():
+    """User options must rebuild features; SOLIS_INVERTERS entries must stay immutable."""
+    template = next(inv for inv in SOLIS_INVERTERS if inv.model == "S6-EH1P")
+    feats_before = list(template.features)
+
+    user = {
+        "has_v2": True,
+        "has_pv": True,
+        "has_ac_coupling": True,
+        "has_battery": True,
+        "has_hv_battery": False,
+        "has_generator": True,
+    }
+    clone = template.clone_with_options(inverter_options_from_config(user, template), "S2_WL_ST")
+
+    assert InverterFeature.AC_COUPLING in clone.features
+    assert InverterFeature.GENERATOR in clone.features
+    assert template.features == feats_before
+    assert InverterFeature.AC_COUPLING not in template.features
 
 
 def test_hybrid_sensors_ac_coupling_requirement():

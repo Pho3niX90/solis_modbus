@@ -30,7 +30,7 @@ from .const import (
     DOMAIN,
     TIME_ENTITIES,
 )
-from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType
+from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
 from .helpers import get_controller, set_controller, unique_id_generator
 from .modbus_controller import ModbusController
@@ -167,10 +167,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         old_type = config.get("type", "hybrid")
         inverter_model = "S6-EH3P" if old_type == "hybrid" else ("WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
 
-    inverter_config: InverterConfig = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
+    inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
     # defaulting
-    if inverter_config is None:
+    if inverter_template is None:
         hass.components.persistent_notification.async_create(
             "Your Solis Modbus configuration is invalid. Please reconfigure the integration.",
             title="Solis Modbus Configuration Issue",
@@ -178,16 +178,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
         raise ConfigEntryError
 
-    inverter_config.options = {
-        "v2": config.get("has_v2", True),
-        "inverter_serial": inverter_serial,
-        "pv": config.get("has_pv", inverter_config.type in [InverterType.HYBRID, InverterType.GRID, InverterType.WAVESHARE]),
-        "generator": config.get("has_generator", True),
-        "ac_coupling": config.get("has_ac_coupling", False),
-        "battery": config.get("has_battery", True),
-        "hv_battery": config.get("has_hv_battery", False),
-    }
-    inverter_config.connection = config.get("connection", "S2_WL_ST")
+    user_options = inverter_options_from_config(config, inverter_template)
+    inverter_config = inverter_template.clone_with_options(user_options, config.get("connection", "S2_WL_ST"))
 
     # Load correct sensor data based on inverter type
     if inverter_config.type in [InverterType.STRING, InverterType.GRID]:
@@ -338,9 +330,11 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
         old_type = config.get("type", "hybrid")
         inverter_model = "S6-EH3P" if old_type == "hybrid" else ("WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
 
-    inverter_config: InverterConfig = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
+    inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
-    if inverter_config:
+    if inverter_template:
+        user_options = inverter_options_from_config(config, inverter_template)
+        inverter_config = inverter_template.clone_with_options(user_options, config.get("connection", "S2_WL_ST"))
         if inverter_config.type in [InverterType.STRING, InverterType.GRID]:
             from .sensor_data.string_sensors import string_sensors, string_sensors_derived
 
