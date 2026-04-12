@@ -2,10 +2,11 @@ import logging
 
 from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
 from homeassistant.core import callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.template import is_number
 
-from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
-from custom_components.solis_modbus.helpers import cache_get, is_correct_controller
+from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.helpers import cache_get, is_correct_controller, register_update_signal
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,8 +56,14 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
             self._attr_native_value = state.native_value
             # self.adjust_min_max_step(state.native_min_value, state.native_max_value, state.native_step)
 
-        # 🔥 Register event listener for real-time updates
-        self._hass.bus.async_listen(DOMAIN, self.handle_modbus_update)
+        for reg in set(self._register):
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    self._hass,
+                    register_update_signal(self.base_sensor.controller, reg),
+                    self.handle_modbus_update,
+                )
+            )
 
     def adjust_min_max_step(self, min_wanted: float | None, max_wanted: float | None, step_wanted: float | None):
         # float(43016) & equalization(43017) voltages, and rated capacity(43019)
@@ -76,17 +83,17 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
             self._attr_native_step = step_wanted
 
     @callback
-    def handle_modbus_update(self, event):
-        """Callback function that updates sensor when new register data is available."""
-        updated_register = int(event.data.get(REGISTER))
-        updated_controller = str(event.data.get(CONTROLLER))
-        updated_controller_slave = int(event.data.get(SLAVE))
+    def handle_modbus_update(self, data):
+        """Callback when register data is available (per-register dispatcher)."""
+        updated_register = int(data.get(REGISTER))
+        updated_controller = str(data.get(CONTROLLER))
+        updated_controller_slave = int(data.get(SLAVE))
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
             return  # meant for a different sensor/inverter combo
 
         if updated_register in self._register:
-            updated_value = int(event.data.get(VALUE))
+            updated_value = int(data.get(VALUE))
 
             self._received_values[updated_register] = updated_value
 

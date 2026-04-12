@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from homeassistant.core import Event, HomeAssistant
+from homeassistant.core import HomeAssistant
 
-from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 
 
@@ -41,7 +41,7 @@ def test_derived_sensor_status(hass: HomeAssistant, mock_base_sensor):
     event_data = {REGISTER: 33095, VALUE: 3, CONTROLLER: "1.2.3.4", SLAVE: 1}
 
     with patch.object(sensor, "schedule_update_ha_state"):
-        sensor.handle_modbus_update(Event(DOMAIN, data=event_data))
+        sensor.handle_modbus_update(event_data)
 
     assert sensor.native_value == "Generating"
 
@@ -56,7 +56,7 @@ def test_derived_sensor_dc_power(hass: HomeAssistant, mock_base_sensor):
     event_data = {REGISTER: 33050, VALUE: 10, CONTROLLER: "1.2.3.4", SLAVE: 1}
 
     with patch.object(sensor, "schedule_update_ha_state"):
-        sensor.handle_modbus_update(Event(DOMAIN, data=event_data))
+        sensor.handle_modbus_update(event_data)
 
     assert sensor.native_value == 2000
 
@@ -72,7 +72,7 @@ def test_derived_sensor_wrong_controller(hass: HomeAssistant, mock_base_sensor):
     }
 
     with patch.object(sensor, "schedule_update_ha_state"):
-        sensor.handle_modbus_update(Event(DOMAIN, data=event_data))
+        sensor.handle_modbus_update(event_data)
 
     assert sensor.native_value is None
 
@@ -85,7 +85,7 @@ def test_derived_sensor_incomplete_data(hass: HomeAssistant, mock_base_sensor):
     event_data = {REGISTER: 33050, VALUE: 10, CONTROLLER: "1.2.3.4", SLAVE: 1}
 
     with patch.object(sensor, "schedule_update_ha_state"):
-        sensor.handle_modbus_update(Event(DOMAIN, data=event_data))
+        sensor.handle_modbus_update(event_data)
 
     assert sensor.native_value is None
     assert sensor._received_values[33050] == 10
