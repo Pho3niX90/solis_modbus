@@ -34,14 +34,20 @@ select = [
     "W",   # pycodestyle warnings
     "F",   # pyflakes
     "I",   # isort
-# TODO: enable flake8 rules
-#    "ANN", # flake8-annotations
-#    "ARG", # flake8-argument-names    
-#    "B",   # flake8-bugbear
-#    "C4",  # flake8-comprehensions
-#    "TCH", # flake8-type-checking
-#    "PYI", # flake8-pyi
-#    "Q",   # flake8-quotes    
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "PIE", # flake8-pie
+    "RUF", # ruff-specific rules
     "UP",  # pyupgrade
     "N",   # pep8-naming
+# TODO: enable when ready for larger refactoring
+#    "ANN", # flake8-annotations
+#    "ARG", # flake8-argument-names
+#    "Q",   # flake8-quotes
+#    "SIM", # flake8-simplify
+#    "TCH", # flake8-type-checking
+#    "PYI", # flake8-pyi
+]
+ignore = [
+    "B008", # do not perform function calls in default arguments (common in HA)
 ]
