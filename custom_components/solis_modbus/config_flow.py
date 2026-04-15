@@ -317,13 +317,13 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 return True
             except Exception as e:
-                _LOGGER.warning(f"Connection failed attempt {attempt + 1}/5: {str(e)}")
+                _LOGGER.warning(f"Connection failed attempt {attempt + 1}/5: {e!s}")
                 if attempt < 4:
                     await asyncio.sleep(1)
             finally:
                 modbus_controller.close_connection()
 
-        _LOGGER.error(f"Connection failed after 5 attempts: {str(controller_params)}")
+        _LOGGER.error(f"Connection failed after 5 attempts: {controller_params!s}")
         return False
 
     def _get_user_schema(self, user_input=None):

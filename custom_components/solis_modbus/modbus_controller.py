@@ -171,7 +171,7 @@ class ModbusController:
 
                 return result
         except Exception as e:
-            _LOGGER.error(f"Failed to write holding register {register}: {str(e)}")
+            _LOGGER.error(f"Failed to write holding register {register}: {e!s}")
             return None
 
     async def _execute_write_holding_registers(self, start_register, values):
@@ -214,7 +214,7 @@ class ModbusController:
                 return result
         except Exception as e:
             _LOGGER.error(
-                f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
+                f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {e!s}")
             return None
 
     async def async_write_holding_register(self, register, value):
@@ -309,7 +309,7 @@ class ModbusController:
             return await self._async_read_input_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(
-                f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
+                f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {e!s}")
             return None
 
     async def async_read_holding_register(self, register, count):
@@ -352,7 +352,7 @@ class ModbusController:
                 return result.registers
         except Exception as e:
             _LOGGER.error(
-                f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
+                f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {e!s}")
             return None
 
     async def connect(self):
