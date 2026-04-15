@@ -52,7 +52,7 @@ BASE_CONFIG_SCHEMA = {
     vol.Optional("poll_interval_fast", default=10): vol.All(int, vol.Range(min=10)),
     vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=15)),
     vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
-    vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),
+    vol.Required("model", default=next(iter(SOLIS_MODELS.keys()))): vol.In(SOLIS_MODELS),
     # Boolean options (Yes/No toggle)
     vol.Required("has_v2", default=True): vol.Coerce(bool),
     vol.Required("has_pv", default=True): vol.Coerce(bool),
@@ -68,7 +68,7 @@ COMBINED_CONFIG_SCHEMA = {
     # TCP fields (optional)
     vol.Optional("host", default=""): str,
     vol.Optional("port", default=502): int,
-    vol.Optional("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
+    vol.Optional("connection", default=next(iter(CONNECTION_METHOD.keys()))): vol.In(CONNECTION_METHOD),
     # Serial fields (optional)
     vol.Optional(CONF_SERIAL_PORT, default="/dev/ttyUSB0"): str,
     vol.Optional(CONF_BAUDRATE, default=DEFAULT_BAUDRATE): vol.In([9600, 19200, 38400, 57600, 115200]),
@@ -82,7 +82,7 @@ TCP_CONFIG_SCHEMA = {
     **BASE_CONFIG_SCHEMA,
     vol.Required("host", default=""): str,
     vol.Required("port", default=502): int,
-    vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
+    vol.Required("connection", default=next(iter(CONNECTION_METHOD.keys()))): vol.In(CONNECTION_METHOD),
 }
 
 # Serial-specific fields (no WiFi dongle type needed)
@@ -101,7 +101,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("poll_interval_normal"): vol.All(int, vol.Range(min=15)),
         vol.Required("poll_interval_slow"): vol.All(int, vol.Range(min=30)),
         vol.Required("model"): vol.In(SOLIS_MODELS),
-        vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
+        vol.Required("connection", default=next(iter(CONNECTION_METHOD.keys()))): vol.In(CONNECTION_METHOD),
 
         # Boolean options (Yes/No toggle)
         vol.Required("has_v2", default=True): vol.Coerce(bool),

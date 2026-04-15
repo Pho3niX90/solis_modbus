@@ -51,7 +51,7 @@ class ModbusClientManager:
         _LOGGER.debug(f"Serial client ref count for {serial_port} is now {self._clients[key]['ref_count']}")
         return self._clients[key]['client']
 
-    def get_client(self, host: str = None, port: int = 502, serial_port: str = None,
+    def get_client(self, host: str | None = None, port: int = 502, serial_port: str | None = None,
                    baudrate: int = 9600, bytesize: int = 8, parity: str = 'N',
                    stopbits: int = 1) -> AsyncModbusTcpClient | AsyncModbusSerialClient:
         """

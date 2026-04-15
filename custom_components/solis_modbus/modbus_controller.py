@@ -19,8 +19,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ModbusController:
-    def __init__(self, hass, inverter_config: InverterConfig, sensor_groups: list[SolisSensorGroup] = None,
-                 derived_sensors: list[SolisDerivedSensor] = None, device_id=1, fast_poll=5, normal_poll=15,
+    def __init__(self, hass, inverter_config: InverterConfig, sensor_groups: list[SolisSensorGroup] | None = None,
+                 derived_sensors: list[SolisDerivedSensor] | None = None, device_id=1, fast_poll=5, normal_poll=15,
                  slow_poll=30, connection_type=CONN_TYPE_TCP,
                  # TCP parameters
                  host=None, port=502, identification=None,

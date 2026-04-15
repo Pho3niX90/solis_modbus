@@ -128,7 +128,7 @@ class TestDataRetrieval(unittest.TestCase):
 
         # Verify get_modbus_updates was called with fast groups
         self.data_retrieval.get_modbus_updates.assert_called_once()
-        args, kwargs = self.data_retrieval.get_modbus_updates.call_args
+        args, _kwargs = self.data_retrieval.get_modbus_updates.call_args
         self.assertEqual(PollSpeed.FAST, args[1])
 
         # Verify event was fired
@@ -144,7 +144,7 @@ class TestDataRetrieval(unittest.TestCase):
 
         # Verify get_modbus_updates was called with normal groups
         self.data_retrieval.get_modbus_updates.assert_called_once()
-        args, kwargs = self.data_retrieval.get_modbus_updates.call_args
+        args, _kwargs = self.data_retrieval.get_modbus_updates.call_args
         self.assertEqual(PollSpeed.NORMAL, args[1])
 
     async def test_modbus_update_slow(self):
@@ -157,7 +157,7 @@ class TestDataRetrieval(unittest.TestCase):
 
         # Verify get_modbus_updates was called with slow groups
         self.data_retrieval.get_modbus_updates.assert_called_once()
-        args, kwargs = self.data_retrieval.get_modbus_updates.call_args
+        args, _kwargs = self.data_retrieval.get_modbus_updates.call_args
         self.assertEqual(PollSpeed.SLOW, args[1])
 
     async def test_get_modbus_updates_controller_disabled(self):

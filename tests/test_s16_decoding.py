@@ -1,4 +1,5 @@
 import unittest
+from typing import ClassVar
 
 from custom_components.solis_modbus.data.enums import DataType
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
@@ -8,7 +9,7 @@ class MockController:
     def __init__(self):
         class MockConfig:
             model = "TEST"
-            features = []
+            features: ClassVar[list] = []
             wattage_chosen = 5000
         self.inverter_config = MockConfig()
         self.connected = lambda: True

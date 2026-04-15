@@ -88,7 +88,7 @@ class SolisBaseSensor:
                 self.min_value = 0
                 self.step = min(self.step, 0.1)
 
-        # RHI/RAI models: 1 <--> 1W (range: 0–30000)
+        # RHI/RAI models: 1 <--> 1W (range: 0-30000)
         if inv_model in {"RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"} and 43074 in self.registrars:
             self.multiplier = 1
 
@@ -175,28 +175,31 @@ class SolisSensorGroup:
     sensors: list[SolisBaseSensor]
 
     def __init__(self, hass, definition, controller, identification=None):
-        self._sensors = list(map(lambda entity: SolisBaseSensor(
-            hass=hass,
-            name=entity.get("name", "reserve"),
-            controller=controller,
-            registrars=[int(r) for r in entity["register"]],
-            write_register=entity.get("write_register", None),
-            state_class=entity.get("state_class", None),
-            device_class=entity.get("device_class", None),
-            unit_of_measurement=entity.get("unit_of_measurement", None),
-            hidden=entity.get("hidden", False),
-            editable=entity.get("editable", False),
-            max_value=entity.get("max", 3000),
-            min_value=entity.get("min", 0),
-            step=entity.get("step", None),
-            identification=identification,
-            category=entity.get("category", None),
-            default=entity.get("default", 0),
-            multiplier=entity.get("multiplier", 1),
-            data_type=entity.get("data_type", None),
-            unique_id=unique_id_generator(controller, entity),
-            poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
-        ), definition.get("entities", [])))
+        self._sensors = [
+            SolisBaseSensor(
+                hass=hass,
+                name=entity.get("name", "reserve"),
+                controller=controller,
+                registrars=[int(r) for r in entity["register"]],
+                write_register=entity.get("write_register", None),
+                state_class=entity.get("state_class", None),
+                device_class=entity.get("device_class", None),
+                unit_of_measurement=entity.get("unit_of_measurement", None),
+                hidden=entity.get("hidden", False),
+                editable=entity.get("editable", False),
+                max_value=entity.get("max", 3000),
+                min_value=entity.get("min", 0),
+                step=entity.get("step", None),
+                identification=identification,
+                category=entity.get("category", None),
+                default=entity.get("default", 0),
+                multiplier=entity.get("multiplier", 1),
+                data_type=entity.get("data_type", None),
+                unique_id=unique_id_generator(controller, entity),
+                poll_speed=definition.get("poll_speed", PollSpeed.NORMAL)
+            )
+            for entity in definition.get("entities", [])
+        ]
         self.poll_speed: PollSpeed = definition.get("poll_speed",
                                                     PollSpeed.NORMAL if self.start_register < 40000 else PollSpeed.SLOW)
 
@@ -207,7 +210,7 @@ class SolisSensorGroup:
 
     def validate_sequential_registrars(self):
         """Ensure all registrars increase sequentially without skipping numbers."""
-        all_registrars = sorted(set(reg for sensor in self._sensors for reg in sensor.registrars))
+        all_registrars = sorted({reg for sensor in self._sensors for reg in sensor.registrars})
 
         for i in range(len(all_registrars) - 1):
             if all_registrars[i + 1] != all_registrars[i] + 1:
