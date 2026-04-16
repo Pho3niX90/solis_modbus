@@ -275,24 +275,17 @@ class DataRetrieval:
 
     # https://github.com/Pho3niX90/solis_modbus/issues/138
     def spike_filtering(self, register: int, value: int):
-        """Filters out short-lived spikes in battery SOC sensor readings.
-
-        Readings between 0 and 100 (exclusive) are considered normal.
-        Only values that are exactly 0 or exactly 100 are treated as potential spikes.
-        """
-        if register != 33139:
-            return value  # Only filter for register 33139
-
+        """Filter short-lived implausible readings for known noisy registers."""
         cached_value = cache_get(self.hass, register)
-
         if register not in self._spike_counter:
             self._spike_counter[register] = 0
 
-        # If the reading is strictly between 0 and 100, it's valid.
-        if value not in (0, 100):
-            self._spike_counter[register] = 0  # Reset the counter on a normal reading
-        else:
-            # The reading is either 0 or 100 (extreme values)
+        # 33139 Battery SOC: readings stuck at hard edge can briefly spike.
+        if register == 33139:
+            if value not in (0, 100):
+                self._spike_counter[register] = 0
+                return value
+
             self._spike_counter[register] += 1
             if self._spike_counter[register] < 3:
                 _LOGGER.debug(
@@ -300,8 +293,35 @@ class DataRetrieval:
                     f"retaining previous value {cached_value} (counter={self._spike_counter[register]})"
                 )
                 return cached_value if cached_value is not None else value
-            else:
-                _LOGGER.debug(f"Accepting persistent spike value {value} for battery SOC sensor after {self._spike_counter[register]} cycles")
+
+            _LOGGER.debug(f"Accepting persistent spike value {value} for battery SOC sensor after {self._spike_counter[register]} cycles")
+            self._spike_counter[register] = 0
+            return value
+
+        # 33148 Backup load power (U16): parallel inverter setups can briefly
+        # report wrap-around/sentinel-like values (for example 65526).
+        if register == 33148:
+            wattage = getattr(self.controller.inverter_config, "wattage_chosen", 0) or 0
+            plausible_max = int(max(10000, wattage * 2))
+            is_implausible = value >= 65000 or value > plausible_max
+
+            if not is_implausible:
                 self._spike_counter[register] = 0
+                return value
+
+            self._spike_counter[register] += 1
+            if self._spike_counter[register] < 3:
+                _LOGGER.debug(
+                    f"Ignoring transient backup load outlier {value}W (max={plausible_max}W); "
+                    f"retaining previous value {cached_value} (counter={self._spike_counter[register]})"
+                )
+                return cached_value if cached_value is not None else value
+
+            _LOGGER.debug(
+                f"Accepting persistent backup load outlier {value}W after {self._spike_counter[register]} cycles "
+                f"(max={plausible_max}W)"
+            )
+            self._spike_counter[register] = 0
+            return value
 
         return value
