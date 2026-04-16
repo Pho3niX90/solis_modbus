@@ -78,7 +78,7 @@ def get_switch_sensors(inverter_config):
                         {"bit_position": 0, "name": "Dual Backup Enable"},
                         {"bit_position": 1, "name": "AC Coupling Enable"},
                         {"bit_position": 2, "name": "Smart load port grid-connected forced output"},
-                        {"bit_position": 3, "name": "Allow export switch under self-generation and self-use"},
+                        {"bit_position": 3, "name": "Allow export switch under self-generation and self-use", "inverted": True},
                         {
                             "bit_position": 4,
                             "name": "Backup2Load manual/automatic switch (off = Manual, on = Automatic)",

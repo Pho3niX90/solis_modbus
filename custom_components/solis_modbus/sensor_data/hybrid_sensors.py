@@ -935,7 +935,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 34243,
-        "poll_speed": PollSpeed.NORMAL,
+        "poll_speed": PollSpeed.SLOW,
         "entities": [
             {
                 "name": "Parallel Synchronization Setting Parameter Result",
