@@ -61,6 +61,22 @@ def test_derived_sensor_dc_power(hass: HomeAssistant, mock_base_sensor):
     assert sensor.native_value == 2000
 
 
+def test_derived_sensor_string_dc_power(hass: HomeAssistant, mock_base_sensor):
+    """String inverter DC power: raw V and A each scaled ×0.1, product in watts."""
+    mock_base_sensor.registrars = [3021, 3022]
+    mock_base_sensor.multiplier = 0.1
+    sensor = SolisDerivedSensor(hass, mock_base_sensor)
+
+    sensor._received_values[3021] = 400  # 40.0 V
+
+    event_data = {REGISTER: 3022, VALUE: 50, CONTROLLER: "1.2.3.4", SLAVE: 1}
+
+    with patch.object(sensor, "schedule_update_ha_state"):
+        sensor.handle_modbus_update(event_data)
+
+    assert sensor.native_value == 2000  # 40 * 5 W
+
+
 def test_derived_sensor_wrong_controller(hass: HomeAssistant, mock_base_sensor):
     sensor = SolisDerivedSensor(hass, mock_base_sensor)
 

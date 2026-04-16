@@ -115,6 +115,12 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = round(r1_value * r2_value)
 
+            # String inverter: DC Voltage [n] × DC Current [n] (registers 3021–3028, protocol Ver19)
+            if 3021 in self._register or 3023 in self._register or 3025 in self._register or 3027 in self._register:
+                r1_value = self._received_values[self._register[0]] * self.base_sensor.multiplier
+                r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
+                new_value = round(r1_value * r2_value)
+
             if 33079 in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
                 active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])
                 reactive_power = self.base_sensor.convert_value([self._received_values[self._register[2]], self._received_values[self._register[3]]])
