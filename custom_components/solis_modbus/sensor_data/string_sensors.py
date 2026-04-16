@@ -592,4 +592,41 @@ string_sensors = [
     },
 ]
 
-string_sensors_derived = []
+string_sensors_derived = [
+    {
+        "name": "DC Power 1",
+        "unique": "solis_modbus_dc_power_1",
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0.1,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "register": ["3021", "3022"],
+    },
+    {
+        "name": "DC Power 2",
+        "unique": "solis_modbus_dc_power_2",
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0.1,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "register": ["3023", "3024"],
+    },
+    {
+        "name": "DC Power 3",
+        "unique": "solis_modbus_dc_power_3",
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0.1,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "register": ["3025", "3026"],
+    },
+    {
+        "name": "DC Power 4",
+        "unique": "solis_modbus_dc_power_4",
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0.1,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "register": ["3027", "3028"],
+    },
+]
