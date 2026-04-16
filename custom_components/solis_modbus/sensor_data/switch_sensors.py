@@ -30,7 +30,7 @@ def get_switch_sensors(inverter_config):
                     "register": 43110,
                     "entities": [
                         # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8
-                        {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [6, 11]},
+                        {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [2, 6, 11]},
                         {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6]},
                         {"bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 6, 11]},
                         {"bit_position": 3, "name": "Battery Wakeup Switch"},
@@ -78,7 +78,7 @@ def get_switch_sensors(inverter_config):
                         {"bit_position": 0, "name": "Dual Backup Enable"},
                         {"bit_position": 1, "name": "AC Coupling Enable"},
                         {"bit_position": 2, "name": "Smart load port grid-connected forced output"},
-                        {"bit_position": 3, "name": "Allow export switch under self-generation and self-use"},
+                        {"bit_position": 3, "name": "Allow export switch under self-generation and self-use", "inverted": True},
                         {
                             "bit_position": 4,
                             "name": "Backup2Load manual/automatic switch (off = Manual, on = Automatic)",

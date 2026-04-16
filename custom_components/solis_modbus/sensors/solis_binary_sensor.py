@@ -32,6 +32,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._requires_any = entity_definition.get("requires_any", None)
         self._on_value = entity_definition.get("on_value", None)
         self._off_value = entity_definition.get("off_value", None)
+        self._inverted = entity_definition.get("inverted", None)
         self._attr_unique_id = unique_id_generator_binary(modbus_controller, self._register, self._bit_position, self._on_value)
         self._attr_name = entity_definition["name"]
         self._attr_available = False
@@ -63,6 +64,10 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
             if self._bit_position is not None:
                 bit_bool = get_bit_bool(updated_value, self._bit_position)
+
+                if self._inverted:
+                    bit_bool = not bit_bool
+
                 _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, get_bit_bool = {bit_bool}")
             else:
                 is_on = self._on_value == updated_value
