@@ -74,7 +74,7 @@ def test_derived_sensor_string_dc_power(hass: HomeAssistant, mock_base_sensor):
     with patch.object(sensor, "schedule_update_ha_state"):
         sensor.handle_modbus_update(event_data)
 
-    assert sensor.native_value == 2000  # 40 * 5 W
+    assert sensor.native_value == 200  # 40 * 5 W * 0.1
 
 
 def test_derived_sensor_wrong_controller(hass: HomeAssistant, mock_base_sensor):
