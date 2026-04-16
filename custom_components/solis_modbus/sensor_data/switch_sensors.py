@@ -30,7 +30,7 @@ def get_switch_sensors(inverter_config):
                     "register": 43110,
                     "entities": [
                         # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8
-                        {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [6, 11]},
+                        {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [2, 6, 11]},
                         {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6]},
                         {"bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 6, 11]},
                         {"bit_position": 3, "name": "Battery Wakeup Switch"},
