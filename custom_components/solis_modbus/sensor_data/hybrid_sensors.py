@@ -3353,6 +3353,21 @@ hybrid_sensors = [
         ],
     },
     {
+        "register_start": 43302,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "Hybrid auxiliary control flags",
+                "category": Category.FUNCTIONAL_SETTING,
+                "unique": "solis_modbus_inverter_hybrid_auxiliary_control_flags",
+                "register": ["43302"],
+                "multiplier": 1,
+                "hidden": True,
+                "state_class": SensorStateClass.MEASUREMENT,
+            }
+        ],
+    },
+    {
         "register_start": 43110,
         "poll_speed": PollSpeed.SLOW,
         "entities": [

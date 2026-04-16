@@ -89,6 +89,33 @@ def get_switch_sensors(inverter_config):
                     ],
                 },
                 {
+                    "register": 43302,
+                    "entities": [
+                        {
+                            "bit_position": 0,
+                            "name": "Boost non-generate-wave function",
+                            "inverted": True,
+                        },
+                        {
+                            "bit_position": 1,
+                            "name": "DC injection adjustment",
+                            "inverted": True,
+                        },
+                        {"bit_position": 3, "name": "AFCI self-check start"},
+                        {"bit_position": 4, "name": "AFCI self-check abnormal (arc) data mode"},
+                        {
+                            "bit_position": 8,
+                            "name": "Hybrid grid neutral wiring (1PH L1-L2-N / 3PH L1-L2-L3-N)",
+                            "inverted": True,
+                        },
+                        {
+                            "bit_position": 9,
+                            "name": "PV enabled (Alpha all-in-one)",
+                            "inverted": True,
+                        },
+                    ],
+                },
+                {
                     "register": 43249,
                     "entities": [
                         {"bit_position": 0, "name": "MPPT Parallel Function"},

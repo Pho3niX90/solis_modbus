@@ -85,7 +85,8 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
             self._attr_available = True
             if self._bit_position is not None:
-                self._attr_is_on = get_bit_bool(value, self._bit_position)
+                raw_bit = get_bit_bool(value, self._bit_position)
+                self._attr_is_on = (not raw_bit) if self._inverted else raw_bit
             if self._on_value is not None:
                 self._attr_is_on = value == self._on_value
             _LOGGER.debug(f"switch {self.unique_id} set to {self._attr_is_on}, value = {updated_value}")
@@ -134,8 +135,9 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
                         # fallback to enabling the first one
                         new_register_value = set_bit(new_register_value, self._requires_any[0], True)
 
-            # Set or clear target bit
-            new_register_value = set_bit(new_register_value, self._bit_position, value)
+            # Set or clear target bit (inverted: HA on/off maps to opposite register bit)
+            bit_to_write = (not value) if self._inverted else value
+            new_register_value = set_bit(new_register_value, self._bit_position, bit_to_write)
 
         else:
             # Whole-register style bitless toggle
