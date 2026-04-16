@@ -194,6 +194,7 @@
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_parallel_inverter_ac_current",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_parallel_inverter_ac_voltage",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_parallel_inverter_power",
+  "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_parallel_synchronization_setting_parameter_result",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_peak_baseline_soc",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_peak_max_usuable_grid_power",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_power_state",
