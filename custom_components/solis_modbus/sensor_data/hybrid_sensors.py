@@ -321,22 +321,12 @@ hybrid_sensors = [
                 "unit_of_measurement": UnitOfPower.WATT,
                 "state_class": SensorStateClass.MEASUREMENT,
             },
-            {
-                "type": "reserve",
-                "register": [
-                    "33059",
-                    "33060",
-                    "33061",
-                    "33062",
-                    "33063",
-                    "33064",
-                    "33065",
-                    "33066",
-                    "33067",
-                    "33068",
-                    "33069",
-                ],
-            },
+        ],
+    },
+    {
+        "register_start": 33070,
+        "poll_speed": PollSpeed.FAST,
+        "entities": [
             {
                 "name": "Alarm code data",
                 "category": Category.STATUS_INFORMATION,
@@ -677,7 +667,7 @@ hybrid_sensors = [
                 "device_class": SensorDeviceClass.POWER,
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfPower.WATT,
-                "state_class": SensorStateClass.MEASUREMENT
+                "state_class": SensorStateClass.MEASUREMENT,
             },
             {
                 "name": "Battery Power",

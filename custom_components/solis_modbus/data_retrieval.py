@@ -317,10 +317,7 @@ class DataRetrieval:
                 )
                 return cached_value if cached_value is not None else value
 
-            _LOGGER.debug(
-                f"Accepting persistent backup load outlier {value}W after {self._spike_counter[register]} cycles "
-                f"(max={plausible_max}W)"
-            )
+            _LOGGER.debug(f"Accepting persistent backup load outlier {value}W after {self._spike_counter[register]} cycles (max={plausible_max}W)")
             self._spike_counter[register] = 0
             return value
 
