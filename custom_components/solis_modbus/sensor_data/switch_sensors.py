@@ -93,26 +93,38 @@ def get_switch_sensors(inverter_config):
                     "entities": [
                         {
                             "bit_position": 0,
-                            "name": "Boost non-generate-wave function",
+                            "name": "Boost not-generate-wave function (off control)",
                             "inverted": True,
                         },
                         {
                             "bit_position": 1,
-                            "name": "DC injection adjustment",
+                            "name": "DC injection adjustment function (off control)",
                             "inverted": True,
                         },
-                        {"bit_position": 3, "name": "AFCI self-check start"},
-                        {"bit_position": 4, "name": "AFCI self-check abnormal (arc) data mode"},
+                        {"bit_position": 3, "name": "AFCI self-check"},
+                        {
+                            "bit_position": 4,
+                            "name": "AFCI self-check mode (abnormal / arc test data)",
+                        },
                         {
                             "bit_position": 8,
-                            "name": "Hybrid grid neutral wiring (1PH L1-L2-N / 3PH L1-L2-L3-N)",
+                            "name": "Hybrid grid connect with neutral (1PH L1-L2-N / 3PH L1-L2-L3-N)",
                             "inverted": True,
                         },
                         {
                             "bit_position": 9,
-                            "name": "PV enabled (Alpha all-in-one)",
+                            "name": "PV enable (Alpha all-in-one)",
                             "inverted": True,
                         },
+                        {
+                            "bit_position": 12,
+                            "name": "MPPT Multi-peak scanning",
+                        },
+                        {
+                            "bit_position": 13,
+                            "name": "24-hour switch enable (S5 low-voltage energy storage)",
+                        },
+                        {"bit_position": 14, "name": "Daily PV insulation detection"},
                     ],
                 },
                 {
