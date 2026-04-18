@@ -12,6 +12,7 @@ class InverterOptions:
         generator: bool = False,
         v2: bool = True,
         ac_coupling: bool = False,
+        parallel: bool = False,
     ):
         self.pv = pv
         self.battery = battery
@@ -19,6 +20,7 @@ class InverterOptions:
         self.generator = generator
         self.v2 = v2
         self.ac_coupling = ac_coupling
+        self.parallel = parallel
 
 
 class InverterConfig:
@@ -62,6 +64,8 @@ class InverterConfig:
             feats.append(InverterFeature.V2)
         if opts.ac_coupling:
             feats.append(InverterFeature.AC_COUPLING)
+        if opts.parallel:
+            feats.append(InverterFeature.PARALLEL)
         if self.type == InverterType.WAVESHARE or self.connection == "WAVESHARE":
             feats.append(InverterFeature.TCP)
         self.features: list[InverterFeature] = feats
@@ -85,6 +89,7 @@ def inverter_options_from_config(config: dict, template: InverterConfig) -> Inve
         v2=config.get("has_v2", True),
         pv=config.get("has_pv", template.type in (InverterType.HYBRID, InverterType.GRID, InverterType.WAVESHARE)),
         ac_coupling=config.get("has_ac_coupling", False),
+        parallel=config.get("has_parallel", False),
         generator=config.get("has_generator", True),
         battery=config.get("has_battery", True),
         hv_battery=config.get("has_hv_battery", False),
