@@ -31,6 +31,7 @@ def test_clone_applies_user_options_and_leaves_templates_untouched():
         "has_v2": True,
         "has_pv": True,
         "has_ac_coupling": True,
+        "has_parallel": False,
         "has_battery": True,
         "has_hv_battery": False,
         "has_generator": True,
@@ -52,3 +53,26 @@ def test_hybrid_sensors_ac_coupling_requirement():
     assert len(ac_coupling_groups) > 0
     for group in ac_coupling_groups:
         assert InverterFeature.AC_COUPLING in group["feature_requirement"]
+
+
+def test_parallel_feature_disabled_by_default():
+    """PARALLEL is opt-in; default installs must not advertise it on the template."""
+    config = InverterConfig(model="S5-EH1P", wattage=[5000], phases=1, type=InverterType.HYBRID)
+
+    assert InverterFeature.PARALLEL not in config.features
+
+
+def test_parallel_feature_when_option_enabled():
+    options = InverterOptions(parallel=True)
+    config = InverterConfig(model="S5-EH1P", wattage=[5000], phases=1, type=InverterType.HYBRID, options=options)
+
+    assert InverterFeature.PARALLEL in config.features
+
+
+def test_hybrid_sensors_parallel_sync_block_gated():
+    """Parallel synchronization result (34243) must only load when PARALLEL is enabled."""
+    from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
+
+    parallel_groups = [group for group in hybrid_sensors if group.get("register_start") == 34243 and group.get("feature_requirement")]
+    assert len(parallel_groups) == 1
+    assert InverterFeature.PARALLEL in parallel_groups[0]["feature_requirement"]
