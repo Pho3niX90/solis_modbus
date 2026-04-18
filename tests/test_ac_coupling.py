@@ -73,8 +73,6 @@ def test_hybrid_sensors_parallel_sync_block_gated():
     """Parallel synchronization result (34243) must only load when PARALLEL is enabled."""
     from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
 
-    parallel_groups = [
-        group for group in hybrid_sensors if group.get("register_start") == 34243 and group.get("feature_requirement")
-    ]
+    parallel_groups = [group for group in hybrid_sensors if group.get("register_start") == 34243 and group.get("feature_requirement")]
     assert len(parallel_groups) == 1
     assert InverterFeature.PARALLEL in parallel_groups[0]["feature_requirement"]
