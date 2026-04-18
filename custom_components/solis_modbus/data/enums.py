@@ -30,6 +30,7 @@ class InverterFeature(Enum):
     LV_BATTERY = "low_voltage_battery"
     ZONNEPLAN = "zonneplan"
     AC_COUPLING = "ac_coupling"
+    PARALLEL = "parallel"
 
 
 class Category(Enum):

@@ -926,6 +926,7 @@ hybrid_sensors = [
     {
         "register_start": 34243,
         "poll_speed": PollSpeed.SLOW,
+        "feature_requirement": [InverterFeature.PARALLEL],
         "entities": [
             {
                 "name": "Parallel Synchronization Setting Parameter Result",

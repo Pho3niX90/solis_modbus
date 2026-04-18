@@ -386,6 +386,17 @@ class DataRetrieval:
                         )
                         continue
 
+                    for i, value in enumerate(values):
+                        reg = start_register + i
+                        _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
+                        corrected_value = self.spike_filtering(reg, value)
+                        cache_save(self.hass, self.controller, reg, corrected_value)
+                        notify_register_update(self.hass, self.controller, reg, corrected_value)
+
+                    if sensor_group.poll_speed == PollSpeed.ONCE:
+                        marked_for_removal.append(sensor_group)
+
+                    self.controller._data_received = True
                     self._apply_register_read_to_cache(sensor_group, values, marked_for_removal)
 
                 # Remove "ONCE" poll speed groups
@@ -401,7 +412,7 @@ class DataRetrieval:
     # https://github.com/Pho3niX90/solis_modbus/issues/138
     def spike_filtering(self, register: int, value: int):
         """Filter short-lived implausible readings for known noisy registers."""
-        cached_value = cache_get(self.hass, register)
+        cached_value = cache_get(self.hass, self.controller, register)
         if register not in self._spike_counter:
             self._spike_counter[register] = 0
 

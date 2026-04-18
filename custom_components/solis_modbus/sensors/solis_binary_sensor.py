@@ -81,7 +81,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             value = updated_value
 
             if value is None:
-                value = cache_get(self._hass, self._register)
+                value = cache_get(self._hass, self._modbus_controller, self._register)
 
             self._attr_available = True
             if self._bit_position is not None:
@@ -113,7 +113,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
     def set_register_bit(self, value: bool):
         """Set or clear a specific bit in the Modbus register, enforcing dependencies and conflicts."""
         controller = self._modbus_controller
-        current_register_value: int = cache_get(self._hass, self._register)
+        current_register_value: int = cache_get(self._hass, self._modbus_controller, self._register)
 
         new_register_value = current_register_value
 
@@ -153,7 +153,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         if current_register_value != new_register_value and controller.connected():
             target_register = self._write_register
             self._hass.create_task(controller.async_write_holding_register(target_register, new_register_value))
-            cache_save(self._hass, target_register, new_register_value)
+            cache_save(self._hass, self._modbus_controller, target_register, new_register_value)
 
         self._attr_is_on = value
         self._attr_available = True

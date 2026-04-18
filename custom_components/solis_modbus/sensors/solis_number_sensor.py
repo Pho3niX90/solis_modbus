@@ -70,7 +70,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
     def adjust_min_max_step(self, min_wanted: float | None, max_wanted: float | None, step_wanted: float | None):
         # float(43016) & equalization(43017) voltages, and rated capacity(43019)
         if 43016 in self._register or 43017 in self._register or 43019 in self._register:
-            installed_battery = cache_get(self.hass, 43009)
+            installed_battery = cache_get(self.hass, self.base_sensor.controller, 43009)
 
             if is_number(installed_battery):
                 # only supported with a user defined battery
