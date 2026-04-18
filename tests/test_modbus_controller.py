@@ -36,6 +36,8 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         # Mock TCP Client
         self.mock_client = MagicMock()
         self.mock_manager.get_tcp_client.return_value = self.mock_client
+        self.mock_manager.inter_frame_wait = AsyncMock()
+        self.mock_manager.get_last_modbus_request = MagicMock(return_value=0.0)
 
         # Mock Lock
         self.mock_lock = MagicMock()
@@ -212,6 +214,8 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         # Mock Serial Client
         self.mock_client = MagicMock()
         self.mock_manager.get_serial_client.return_value = self.mock_client
+        self.mock_manager.inter_frame_wait = AsyncMock()
+        self.mock_manager.get_last_modbus_request = MagicMock(return_value=0.0)
 
         # Mock Lock
         self.mock_lock = MagicMock()
@@ -480,6 +484,8 @@ class TestModbusControllerProperties(unittest.TestCase):
 
         self.mock_manager.get_tcp_client.return_value = MagicMock()
         self.mock_manager.get_client_lock.return_value = MagicMock()
+        self.mock_manager.inter_frame_wait = AsyncMock()
+        self.mock_manager.get_last_modbus_request = MagicMock(return_value=0.0)
 
         self.sensor_groups = [MagicMock()]
         self.derived_sensors = [MagicMock()]

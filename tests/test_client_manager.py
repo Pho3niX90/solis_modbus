@@ -1,4 +1,5 @@
 import unittest
+from unittest import IsolatedAsyncioTestCase
 from unittest.mock import MagicMock, patch
 
 from custom_components.solis_modbus.client_manager import ModbusClientManager
@@ -72,6 +73,23 @@ class TestModbusClientManager(unittest.TestCase):
     def test_release_non_existent_client(self):
         # Should not raise
         self.manager.release_client("9.9.9.9:502")
+
+
+class TestModbusClientManagerInterFrame(IsolatedAsyncioTestCase):
+    def setUp(self):
+        ModbusClientManager._instance = None
+        self.manager = ModbusClientManager.get_instance()
+
+    def tearDown(self):
+        ModbusClientManager._instance = None
+
+    @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+    async def test_inter_frame_wait_updates_shared_timestamp(self, mock_client_cls):
+        mock_client_cls.return_value = MagicMock()
+        self.manager.get_tcp_client("1.2.3.4", 502)
+        self.assertEqual(0.0, self.manager.get_last_modbus_request("1.2.3.4:502"))
+        await self.manager.inter_frame_wait("1.2.3.4:502", is_write=False)
+        self.assertGreater(self.manager.get_last_modbus_request("1.2.3.4:502"), 0.0)
 
 
 if __name__ == "__main__":

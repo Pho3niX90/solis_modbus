@@ -138,7 +138,7 @@ class SolisBaseSensor:
 
     @property
     def get_raw_values(self):
-        return [cache_get(self.hass, reg) for reg in self.registrars]
+        return [cache_get(self.hass, self.controller, reg) for reg in self.registrars]
 
     @property
     def get_value(self):
