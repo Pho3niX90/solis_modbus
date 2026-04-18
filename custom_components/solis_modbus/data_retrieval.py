@@ -370,11 +370,13 @@ class DataRetrieval:
                                     self._apply_register_read_to_cache(rg, block_values, marked_for_removal)
                             else:
                                 _LOGGER.debug(
-                                    f"⚠️ Received None for register {start_register} - {end_register}, for ({self.controller.host}.{self.controller.slave}), skipping."
+                                    f"⚠️ Received None for register {start_register} - {end_register}, "
+                                    f"for ({self.controller.host}.{self.controller.slave}), skipping."
                                 )
                         else:
                             _LOGGER.debug(
-                                f"⚠️ Received None for register {start_register} - {end_register}, for ({self.controller.host}.{self.controller.slave}), skipping."
+                                f"⚠️ Received None for register {start_register} - {end_register}, "
+                                f"for ({self.controller.host}.{self.controller.slave}), skipping."
                             )
                         continue
                     if len(values) != count:
