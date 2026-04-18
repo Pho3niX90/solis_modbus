@@ -155,9 +155,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN].setdefault(CONTROLLER, {})
 
     # Stagger additional config entries on the same Modbus link so two inverters do not hammer the logger at once.
-    existing_same_link = sum(
-        1 for c in hass.data[DOMAIN][CONTROLLER].values() if getattr(c, "connection_id", None) == connection_id
-    )
+    existing_same_link = sum(1 for c in hass.data[DOMAIN][CONTROLLER].values() if getattr(c, "connection_id", None) == connection_id)
     if existing_same_link:
         delay_s = min(1.5 * existing_same_link, 5.0)
         _LOGGER.debug(
