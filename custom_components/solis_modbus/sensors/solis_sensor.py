@@ -85,7 +85,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         if updated_register in self._register:
             # Causes issues with grid inverters going offline, and messing up energy dashboard
             if self.base_sensor.controller.inverter_config.type == InverterType.GRID and 3014 == updated_register:
-                if cache_get(self.hass, 3043) == 2:
+                if cache_get(self.hass, self.base_sensor.controller, 3043) == 2:
                     self._attr_native_value = 0
                     self.schedule_update_ha_state()
                     self._last_update = datetime.now(UTC).astimezone()

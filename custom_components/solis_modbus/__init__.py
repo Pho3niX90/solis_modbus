@@ -154,6 +154,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(CONTROLLER, {})
 
+    # Stagger additional config entries on the same Modbus link so two inverters do not hammer the logger at once.
+    existing_same_link = sum(1 for c in hass.data[DOMAIN][CONTROLLER].values() if getattr(c, "connection_id", None) == connection_id)
+    if existing_same_link:
+        delay_s = min(1.5 * existing_same_link, 5.0)
+        _LOGGER.debug(
+            "Staggering startup: %s existing controller(s) on %s, waiting %.1fs",
+            existing_same_link,
+            connection_id,
+            delay_s,
+        )
+        await asyncio.sleep(delay_s)
+
     _LOGGER.info(f"Loaded Solis Modbus Integration ({connection_type}) with Model: {config.get('model')}")
 
     # ... (Config extraction ...) ...

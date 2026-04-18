@@ -23,7 +23,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        reg_cache = cache_get(self._hass, self._register)
+        reg_cache = cache_get(self._hass, self._modbus_controller, self._register)
         if reg_cache is None:
             return
 
@@ -73,7 +73,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
     def set_register_bit(self, on_value, bit_position, conflicts_with, requires):
         """Set or clear a specific bit in the Modbus register."""
         controller = self._modbus_controller
-        current_register_value: int = cache_get(self._hass, self._register)
+        current_register_value: int = cache_get(self._hass, self._modbus_controller, self._register)
 
         if bit_position is not None:
             # Clear conflicts
@@ -95,7 +95,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         # we only want to write when values has changed. After, we read the register again to make sure it applied.
         if current_register_value != new_register_value and controller.connected():
             self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))
-            cache_save(self._hass, self._register, new_register_value)
+            cache_save(self._hass, self._modbus_controller, self._register, new_register_value)
         self._attr_available = True
 
 
