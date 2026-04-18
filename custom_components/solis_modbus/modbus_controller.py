@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -76,8 +75,9 @@ class ModbusController:
         self.serial_number = serial_number
         self.identification = identification
 
-        # Use ModbusClientManager to get shared client and lock
-        manager = ModbusClientManager.get_instance()
+        # Use ModbusClientManager to get shared client, lock, and per-link timing shared by all slaves.
+        self._client_manager = ModbusClientManager.get_instance()
+        manager = self._client_manager
 
         # Connection-specific setup
         if connection_type == CONN_TYPE_TCP:
@@ -118,7 +118,6 @@ class ModbusController:
 
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
-        self._last_modbus_request = 0
         self._last_modbus_success = datetime.now(UTC)
 
     async def process_write_queue(self):
@@ -184,7 +183,7 @@ class ModbusController:
                     _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding register {register} with value {value}: {result}")
                     return None
 
-                cache_save(self.hass, int_register, result.registers[0])
+                cache_save(self.hass, self, int_register, result.registers[0])
                 notify_register_update(self.hass, self, int_register, result.registers[0])
 
                 return result
@@ -226,7 +225,7 @@ class ModbusController:
 
                 for i, value in enumerate(values):
                     reg_addr = start_register + i
-                    cache_save(self.hass, reg_addr, value)
+                    cache_save(self.hass, self, reg_addr, value)
                     notify_register_update(self.hass, self, reg_addr, value)
                 return result
         except Exception as e:
@@ -258,29 +257,8 @@ class ModbusController:
         await self.write_queue.put((start_register, values, True))
 
     async def inter_frame_wait(self, is_write=False):
-        """Implements inter-frame delay to respect Modbus timing requirements.
-
-        This method calculates the time since the last Modbus request and adds
-        a delay if necessary to ensure proper spacing between operations.
-
-        Args:
-            is_write (bool): If True, uses a longer delay for write operations.
-
-        Returns:
-            None
-        """
-        # Minimum delay between Modbus operations (milliseconds)
-        # Write operations get slightly longer delays for safety
-        delay_ms = 100 if is_write else 50
-
-        current_time = time.perf_counter()
-        elapsed = (current_time - self._last_modbus_request) * 1000  # Convert to ms
-
-        if elapsed < delay_ms:
-            sleep_time = (delay_ms - elapsed) / 1000
-            await asyncio.sleep(sleep_time)
-
-        self._last_modbus_request = time.perf_counter()
+        """Spacing between Modbus frames on this link (shared across parallel inverters on the same host:port)."""
+        await self._client_manager.inter_frame_wait(self.connection_id, is_write=is_write)
 
     async def _async_read_input_register_raw(self, register, count):
         """Raw read input registers without connection check (internal use)."""
@@ -376,26 +354,34 @@ class ModbusController:
         if self.connected():
             return True
 
-        try:
-            await self.client.connect()
-            if self.connected():
-                _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")
-                self.connect_failures = 0
+        async def _try_connect() -> bool:
+            try:
+                await self.client.connect()
+                if self.connected():
+                    _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")
+                    self.connect_failures = 0
 
-                if self.serial_number is None:
-                    _LOGGER.info(f"serial got from device: {self.serial_number}")
-                else:
-                    _LOGGER.info(f"serial got from cache: {self.serial_number}")
+                    if self.serial_number is None:
+                        _LOGGER.info(f"serial got from device: {self.serial_number}")
+                    else:
+                        _LOGGER.info(f"serial got from cache: {self.serial_number}")
 
-                return True
-            else:
+                    return True
                 self.connect_failures += 1
                 _LOGGER.debug(f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
                 return False
-        except Exception as e:
-            self.connect_failures += 1
-            _LOGGER.debug(f"❌ ({self.host}.{self.device_id}) Connection error (attempt {self.connect_failures}): {e}")
-            return False
+            except Exception as e:
+                self.connect_failures += 1
+                _LOGGER.debug(f"❌ ({self.host}.{self.device_id}) Connection error (attempt {self.connect_failures}): {e}")
+                return False
+
+        lock = self.poll_lock
+        if lock:
+            async with lock:
+                if self.connected():
+                    return True
+                return await _try_connect()
+        return await _try_connect()
 
     def connected(self):
         """Checks if the Modbus client is currently connected.
@@ -481,9 +467,9 @@ class ModbusController:
         """Gets the timestamp of the last Modbus request.
 
         Returns:
-            float: The timestamp of the last Modbus request (from time.monotonic()).
+            float: Shared per-link timestamp from time.perf_counter() after the last inter-frame wait.
         """
-        return self._last_modbus_request
+        return self._client_manager.get_last_modbus_request(self.connection_id)
 
     @property
     def last_modbus_success(self):

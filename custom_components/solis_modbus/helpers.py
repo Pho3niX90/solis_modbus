@@ -129,12 +129,21 @@ def decode_inverter_model(hex_value):
     return protocol_version, model_description
 
 
-def cache_save(hass: HomeAssistant, register: str | int, value):
-    hass.data[DOMAIN][VALUES][str(register)] = value
+def register_cache_key(controller, register: str | int) -> str:
+    """Build a register cache key scoped to Modbus link + slave (parallel inverters on one logger)."""
+    conn = getattr(controller, "connection_id", None)
+    if not isinstance(conn, str):
+        conn = str(getattr(controller, "host", "") or "")
+    slave = int(getattr(controller, "device_id", 1))
+    return f"{conn}|{slave}|{register}"
 
 
-def cache_get(hass: HomeAssistant, register: str | int):
-    return hass.data[DOMAIN][VALUES].get(str(register), None)
+def cache_save(hass: HomeAssistant, controller, register: str | int, value):
+    hass.data[DOMAIN][VALUES][register_cache_key(controller, register)] = value
+
+
+def cache_get(hass: HomeAssistant, controller, register: str | int):
+    return hass.data[DOMAIN][VALUES].get(register_cache_key(controller, register), None)
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):
