@@ -7,13 +7,20 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 
-from custom_components.solis_modbus.helpers import cache_get, cache_save, notify_register_update
+from custom_components.solis_modbus.helpers import (
+    cache_get,
+    cache_save,
+    mark_platform_entities_unavailable_for_base_sensors,
+    notify_register_update,
+)
 
 from .data.enums import PollSpeed
-from .modbus_controller import ModbusController
-from .sensors.solis_base_sensor import SolisSensorGroup
+from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
+from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
 
 _LOGGER = logging.getLogger(__name__)
+
+_MAX_REGISTER_RECOVERY_DEPTH = 24
 
 
 class DataRetrieval:
@@ -39,6 +46,123 @@ class DataRetrieval:
         else:
             # Store the unsub function separately so we can manage its lifecycle
             self._startup_unsub = self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self.poll_controller)
+
+    async def _read_register_block_with_exception(self, start_register: int, count: int, is_holding: bool) -> tuple[list[int] | None, int | None]:
+        if is_holding:
+            return await self.controller.async_read_holding_registers_with_exception(start_register, count)
+        return await self.controller.async_read_input_registers_with_exception(start_register, count)
+
+    async def _probe_register_block_quiet(self, start_register: int, count: int, is_holding: bool) -> tuple[bool, list[int] | None]:
+        if count <= 0:
+            return True, []
+        if is_holding:
+            vals, _err = await self.controller._async_read_holding_register_raw_detailed(start_register, count, quiet=True)
+        else:
+            vals, _err = await self.controller._async_read_input_register_raw_detailed(start_register, count, quiet=True)
+        if vals is None or len(vals) != count:
+            return False, None
+        return True, vals
+
+    async def _async_isolate_one_bad_register(self, start: int, count: int, is_holding: bool) -> int | None:
+        if count <= 0:
+            return None
+        if count == 1:
+            return start
+        mid = count // 2
+        if mid < 1:
+            mid = 1
+        left_ok, _ = await self._probe_register_block_quiet(start, mid, is_holding)
+        if not left_ok:
+            return await self._async_isolate_one_bad_register(start, mid, is_holding)
+        right_ok, _ = await self._probe_register_block_quiet(start + mid, count - mid, is_holding)
+        if not right_ok:
+            return await self._async_isolate_one_bad_register(start + mid, count - mid, is_holding)
+        for off in range(count):
+            ok_one, _ = await self._probe_register_block_quiet(start + off, 1, is_holding)
+            if not ok_one:
+                return start + off
+        return None
+
+    def _apply_register_read_to_cache(self, sensor_group: SolisSensorGroup, values: list[int], marked_for_removal: list) -> None:
+        start_register = sensor_group.start_register
+        for i, value in enumerate(values):
+            reg = start_register + i
+            _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
+            corrected_value = self.spike_filtering(reg, value)
+            cache_save(self.hass, reg, corrected_value)
+            notify_register_update(self.hass, self.controller, reg, corrected_value)
+
+        if sensor_group.poll_speed == PollSpeed.ONCE:
+            marked_for_removal.append(sensor_group)
+
+        self.controller._data_received = True
+
+    async def _recover_sensor_group_after_modbus_failure(
+        self,
+        sensor_group: SolisSensorGroup,
+        start_register: int,
+        count: int,
+        is_holding: bool,
+        marked_for_removal: list,
+        *,
+        _depth: int = 0,
+    ) -> list[tuple[SolisSensorGroup, list[int]]] | None:
+        """Bisect to find a bad register, disable affected sensors, split the group, and read replacement blocks."""
+        if _depth > _MAX_REGISTER_RECOVERY_DEPTH:
+            _LOGGER.warning(
+                "(%s.%s) Register recovery aborted: exceeded max depth for block starting at %s",
+                self.controller.host,
+                self.controller.slave,
+                start_register,
+            )
+            return None
+
+        bad = await self._async_isolate_one_bad_register(start_register, count, is_holding)
+        if bad is None:
+            _LOGGER.debug(
+                "(%s.%s) Could not isolate a single bad register in %s-%s",
+                self.controller.host,
+                self.controller.slave,
+                start_register,
+                start_register + count - 1,
+            )
+            return None
+
+        disabled_sensors = [s for s in sensor_group.sensors if bad in s.registrars]
+        for s in disabled_sensors:
+            s.enabled = False
+        mark_platform_entities_unavailable_for_base_sensors(self.hass, disabled_sensors)
+
+        remaining = [s for s in sensor_group.sensors if bad not in s.registrars]
+        clusters = cluster_sensors_by_contiguous_registers(remaining)
+        new_groups = [SolisSensorGroup.from_sensors(c, sensor_group.poll_speed, sensor_group.identification) for c in clusters]
+
+        self.controller.replace_sensor_group(sensor_group, new_groups)
+
+        disabled_names = ", ".join(s.name for s in disabled_sensors) or "(unknown)"
+        _LOGGER.warning(
+            "(%s.%s) Adapted Modbus block %s-%s: bad register %s; disabled: %s; split into %d group(s).",
+            self.controller.host,
+            self.controller.slave,
+            start_register,
+            start_register + count - 1,
+            bad,
+            disabled_names,
+            len(new_groups),
+        )
+
+        results: list[tuple[SolisSensorGroup, list[int]]] = []
+        for g in new_groups:
+            vals, exc = await self._read_register_block_with_exception(g.start_register, g.registrar_count, is_holding)
+            if vals is not None and len(vals) == g.registrar_count:
+                results.append((g, vals))
+            elif exc in RECOVERABLE_REGISTER_READ_EXCEPTIONS:
+                nested = await self._recover_sensor_group_after_modbus_failure(
+                    g, g.start_register, g.registrar_count, is_holding, marked_for_removal, _depth=_depth + 1
+                )
+                if nested:
+                    results.extend(nested)
+        return results if results else None
 
     async def async_stop(self):
         """Cancel all listeners."""
@@ -233,16 +357,25 @@ class DataRetrieval:
 
                     _LOGGER.debug(f"Group {start_register} starting for ({self.controller.host}.{self.controller.slave})")
 
-                    values = await (
-                        self.controller.async_read_holding_register(start_register, count)
-                        if start_register >= 40000
-                        else self.controller.async_read_input_register(start_register, count)
-                    )
+                    is_holding = start_register >= 40000
+                    values, exc_code = await self._read_register_block_with_exception(start_register, count, is_holding)
 
                     if values is None:
-                        _LOGGER.debug(
-                            f"⚠️ Received None for register {start_register} - {end_register}, for ({self.controller.host}.{self.controller.slave}), skipping."
-                        )
+                        if exc_code in RECOVERABLE_REGISTER_READ_EXCEPTIONS:
+                            recovered = await self._recover_sensor_group_after_modbus_failure(
+                                sensor_group, start_register, count, is_holding, marked_for_removal
+                            )
+                            if recovered:
+                                for rg, block_values in recovered:
+                                    self._apply_register_read_to_cache(rg, block_values, marked_for_removal)
+                            else:
+                                _LOGGER.debug(
+                                    f"⚠️ Received None for register {start_register} - {end_register}, for ({self.controller.host}.{self.controller.slave}), skipping."
+                                )
+                        else:
+                            _LOGGER.debug(
+                                f"⚠️ Received None for register {start_register} - {end_register}, for ({self.controller.host}.{self.controller.slave}), skipping."
+                            )
                         continue
                     if len(values) != count:
                         _LOGGER.debug(
@@ -251,17 +384,7 @@ class DataRetrieval:
                         )
                         continue
 
-                    for i, value in enumerate(values):
-                        reg = start_register + i
-                        _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
-                        corrected_value = self.spike_filtering(reg, value)
-                        cache_save(self.hass, reg, corrected_value)
-                        notify_register_update(self.hass, self.controller, reg, corrected_value)
-
-                    if sensor_group.poll_speed == PollSpeed.ONCE:
-                        marked_for_removal.append(sensor_group)
-
-                    self.controller._data_received = True
+                    self._apply_register_read_to_cache(sensor_group, values, marked_for_removal)
 
                 # Remove "ONCE" poll speed groups
                 self.controller._sensor_groups = [g for g in self.controller.sensor_groups if g not in marked_for_removal]

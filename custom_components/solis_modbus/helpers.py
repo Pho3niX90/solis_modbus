@@ -8,7 +8,17 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_utils
 
 from custom_components.solis_modbus import DOMAIN
-from custom_components.solis_modbus.const import CONN_TYPE_TCP, CONTROLLER, DRIFT_COUNTER, REGISTER, SLAVE, VALUE, VALUES
+from custom_components.solis_modbus.const import (
+    CONN_TYPE_TCP,
+    CONTROLLER,
+    DRIFT_COUNTER,
+    NUMBER_ENTITIES,
+    REGISTER,
+    SENSOR_ENTITIES,
+    SLAVE,
+    VALUE,
+    VALUES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -135,6 +145,20 @@ def cache_save(hass: HomeAssistant, register: str | int, value):
 
 def cache_get(hass: HomeAssistant, register: str | int):
     return hass.data[DOMAIN][VALUES].get(str(register), None)
+
+
+def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, disabled_sensors: list) -> None:
+    """Mark sensor/number platform entities unavailable when their SolisBaseSensor is dynamically disabled."""
+    if not disabled_sensors:
+        return
+    disabled_set = frozenset(disabled_sensors)
+    domain_data = hass.data.get(DOMAIN) or {}
+    for bucket in (SENSOR_ENTITIES, NUMBER_ENTITIES):
+        for ent in domain_data.get(bucket) or []:
+            base = getattr(ent, "base_sensor", None)
+            if base is not None and base in disabled_set:
+                ent._attr_available = False
+                ent.schedule_update_ha_state()
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):

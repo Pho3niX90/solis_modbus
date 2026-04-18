@@ -25,6 +25,14 @@ from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDer
 
 _LOGGER = logging.getLogger(__name__)
 
+# Modbus exception codes we treat as address/map issues worth splitting reads (see data_retrieval recovery).
+RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})
+
+
+def _exception_code_from_modbus_result(result) -> int | None:
+    """Best-effort Modbus exception code from a pymodbus response object."""
+    return getattr(result, "exception_code", None)
+
 
 class ModbusController:
     def __init__(
@@ -282,28 +290,41 @@ class ModbusController:
 
         self._last_modbus_request = time.perf_counter()
 
-    async def _async_read_input_register_raw(self, register, count):
-        """Raw read input registers without connection check (internal use)."""
+    async def _async_read_input_register_raw_detailed(self, register: int, count: int, *, quiet: bool = False) -> tuple[list[int] | None, int | None]:
+        """Read input registers under poll_lock. Returns (registers, None) or (None, exception_code|None)."""
         async with self.poll_lock:
             await self.inter_frame_wait()
 
-            # Different pymodbus APIs for TCP vs Serial
             if self.connection_type == CONN_TYPE_TCP:
-                # TCP: pass slave as parameter
                 result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
             else:
-                # Serial: set slave on client, then call without slave parameter
                 self.client.slave = self.device_id
                 result = await self.client.read_input_registers(address=register, count=count)
 
             _LOGGER.debug(f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
 
             if result.isError():
-                _LOGGER.error(f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
-                return None
+                exc = _exception_code_from_modbus_result(result)
+                log_fn = _LOGGER.debug if quiet else _LOGGER.error
+                log_fn(f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
+                return None, exc
 
             self._last_modbus_success = datetime.now(UTC)
-            return result.registers
+            return result.registers, None
+
+    async def _async_read_input_register_raw(self, register, count):
+        """Raw read input registers without connection check (internal use)."""
+        registers, _err = await self._async_read_input_register_raw_detailed(register, count, quiet=False)
+        return registers
+
+    async def async_read_input_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
+        """Like async_read_input_register but returns (registers, exception_code) for recoverable-read logic."""
+        try:
+            await self.connect()
+            return await self._async_read_input_register_raw_detailed(register, count, quiet=False)
+        except Exception as e:
+            _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
+            return None, None
 
     async def async_read_input_register(self, register, count):
         """Reads input registers from the Modbus device.
@@ -325,6 +346,41 @@ class ModbusController:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
             return None
 
+    async def _async_read_holding_register_raw_detailed(self, register: int, count: int, *, quiet: bool = False) -> tuple[list[int] | None, int | None]:
+        """Read holding registers under poll_lock. Returns (registers, None) or (None, exception_code|None)."""
+        async with self.poll_lock:
+            await self.inter_frame_wait()
+
+            if self.connection_type == CONN_TYPE_TCP:
+                result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
+            else:
+                self.client.slave = self.device_id
+                result = await self.client.read_holding_registers(address=register, count=count)
+
+            _LOGGER.debug(f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
+
+            if result.isError():
+                exc = _exception_code_from_modbus_result(result)
+                log_fn = _LOGGER.debug if quiet else _LOGGER.error
+                log_fn(f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
+                return None, exc
+
+            self._last_modbus_success = datetime.now(UTC)
+            return result.registers, None
+
+    async def _async_read_holding_register_raw(self, register, count):
+        registers, _err = await self._async_read_holding_register_raw_detailed(register, count, quiet=False)
+        return registers
+
+    async def async_read_holding_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
+        """Like async_read_holding_register but returns (registers, exception_code) for recoverable-read logic."""
+        try:
+            await self.connect()
+            return await self._async_read_holding_register_raw_detailed(register, count, quiet=False)
+        except Exception as e:
+            _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
+            return None, None
+
     async def async_read_holding_register(self, register, count):
         """Reads holding registers from the Modbus device.
 
@@ -340,26 +396,7 @@ class ModbusController:
         """
         try:
             await self.connect()
-            async with self.poll_lock:
-                await self.inter_frame_wait()
-
-                # Different pymodbus APIs for TCP vs Serial
-                if self.connection_type == CONN_TYPE_TCP:
-                    # TCP: pass slave as parameter
-                    result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
-                else:
-                    # Serial: set slave on client, then call without slave parameter
-                    self.client.slave = self.device_id
-                    result = await self.client.read_holding_registers(address=register, count=count)
-
-                _LOGGER.debug(f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
-
-                if result.isError():
-                    _LOGGER.error(f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
-                    return None
-
-                self._last_modbus_success = datetime.now(UTC)
-                return result.registers
+            return await self._async_read_holding_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
             return None
@@ -460,6 +497,15 @@ class ModbusController:
     def sw_version(self):
         """Returns the software version of the inverter."""
         return self._sw_version
+
+    def replace_sensor_group(self, old_group: SolisSensorGroup, new_groups: list[SolisSensorGroup]) -> None:
+        """Replace one sensor group with several (or none) at the same list index."""
+        try:
+            idx = self._sensor_groups.index(old_group)
+        except ValueError:
+            _LOGGER.warning("(%s.%s) Sensor group to replace not found in controller list", self.host, self.device_id)
+            return
+        self._sensor_groups = self._sensor_groups[:idx] + new_groups + self._sensor_groups[idx + 1 :]
 
     @property
     def sensor_groups(self):

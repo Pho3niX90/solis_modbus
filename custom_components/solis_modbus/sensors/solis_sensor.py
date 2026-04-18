@@ -32,7 +32,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
-        self._attr_available = not sensor.hidden
+        self._attr_available = not sensor.hidden and sensor.enabled
         self._attr_suggested_display_precision = self.decimal_count(sensor.multiplier)
 
         self.is_added_to_hass = False
@@ -61,6 +61,8 @@ class SolisSensor(RestoreSensor, SensorEntity):
         state = await self.async_get_last_sensor_data()
         if state:
             self._attr_native_value = state.native_value
+        if not self.base_sensor.enabled:
+            self._attr_available = False
         self.is_added_to_hass = True
 
         for reg in set(self._register):
@@ -81,6 +83,9 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
             return  # meant for a different sensor/inverter combo
+
+        if not self.base_sensor.enabled:
+            return
 
         if updated_register in self._register:
             # Causes issues with grid inverters going offline, and messing up energy dashboard
@@ -121,7 +126,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
         now = datetime.now(UTC).astimezone()
         if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
-            _LOGGER.warning(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
+            _LOGGER.debug(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
             # self._attr_native_value = 0
             self._attr_available = False  # Set attribute unavailable (if desired)
             self.schedule_update_ha_state()
