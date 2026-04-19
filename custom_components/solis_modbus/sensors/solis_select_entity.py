@@ -116,6 +116,8 @@ def get_bit_bool(modbus_value, bit_position):
 
 def set_bit(value, bit_position, new_bit_value):
     """Set or clear a specific bit in an integer value."""
+    if value is None:
+        value = 0
     mask = 1 << bit_position
     value &= ~mask  # Clear the bit
     if new_bit_value:

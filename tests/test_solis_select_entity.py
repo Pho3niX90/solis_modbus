@@ -27,6 +27,28 @@ def mock_hass():
     return hass
 
 
+def test_set_bit_treats_none_as_zero():
+    assert set_bit(None, 2, True) == 4
+    assert set_bit(None, 2, False) == 0
+
+
+@pytest.mark.asyncio
+async def test_set_register_bit_with_uncached_register(mock_hass, mock_controller):
+    """Selecting a bit option before the first poll must not crash (cache is empty)."""
+    register = 43110
+    with (
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=None),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
+    ):
+        entity = SolisSelectEntity(mock_hass, mock_controller, {"register": register, "name": "Work Mode", "entities": []})
+        entity.set_register_bit(None, bit_position=0, conflicts_with=None, requires=None)
+
+        mock_hass.create_task.assert_called_once()
+        task = mock_hass.create_task.call_args[0][0]
+        await task
+        mock_controller.async_write_holding_register.assert_awaited_once_with(register, 1)
+
+
 @pytest.mark.asyncio
 async def test_set_register_bit_enforces_conflicts_and_requires(mock_hass, mock_controller):
     register = 43110
