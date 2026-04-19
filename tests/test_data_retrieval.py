@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from custom_components.solis_modbus.const import DOMAIN, VALUES
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data_retrieval import DataRetrieval
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
@@ -15,6 +16,7 @@ class TestDataRetrieval(unittest.TestCase):
         self.hass = MagicMock()
         self.hass.is_running = True
         self.hass.create_task = MagicMock()
+        self.hass.data = {DOMAIN: {VALUES: {}}}
 
         # Mock the ModbusController
         self.controller = MagicMock()
@@ -25,6 +27,8 @@ class TestDataRetrieval(unittest.TestCase):
         self.controller.enabled = True
         self.controller.connected = MagicMock(return_value=True)
         self.controller.poll_speed = {PollSpeed.FAST: 5, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
+        self.controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([1] * count, None))
+        self.controller.async_read_input_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([2] * count, None))
 
         # Create sensor groups for testing
         self.fast_group = MagicMock(spec=SolisSensorGroup)
@@ -163,8 +167,8 @@ class TestDataRetrieval(unittest.TestCase):
         await self.data_retrieval.get_modbus_updates([self.fast_group], PollSpeed.FAST)
 
         # Should return early without doing anything
-        self.controller.async_read_holding_register.assert_not_called()
-        self.controller.async_read_input_register.assert_not_called()
+        self.controller.async_read_holding_registers_with_exception.assert_not_called()
+        self.controller.async_read_input_registers_with_exception.assert_not_called()
 
     async def test_get_modbus_updates_controller_not_connected(self):
         """Test get_modbus_updates when controller is not connected."""
@@ -174,34 +178,33 @@ class TestDataRetrieval(unittest.TestCase):
         await self.data_retrieval.get_modbus_updates([self.fast_group], PollSpeed.FAST)
 
         # Should return early without doing anything
-        self.controller.async_read_holding_register.assert_not_called()
-        self.controller.async_read_input_register.assert_not_called()
+        self.controller.async_read_holding_registers_with_exception.assert_not_called()
+        self.controller.async_read_input_registers_with_exception.assert_not_called()
 
     async def test_get_modbus_updates_success(self):
         """Test successful get_modbus_updates."""
-        # Set up the controller to return register values
-        self.controller.async_read_holding_register = AsyncMock(return_value=[42, 43])
-        self.controller.async_read_input_register = AsyncMock(return_value=[44, 45])
+        self.controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([42] * count, None))
+        self.controller.async_read_input_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([44] * count, None))
 
         # Call the method with a holding register group
         self.fast_group.start_register = 40000  # Holding register
         await self.data_retrieval.get_modbus_updates([self.fast_group], PollSpeed.FAST)
 
         # Verify the correct read method was called
-        self.controller.async_read_holding_register.assert_called_once()
-        self.controller.async_read_input_register.assert_not_called()
+        self.controller.async_read_holding_registers_with_exception.assert_called_once()
+        self.controller.async_read_input_registers_with_exception.assert_not_called()
 
         # Call the method with an input register group
-        self.controller.async_read_holding_register.reset_mock()
-        self.controller.async_read_input_register.reset_mock()
+        self.controller.async_read_holding_registers_with_exception.reset_mock()
+        self.controller.async_read_input_registers_with_exception.reset_mock()
         self.fast_group.start_register = 30000  # Input register
         await self.data_retrieval.get_modbus_updates([self.fast_group], PollSpeed.FAST)
 
         # Verify the correct read method was called
-        self.controller.async_read_holding_register.assert_not_called()
-        self.controller.async_read_input_register.assert_called_once()
+        self.controller.async_read_holding_registers_with_exception.assert_not_called()
+        self.controller.async_read_input_registers_with_exception.assert_called_once()
 
-        self.controller.async_read_input_register.assert_called_once()
+        self.controller.async_read_input_registers_with_exception.assert_called_once()
 
     def test_spike_filtering(self):
         """Test spike filtering logic."""
@@ -234,8 +237,8 @@ class TestDataRetrieval(unittest.TestCase):
         await self.data_retrieval.get_modbus_updates(groups, PollSpeed.FAST)
 
         # Should return early
-        self.controller.async_read_holding_register.assert_not_called()
-        self.controller.async_read_input_register.assert_not_called()
+        self.controller.async_read_holding_registers_with_exception.assert_not_called()
+        self.controller.async_read_input_registers_with_exception.assert_not_called()
 
     async def test_remove_once_groups(self):
         """Test that ONCE groups are removed after updating."""
@@ -243,8 +246,8 @@ class TestDataRetrieval(unittest.TestCase):
         self.controller.sensor_groups = [self.once_group, self.normal_group]
         self.controller.enabled = True
         self.controller.connected.return_value = True
-        self.controller.async_read_holding_register = AsyncMock(return_value=[1] * 10)
-        self.controller.async_read_input_register = AsyncMock(return_value=[1] * 10)
+        self.controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([1] * count, None))
+        self.controller.async_read_input_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([1] * count, None))
 
         await self.data_retrieval.get_modbus_updates([self.once_group], PollSpeed.NORMAL)
 

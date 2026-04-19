@@ -18,6 +18,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     controller: ModbusController = get_controller_from_entry(hass, config_entry)
     sensor_entities: list[SolisSensor] = []
     sensor_derived_entities: list[SensorEntity] = []
+    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][VALUES] = {}
 
     for sensor_group in controller.sensor_groups:

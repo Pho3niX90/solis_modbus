@@ -1,4 +1,6 @@
 # solis_base.py
+from __future__ import annotations
+
 import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
@@ -179,6 +181,29 @@ class SolisBaseSensor:
         return {"name": self.name, "registrars": self.registrars}
 
 
+def cluster_sensors_by_contiguous_registers(sensors: list[SolisBaseSensor]) -> list[list[SolisBaseSensor]]:
+    """Partition sensors so each part covers a contiguous Modbus address range (no gaps between parts)."""
+    active = [s for s in sensors if s.enabled]
+    if not active:
+        return []
+    active.sort(key=lambda s: min(s.registrars))
+    clusters: list[list[SolisBaseSensor]] = []
+    current = [active[0]]
+    cur_hi = max(active[0].registrars)
+    for s in active[1:]:
+        lo = min(s.registrars)
+        hi = max(s.registrars)
+        if lo <= cur_hi + 1:
+            current.append(s)
+            cur_hi = max(cur_hi, hi)
+        else:
+            clusters.append(current)
+            current = [s]
+            cur_hi = hi
+    clusters.append(current)
+    return clusters
+
+
 class SolisSensorGroup:
     sensors: list[SolisBaseSensor]
 
@@ -217,6 +242,21 @@ class SolisSensorGroup:
         )
         self.validate_sequential_registrars()
         self.identification = identification
+
+    @classmethod
+    def from_sensors(
+        cls,
+        sensors: list[SolisBaseSensor],
+        poll_speed: PollSpeed,
+        identification=None,
+    ) -> SolisSensorGroup:
+        """Build a group from existing SolisBaseSensor instances (used after splitting a failed read block)."""
+        inst = cls.__new__(cls)
+        inst._sensors = list(sensors)
+        inst.poll_speed = poll_speed
+        inst.identification = identification
+        inst.validate_sequential_registrars()
+        return inst
 
     def validate_sequential_registrars(self):
         """Ensure all registrars increase sequentially without skipping numbers."""

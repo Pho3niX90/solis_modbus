@@ -32,7 +32,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
-        self._attr_available = not sensor.hidden
+        self._attr_available = not sensor.hidden and sensor.enabled
 
         self._received_values = {}
 
@@ -64,6 +64,8 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
                     self.handle_modbus_update,
                 )
             )
+        if not self.base_sensor.enabled:
+            self._attr_available = False
 
     def adjust_min_max_step(self, min_wanted: float | None, max_wanted: float | None, step_wanted: float | None):
         # float(43016) & equalization(43017) voltages, and rated capacity(43019)
@@ -91,6 +93,9 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
             return  # meant for a different sensor/inverter combo
+
+        if not self.base_sensor.enabled:
+            return
 
         if updated_register in self._register:
             updated_value = int(data.get(VALUE))
