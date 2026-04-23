@@ -1197,6 +1197,7 @@ hybrid_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S16,
             },
             {
                 "name": "Meter Grid Frequency",
