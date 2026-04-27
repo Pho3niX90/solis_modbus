@@ -171,7 +171,14 @@ class ModbusController:
             Exception: If there is an error during the write operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                _LOGGER.debug(
+                    "(%s.%s) Skipping write holding register %s: Modbus client not connected",
+                    self.host,
+                    self.device_id,
+                    register,
+                )
+                return None
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
                 int_value = int(value)
@@ -213,7 +220,15 @@ class ModbusController:
             Exception: If there is an error during the write operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                _LOGGER.debug(
+                    "(%s.%s) Skipping write holding registers %s-%s: Modbus client not connected",
+                    self.host,
+                    self.device_id,
+                    start_register,
+                    start_register + len(values) - 1,
+                )
+                return None
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
 
@@ -298,7 +313,15 @@ class ModbusController:
     async def async_read_input_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
         """Like async_read_input_register but returns (registers, exception_code) for recoverable-read logic."""
         try:
-            await self.connect()
+            if not await self.connect():
+                _LOGGER.debug(
+                    "(%s.%s) Skipping input read %s-%s: Modbus client not connected",
+                    self.host,
+                    self.device_id,
+                    register,
+                    register + count - 1,
+                )
+                return None, None
             return await self._async_read_input_register_raw_detailed(register, count, quiet=False)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
@@ -318,7 +341,15 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                _LOGGER.debug(
+                    "(%s.%s) Skipping input read %s-%s: Modbus client not connected",
+                    self.host,
+                    self.device_id,
+                    register,
+                    register + count - 1,
+                )
+                return None
             return await self._async_read_input_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
@@ -353,7 +384,15 @@ class ModbusController:
     async def async_read_holding_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
         """Like async_read_holding_register but returns (registers, exception_code) for recoverable-read logic."""
         try:
-            await self.connect()
+            if not await self.connect():
+                _LOGGER.debug(
+                    "(%s.%s) Skipping holding read %s-%s: Modbus client not connected",
+                    self.host,
+                    self.device_id,
+                    register,
+                    register + count - 1,
+                )
+                return None, None
             return await self._async_read_holding_register_raw_detailed(register, count, quiet=False)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
@@ -373,7 +412,15 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                _LOGGER.debug(
+                    "(%s.%s) Skipping holding read %s-%s: Modbus client not connected",
+                    self.host,
+                    self.device_id,
+                    register,
+                    register + count - 1,
+                )
+                return None
             return await self._async_read_holding_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")

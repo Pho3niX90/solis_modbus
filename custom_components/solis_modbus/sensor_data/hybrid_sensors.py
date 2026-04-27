@@ -1195,6 +1195,7 @@ hybrid_sensors = [
                 "register": ["33281"],
                 "device_class": SensorDeviceClass.POWER_FACTOR,
                 "multiplier": 0.01,
+                "data_type": DataType.S16,
                 "unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
             },

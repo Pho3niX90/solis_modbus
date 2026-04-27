@@ -126,10 +126,13 @@ class SolisSensor(RestoreSensor, SensorEntity):
         """Fallback-Check: If no update for more than _WATCHDOG_TIMEOUT_MIN minutes, set values to 0 or unavailable"""
         now = datetime.now(UTC).astimezone()
         if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
-            _LOGGER.debug(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Setting to 0.")
-            # self._attr_native_value = 0
-            self._attr_available = False  # Set attribute unavailable (if desired)
-            self.schedule_update_ha_state()
+            # Avoid repeated state writes/log spam while still disconnected/stale.
+            if self._attr_available:
+                _LOGGER.debug(
+                    f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Marking as unavailable."
+                )
+                self._attr_available = False
+                self.schedule_update_ha_state()
 
     @property
     def device_info(self):
