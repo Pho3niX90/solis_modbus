@@ -19,6 +19,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
 
         self._attr_options = [e["name"] for e in entity_definition["entities"]]
         self._attr_options_raw = entity_definition["entities"]
+        self._companion_writes = entity_definition.get("companion_writes") or []
         self._current_option = None
 
     @property
@@ -59,6 +60,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             if e["name"] == option:
                 if on_value is not None:
                     await self._modbus_controller.async_write_holding_register(self._register, on_value)
+                    await self._write_companions()
                     self._attr_current_option = option
                     self.async_write_ha_state()
                     break
@@ -69,6 +71,24 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
     def device_info(self):
         """Return device info."""
         return self._modbus_controller.device_info
+
+    async def _write_companions(self) -> None:
+        """Re-write companion registers from cache after the primary write.
+
+        Some Solis firmware revisions require certain registers to be written in a
+        specific order for the values to latch (e.g. RC Timeout only takes effect if
+        Forced Charge/Discharge has been enabled first). Re-writing companion
+        registers here forms the second half of that combo.
+        """
+        for companion_register in self._companion_writes:
+            cached = cache_get(self._hass, self._modbus_controller, companion_register)
+            if cached is None:
+                _LOGGER.debug(
+                    "Skipping companion write for register %s: no cached value yet",
+                    companion_register,
+                )
+                continue
+            await self._modbus_controller.async_write_holding_register(companion_register, cached)
 
     def set_register_bit(self, on_value, bit_position, conflicts_with, requires):
         """Set or clear a specific bit in the Modbus register."""

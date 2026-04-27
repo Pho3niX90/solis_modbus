@@ -18,6 +18,13 @@ def get_select_sensors(inverter_config):
             {
                 "register": 43135,
                 "name": "RC Force Charge/Discharge",
+                # Solis firmware requires Forced Charge/Discharge (43135) to be enabled
+                # BEFORE the related setpoints and RC Timeout (43282) are written, otherwise
+                # the values do not latch (e.g. timeout falls back to ~5 minutes regardless
+                # of what is set). Re-writing the charge power (43136), discharge power
+                # (43129) and RC timeout (43282) from cache right after enabling realises
+                # the working "combo" sequence reported in issue #352.
+                "companion_writes": [43136, 43129, 43282],
                 "entities": [
                     {"name": "None", "on_value": 0},
                     {"name": "Solis RC Force Battery Charge", "on_value": 1},
