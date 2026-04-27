@@ -128,9 +128,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
         if (now - self._last_update > self._update_timeout) and self.poll_speed != PollSpeed.ONCE:
             # Avoid repeated state writes/log spam while still disconnected/stale.
             if self._attr_available:
-                _LOGGER.debug(
-                    f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Marking as unavailable."
-                )
+                _LOGGER.debug(f"⚠️ No Modbus update for sensor {self._attr_name} in over {_WATCHDOG_TIMEOUT_MIN} minutes. Marking as unavailable.")
                 self._attr_available = False
                 self.schedule_update_ha_state()
 
