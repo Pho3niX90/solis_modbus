@@ -97,3 +97,121 @@ async def test_set_register_bit_with_requires(mock_hass, mock_controller):
         task = mock_hass.create_task.call_args[0][0]
         await task
         mock_controller.async_write_holding_register.assert_awaited_once_with(register, expected)
+
+
+@pytest.mark.asyncio
+async def test_companion_writes_after_on_value_select(mock_hass, mock_controller):
+    """After writing the primary register, companion registers must be re-written from cache, in order.
+
+    Solis firmware requires Forced Charge/Discharge (43135) to be enabled BEFORE the
+    related setpoints (43129, 43136) and RC Timeout (43282) are written for the values
+    to latch (issue #352).
+    """
+    primary_register = 43135
+    cached = {
+        43136: 1500,
+        43129: 1200,
+        43282: 30,
+    }
+
+    def fake_cache_get(_hass, _controller, register):
+        return cached.get(register)
+
+    with patch(
+        "custom_components.solis_modbus.sensors.solis_select_entity.cache_get",
+        side_effect=fake_cache_get,
+    ):
+        entity = SolisSelectEntity(
+            mock_hass,
+            mock_controller,
+            {
+                "register": primary_register,
+                "name": "RC Force Charge/Discharge",
+                "companion_writes": [43136, 43129, 43282],
+                "entities": [
+                    {"name": "None", "on_value": 0},
+                    {"name": "Solis RC Force Battery Charge", "on_value": 1},
+                ],
+            },
+        )
+        entity.async_write_ha_state = MagicMock()
+
+        await entity.async_select_option("Solis RC Force Battery Charge")
+
+        assert mock_controller.async_write_holding_register.await_args_list == [
+            ((primary_register, 1), {}),
+            ((43136, cached[43136]), {}),
+            ((43129, cached[43129]), {}),
+            ((43282, cached[43282]), {}),
+        ]
+
+
+@pytest.mark.asyncio
+async def test_companion_writes_skip_individual_uncached_registers(mock_hass, mock_controller):
+    """Companion writes only fire for registers that already have a cached value."""
+    primary_register = 43135
+    cached = {
+        43136: 1500,
+        # 43129 not yet polled
+        43282: 30,
+    }
+
+    def fake_cache_get(_hass, _controller, register):
+        return cached.get(register)
+
+    with patch(
+        "custom_components.solis_modbus.sensors.solis_select_entity.cache_get",
+        side_effect=fake_cache_get,
+    ):
+        entity = SolisSelectEntity(
+            mock_hass,
+            mock_controller,
+            {
+                "register": primary_register,
+                "name": "RC Force Charge/Discharge",
+                "companion_writes": [43136, 43129, 43282],
+                "entities": [
+                    {"name": "None", "on_value": 0},
+                    {"name": "Solis RC Force Battery Charge", "on_value": 1},
+                ],
+            },
+        )
+        entity.async_write_ha_state = MagicMock()
+
+        await entity.async_select_option("Solis RC Force Battery Charge")
+
+        assert mock_controller.async_write_holding_register.await_args_list == [
+            ((primary_register, 1), {}),
+            ((43136, cached[43136]), {}),
+            ((43282, cached[43282]), {}),
+        ]
+
+
+@pytest.mark.asyncio
+async def test_companion_writes_skipped_when_cache_empty(mock_hass, mock_controller):
+    """Companion writes should be skipped if the cached value isn't available yet."""
+    primary_register = 43135
+    companion_register = 43282
+
+    with patch(
+        "custom_components.solis_modbus.sensors.solis_select_entity.cache_get",
+        return_value=None,
+    ):
+        entity = SolisSelectEntity(
+            mock_hass,
+            mock_controller,
+            {
+                "register": primary_register,
+                "name": "RC Force Charge/Discharge",
+                "companion_writes": [companion_register],
+                "entities": [
+                    {"name": "None", "on_value": 0},
+                    {"name": "Solis RC Force Battery Charge", "on_value": 1},
+                ],
+            },
+        )
+        entity.async_write_ha_state = MagicMock()
+
+        await entity.async_select_option("Solis RC Force Battery Charge")
+
+        mock_controller.async_write_holding_register.assert_awaited_once_with(primary_register, 1)
