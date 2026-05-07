@@ -5,11 +5,11 @@ import logging
 from datetime import datetime
 
 import voluptuous as vol
+from homeassistant.components.persistent_notification import async_create as pn_create
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryError
-from homeassistant.components.persistent_notification import async_create as pn_create
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
