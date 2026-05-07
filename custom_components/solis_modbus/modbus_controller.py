@@ -3,7 +3,6 @@ import logging
 from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.template import is_number
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from custom_components.solis_modbus.client_manager import ModbusClientManager
@@ -23,6 +22,17 @@ from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensor
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def is_number(value) -> bool:
+    """Check if a value is a finite number (replaces removed homeassistant.helpers.template.is_number)."""
+    if isinstance(value, bool):
+        return False
+    try:
+        number = float(value)
+    except (ValueError, TypeError):
+        return False
+    return number == number and number not in (float("inf"), float("-inf"))
 
 # Modbus exception codes we treat as address/map issues worth splitting reads (see data_retrieval recovery).
 RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})

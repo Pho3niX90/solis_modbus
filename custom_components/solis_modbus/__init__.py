@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryError
+from homeassistant.components.persistent_notification import async_create as pn_create
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
@@ -121,7 +122,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # --- MISSING VALIDATION BLOCK RESTORED ---
     if not inverter_serial:
-        hass.components.persistent_notification.async_create(
+        pn_create(
+            hass,
             "Solis Modbus: Inverter Serial is missing. Please reconfigure the integration.",
             title="Solis Modbus Configuration Issue",
             notification_id="solis_modbus_missing_serial",
@@ -183,7 +185,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # defaulting
     if inverter_template is None:
-        hass.components.persistent_notification.async_create(
+        pn_create(
+            hass,
             "Your Solis Modbus configuration is invalid. Please reconfigure the integration.",
             title="Solis Modbus Configuration Issue",
             notification_id="solis_modbus_invalid_config",
