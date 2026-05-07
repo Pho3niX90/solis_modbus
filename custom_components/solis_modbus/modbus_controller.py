@@ -34,6 +34,7 @@ def is_number(value) -> bool:
         return False
     return number == number and number not in (float("inf"), float("-inf"))
 
+
 # Modbus exception codes we treat as address/map issues worth splitting reads (see data_retrieval recovery).
 RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})
 
