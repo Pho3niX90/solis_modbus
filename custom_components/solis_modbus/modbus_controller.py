@@ -249,7 +249,8 @@ class ModbusController:
                         notify_register_update(self.hass, self, reg_addr, value)
                     return result
                 except Exception as write_error:
-                    _LOGGER.error(f"({self.host}.{self.device_id}) Exception during write holding registers {start_register}-{start_register + len(values) - 1}: {str(write_error)}")
+                    _LOGGER.error(f"({self.host}.{self.device_id}) Exception during write holding registers "
+                                  f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}")
                     # Close connection to clear any stale state/responses
                     try:
                         if hasattr(self.client, 'connected') and self.client.connected:
