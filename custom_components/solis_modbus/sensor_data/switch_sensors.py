@@ -160,6 +160,19 @@ def get_switch_sensors(inverter_config):
                     ],
                 },
                 {
+                    # Register 44280 BIT04-BIT07 is a 4-bit "PV Control" field where
+                    # 0 = invalid (default, PV operates normally) and 1 = PV shutdown.
+                    # Setting bit_position=4 writes that nibble to value 1 when ON
+                    # and back to 0 when OFF, leaving the AC/battery port bits
+                    # (BIT00-BIT03) untouched.
+                    # NOTE: this register reverts to 0 after the RC Timeout
+                    # (register 43282, default 5 minutes) unless refreshed.
+                    "register": 44280,
+                    "entities": [
+                        {"bit_position": 4, "name": "PV Shutdown"},
+                    ],
+                },
+                {
                     "register": 43707,
                     "entities": [
                         {"name": "Grid Time of Use Charging Period 1", "bit_position": 0},
