@@ -3437,6 +3437,27 @@ hybrid_sensors = [
             },
         ],
     },
+    {
+        # Remote Active Power Control Port Selection Command (Ver 3.4 register 44280)
+        # BIT00-BIT03: AC/Battery port control selection
+        # BIT04-BIT07: PV Control (0 = invalid/default, 1 = PV shutdown)
+        # The whole register reverts to 0 if no valid command is received within
+        # the RC Timeout (register 43282, default 5 minutes), so users may want
+        # to extend the timeout or refresh the switch via automation.
+        "register_start": 44280,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "Remote Active Power Control Command",
+                "category": Category.REMOTE_DISPATCH_SETTING,
+                "unique": "solis_modbus_inverter_remote_active_power_control_command",
+                "register": ["44280"],
+                "multiplier": 1,
+                "hidden": True,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
+        ],
+    },
 ]
 ## Remove 33132 in next update if this works (43110)
 
