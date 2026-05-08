@@ -3,13 +3,23 @@ import logging
 from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.template import is_number
 
 from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.helpers import cache_get, is_correct_controller, register_update_signal
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def is_number(value) -> bool:
+    """Check if a value is a finite number (replaces removed homeassistant.helpers.template.is_number)."""
+    if isinstance(value, bool):
+        return False
+    try:
+        number = float(value)
+    except (ValueError, TypeError):
+        return False
+    return number == number and number not in (float("inf"), float("-inf"))
 
 
 class SolisNumberEntity(RestoreNumber, NumberEntity):
