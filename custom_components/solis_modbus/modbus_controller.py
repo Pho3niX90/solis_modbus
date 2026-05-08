@@ -249,11 +249,13 @@ class ModbusController:
                         notify_register_update(self.hass, self, reg_addr, value)
                     return result
                 except Exception as write_error:
-                    _LOGGER.error(f"({self.host}.{self.device_id}) Exception during write holding registers "
-                                  f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}")
+                    _LOGGER.error(
+                        f"({self.host}.{self.device_id}) Exception during write holding registers "
+                        f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}"
+                    )
                     # Close connection to clear any stale state/responses
                     try:
-                        if hasattr(self.client, 'connected') and self.client.connected:
+                        if hasattr(self.client, "connected") and self.client.connected:
                             self.client.close()
                     except Exception:
                         pass
@@ -319,7 +321,7 @@ class ModbusController:
                 log_fn(f"({self.host}.{self.device_id}) Exception reading input registers at {register}: {error_msg}")
                 # Close connection to clear any stale state/responses
                 try:
-                    if hasattr(self.client, 'connected') and self.client.connected:
+                    if hasattr(self.client, "connected") and self.client.connected:
                         self.client.close()
                 except Exception:
                     pass
@@ -388,7 +390,7 @@ class ModbusController:
                 log_fn(f"({self.host}.{self.device_id}) Exception reading holding registers at {register}: {error_msg}")
                 # Close connection to clear any stale state/responses
                 try:
-                    if hasattr(self.client, 'connected') and self.client.connected:
+                    if hasattr(self.client, "connected") and self.client.connected:
                         self.client.close()
                 except Exception:
                     pass
@@ -456,7 +458,7 @@ class ModbusController:
                 _LOGGER.debug(f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
                 # Close connection to clear any pending responses/state
                 try:
-                    if hasattr(self.client, 'connected') and self.client.connected:
+                    if hasattr(self.client, "connected") and self.client.connected:
                         self.client.close()
                 except Exception:
                     pass
@@ -466,7 +468,7 @@ class ModbusController:
                 _LOGGER.debug(f"❌ ({self.host}.{self.device_id}) Connection error (attempt {self.connect_failures}): {e}")
                 # Close connection to clear any pending responses/state on connection error
                 try:
-                    if hasattr(self.client, 'connected') and self.client.connected:
+                    if hasattr(self.client, "connected") and self.client.connected:
                         self.client.close()
                 except Exception:
                     pass

@@ -114,7 +114,7 @@ class ModbusClientManager:
                 _LOGGER.debug(f"Closing and removing Modbus client for {connection_id}")
                 client = self._clients[connection_id]["client"]
                 try:
-                    if hasattr(client, 'connected') and client.connected:
+                    if hasattr(client, "connected") and client.connected:
                         client.close()
                 except Exception as e:
                     _LOGGER.debug(f"Error closing client for {connection_id}: {e}")
