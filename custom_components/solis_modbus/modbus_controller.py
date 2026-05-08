@@ -228,25 +228,38 @@ class ModbusController:
             async with self.poll_lock:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
 
-                # Different pymodbus APIs for TCP vs Serial
-                if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
-                else:
-                    self.client.slave = self.device_id
-                    result = await self.client.write_registers(address=start_register, values=values)
-                _LOGGER.debug(
-                    f"({self.host}.{self.device_id}) Write Holding Register block for {len(values)} registers starting at register = {start_register}"
-                )
+                try:
+                    # Different pymodbus APIs for TCP vs Serial
+                    if self.connection_type == CONN_TYPE_TCP:
+                        result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
+                    else:
+                        self.client.slave = self.device_id
+                        result = await self.client.write_registers(address=start_register, values=values)
+                    _LOGGER.debug(
+                        f"({self.host}.{self.device_id}) Write Holding Register block for {len(values)} registers starting at register = {start_register}"
+                    )
 
-                if result.isError():
-                    _LOGGER.error(f"({self.host}.{self.device_id}) Write block failed: {result}")
+                    if result.isError():
+                        _LOGGER.error(f"({self.host}.{self.device_id}) Write block failed: {result}")
+                        return None
+
+                    for i, value in enumerate(values):
+                        reg_addr = start_register + i
+                        cache_save(self.hass, self, reg_addr, value)
+                        notify_register_update(self.hass, self, reg_addr, value)
+                    return result
+                except Exception as write_error:
+                    _LOGGER.error(
+                        f"({self.host}.{self.device_id}) Exception during write holding registers "
+                        f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}"
+                    )
+                    # Close connection to clear any stale state/responses
+                    try:
+                        if hasattr(self.client, "connected") and self.client.connected:
+                            self.client.close()
+                    except Exception:
+                        pass
                     return None
-
-                for i, value in enumerate(values):
-                    reg_addr = start_register + i
-                    cache_save(self.hass, self, reg_addr, value)
-                    notify_register_update(self.hass, self, reg_addr, value)
-                return result
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
             return None
@@ -284,22 +297,35 @@ class ModbusController:
         async with self.poll_lock:
             await self.inter_frame_wait()
 
-            if self.connection_type == CONN_TYPE_TCP:
-                result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
-            else:
-                self.client.slave = self.device_id
-                result = await self.client.read_input_registers(address=register, count=count)
+            try:
+                if self.connection_type == CONN_TYPE_TCP:
+                    result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
+                else:
+                    self.client.slave = self.device_id
+                    result = await self.client.read_input_registers(address=register, count=count)
 
-            _LOGGER.debug(f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
+                _LOGGER.debug(f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
 
-            if result.isError():
-                exc = _exception_code_from_modbus_result(result)
+                if result.isError():
+                    exc = _exception_code_from_modbus_result(result)
+                    log_fn = _LOGGER.debug if quiet else _LOGGER.error
+                    log_fn(f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
+                    return None, exc
+
+                self._last_modbus_success = datetime.now(UTC)
+                return result.registers, None
+            except Exception as e:
+                # Log the exception, close connection, and return error
+                error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
-                log_fn(f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
-                return None, exc
-
-            self._last_modbus_success = datetime.now(UTC)
-            return result.registers, None
+                log_fn(f"({self.host}.{self.device_id}) Exception reading input registers at {register}: {error_msg}")
+                # Close connection to clear any stale state/responses
+                try:
+                    if hasattr(self.client, "connected") and self.client.connected:
+                        self.client.close()
+                except Exception:
+                    pass
+                return None, None
 
     async def _async_read_input_register_raw(self, register, count):
         """Raw read input registers without connection check (internal use)."""
@@ -340,22 +366,35 @@ class ModbusController:
         async with self.poll_lock:
             await self.inter_frame_wait()
 
-            if self.connection_type == CONN_TYPE_TCP:
-                result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
-            else:
-                self.client.slave = self.device_id
-                result = await self.client.read_holding_registers(address=register, count=count)
+            try:
+                if self.connection_type == CONN_TYPE_TCP:
+                    result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
+                else:
+                    self.client.slave = self.device_id
+                    result = await self.client.read_holding_registers(address=register, count=count)
 
-            _LOGGER.debug(f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
+                _LOGGER.debug(f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
 
-            if result.isError():
-                exc = _exception_code_from_modbus_result(result)
+                if result.isError():
+                    exc = _exception_code_from_modbus_result(result)
+                    log_fn = _LOGGER.debug if quiet else _LOGGER.error
+                    log_fn(f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
+                    return None, exc
+
+                self._last_modbus_success = datetime.now(UTC)
+                return result.registers, None
+            except Exception as e:
+                # Log the exception, close connection, and return error
+                error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
-                log_fn(f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
-                return None, exc
-
-            self._last_modbus_success = datetime.now(UTC)
-            return result.registers, None
+                log_fn(f"({self.host}.{self.device_id}) Exception reading holding registers at {register}: {error_msg}")
+                # Close connection to clear any stale state/responses
+                try:
+                    if hasattr(self.client, "connected") and self.client.connected:
+                        self.client.close()
+                except Exception:
+                    pass
+                return None, None
 
     async def _async_read_holding_register_raw(self, register, count):
         registers, _err = await self._async_read_holding_register_raw_detailed(register, count, quiet=False)
@@ -417,10 +456,22 @@ class ModbusController:
                     return True
                 self.connect_failures += 1
                 _LOGGER.debug(f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
+                # Close connection to clear any pending responses/state
+                try:
+                    if hasattr(self.client, "connected") and self.client.connected:
+                        self.client.close()
+                except Exception:
+                    pass
                 return False
             except Exception as e:
                 self.connect_failures += 1
                 _LOGGER.debug(f"❌ ({self.host}.{self.device_id}) Connection error (attempt {self.connect_failures}): {e}")
+                # Close connection to clear any pending responses/state on connection error
+                try:
+                    if hasattr(self.client, "connected") and self.client.connected:
+                        self.client.close()
+                except Exception:
+                    pass
                 return False
 
         lock = self.poll_lock
