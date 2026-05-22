@@ -3568,7 +3568,7 @@ hybrid_sensors_derived = [
         "device_class": SensorDeviceClass.ENERGY,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
-        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "state_class": SensorStateClass.TOTAL,
         "register": ["33175", "33171"],
     },
     {
