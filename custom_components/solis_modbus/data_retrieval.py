@@ -191,31 +191,35 @@ class DataRetrieval:
         if self.connection_check:
             return
 
+        # Re-entrancy guard: must be released on every exit path, otherwise the
+        # periodic watchdog (and startup poll) silently stops reconnecting after
+        # the first "already connected" tick — leaving the integration offline
+        # until a manual reload. Use try/finally so it is always reset.
         self.connection_check = True
+        try:
+            # Emit controller status (dispatcher — not persisted to recorder)
+            notify_register_update(self.hass, self.controller, 90005, self.controller.enabled)
 
-        # Emit controller status (dispatcher — not persisted to recorder)
-        notify_register_update(self.hass, self.controller, 90005, self.controller.enabled)
+            if self.controller.connected():
+                if self.first_poll:
+                    await self.modbus_update_all()
+                    self.first_poll = False
+                return
 
-        if self.controller.connected():
-            if self.first_poll:
-                await self.modbus_update_all()
-                self.first_poll = False
-            return
+            retry_delay = 0.5
+            while not self.controller.connected():
+                try:
+                    if await self.controller.connect():
+                        _LOGGER.info(f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
+                        break
+                    _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
+                except Exception as e:
+                    _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
 
-        retry_delay = 0.5
-        while not self.controller.connected():
-            try:
-                if await self.controller.connect():
-                    _LOGGER.info(f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
-                    break
-                _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
-            except Exception as e:
-                _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
-
-            await asyncio.sleep(retry_delay)
-            retry_delay = min(retry_delay * 2, 30)
-
-        self.connection_check = False
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, 30)
+        finally:
+            self.connection_check = False
 
     async def poll_controller(self, event=None):
         """Poll the Modbus controller for data, retrying until success.
