@@ -65,7 +65,7 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
                     self.async_write_ha_state()
                     break
                 else:
-                    self.set_register_bit(on_value, bit_position, conflicts_with, requires)
+                    await self.set_register_bit(on_value, bit_position, conflicts_with, requires)
 
     @property
     def device_info(self):
@@ -90,31 +90,49 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
                 continue
             await self._modbus_controller.async_write_holding_register(companion_register, cached)
 
-    def set_register_bit(self, on_value, bit_position, conflicts_with, requires):
+    async def set_register_bit(self, on_value, bit_position, conflicts_with, requires):
         """Set or clear a specific bit in the Modbus register."""
         controller = self._modbus_controller
         current_register_value: int = cache_get(self._hass, self._modbus_controller, self._register)
+
+        if current_register_value is None and bit_position is not None:
+            # A read-modify-write from an empty cache (e.g. right after a reload,
+            # before this register's group has been polled) would start from 0 and
+            # clear every other bit in the register (issue #402). Read the live
+            # value from the inverter first.
+            registers = await controller.async_read_holding_register(self._register, 1)
+            if not registers:
+                _LOGGER.warning(
+                    f"({controller.host}) Cannot set bit {bit_position} of register {self._register}: "
+                    f"no cached value and live read failed; skipping write to avoid clearing other bits"
+                )
+                return
+            current_register_value = registers[0]
+            cache_save(self._hass, controller, self._register, current_register_value)
+
+        new_register_value = current_register_value
 
         if bit_position is not None:
             # Clear conflicts
             if conflicts_with:
                 for wbit in conflicts_with:
-                    current_register_value = set_bit(current_register_value, wbit, False)
+                    new_register_value = set_bit(new_register_value, wbit, False)
 
             # Set dependencies
             if requires:
                 for rbit in requires:
-                    current_register_value = set_bit(current_register_value, rbit, True)
+                    new_register_value = set_bit(new_register_value, rbit, True)
 
-            new_register_value: int = set_bit(current_register_value, bit_position, True)
+            new_register_value = set_bit(new_register_value, bit_position, True)
 
         else:
-            new_register_value: int = on_value
+            new_register_value = on_value
 
         _LOGGER.debug(f"Attempting bit {bit_position} to {True} in register {self._register}. New value for register {new_register_value}")
-        # we only want to write when values has changed. After, we read the register again to make sure it applied.
+        # Compare against the value the device currently holds (not a partially
+        # mutated working copy) so clearing a conflict bit alone still triggers a write.
         if current_register_value != new_register_value and controller.connected():
-            self._hass.create_task(controller.async_write_holding_register(self._register, new_register_value))
+            await controller.async_write_holding_register(self._register, new_register_value)
             cache_save(self._hass, self._modbus_controller, self._register, new_register_value)
         self._attr_available = True
 
