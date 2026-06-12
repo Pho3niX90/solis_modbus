@@ -18,6 +18,7 @@ from custom_components.solis_modbus.data.enums import Category, DataType, Invert
 hybrid_sensors = [
     {
         "register_start": 33000,
+        "essential": True,
         "poll_speed": PollSpeed.ONCE,
         "entities": [
             {
@@ -76,6 +77,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 35000,
+        "essential": True,
         "poll_speed": PollSpeed.ONCE,
         "entities": [
             {
@@ -89,6 +91,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33025,
+        "essential": True,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
             {
@@ -122,6 +125,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33029,
+        "essential": True,
         "poll_speed": PollSpeed.SLOW,
         "feature_requirement": [InverterFeature.PV],
         "entities": [
@@ -228,6 +232,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33049,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.PV],
         "entities": [
@@ -325,6 +330,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33070,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {
@@ -504,6 +510,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33132,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {
@@ -733,6 +740,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33161,
+        "essential": True,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
             {

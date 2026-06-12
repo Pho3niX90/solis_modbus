@@ -230,6 +230,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     controller = ModbusController(**controller_params)
 
     controller._sensor_groups = []
+    essential_only = config.get("essential_only", False)
+    skipped_essential = 0
     for group in sensors:
         feature_requirement = group.get("feature_requirement", [])
         if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
@@ -237,7 +239,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
             continue
 
+        if essential_only and not group.get("essential", False):
+            skipped_essential += 1
+            continue
+
         controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
+
+    if essential_only:
+        _LOGGER.info(
+            "Essential-only polling enabled: %d sensor group(s) skipped, %d remaining (reduces datalogger load)",
+            skipped_essential,
+            len(controller._sensor_groups),
+        )
 
     controller._derived_sensors = [
         SolisBaseSensor(

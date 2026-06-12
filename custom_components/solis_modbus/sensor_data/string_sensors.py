@@ -18,6 +18,7 @@ string_sensors = [
     # offset by -1
     {
         "register_start": 2999,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {
@@ -213,6 +214,7 @@ string_sensors = [
     },
     {
         "register_start": 3033,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {
@@ -492,6 +494,7 @@ string_sensors = [
     },
     {
         "register_start": 36013,
+        "essential": True,
         "scan_interval": 0,
         "entities": [
             {"name": "Model No", "unique": "solis_modbus_inverter_model_no", "register": ["36013"], "multiplier": 0},
@@ -535,6 +538,7 @@ string_sensors = [
     },
     {
         "register_start": 36028,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {
@@ -550,6 +554,7 @@ string_sensors = [
     },
     {
         "register_start": 36050,
+        "essential": True,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
             {
