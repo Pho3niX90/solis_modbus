@@ -1687,6 +1687,27 @@ hybrid_sensors = [
         ],
     },
     {
+        "register_start": 43195,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "Export Calibration",
+                "category": Category.AC_PORT_SETTING,
+                "unique": "solis_modbus_inverter_export_calibration",
+                "register": ["43195"],
+                "device_class": SensorDeviceClass.POWER,
+                "data_type": DataType.S16,
+                "multiplier": 1,
+                "unit_of_measurement": UnitOfPower.WATT,
+                "editable": True,
+                "default": 0,
+                "min": -1000,
+                "max": 1000,
+                "step": 1,
+            },
+        ],
+    },
+    {
         "register_start": 43128,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
