@@ -1004,7 +1004,6 @@ hybrid_sensors = [
             },
         ],
     },
-
     {
         "register_start": 34391,
         "poll_speed": PollSpeed.FAST,
@@ -1043,7 +1042,6 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "data_type": DataType.S16,
             },
-
         ],
     },
     {
