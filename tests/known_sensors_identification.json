@@ -139,6 +139,7 @@
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_dc_voltage_4",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_dsp_version",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_equalizing_charge_voltage",
+  "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_export_calibration",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_flexible_export_backflow_power",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_flexible_export_enabling_switch",
   "solis_modbus_ID_SNAPSHOT_solis_modbus_inverter_floating_charge_voltage",

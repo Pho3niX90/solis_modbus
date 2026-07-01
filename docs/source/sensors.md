@@ -239,6 +239,7 @@ The hybrid inverter uses the following register ranges:
 | Solis Time-Charging Discharge Start Minute (Slot 5)       |                | MINUTES                    | MEASUREMENT      | 43188                                  |
 | Solis Time-Charging Discharge End Hour (Slot 5)           |                | HOURS                      | MEASUREMENT      | 43189                                  |
 | Solis Time-Charging Discharge End Minute (Slot 5)         |                | MINUTES                    | MEASUREMENT      | 43190                                  |
+| Solis Export Calibration                                  | POWER          | WATT                       | MEASUREMENT      | 43195                                  |
 | Solis Forced Start of Generator                           |                |                            | MEASUREMENT      | 43363                                  |
 | Solis Rated Input Power of Generator                      | POWER          |                            | MEASUREMENT      | 43364                                  |
 | Solis Generator Setting Switch                            |                |                            | MEASUREMENT      | 43365                                  |
