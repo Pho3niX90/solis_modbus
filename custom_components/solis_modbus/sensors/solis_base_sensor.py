@@ -65,7 +65,7 @@ class SolisBaseSensor:
         self.default = default
         self.registrars = registrars
         self.write_register = write_register
-        _LOGGER.debug(f" self.registrars = {self.registrars} | self.write_register = {self.write_register}")
+        _LOGGER.debug(" self.registrars = %s | self.write_register = %s", self.registrars, self.write_register)
         self.editable = editable
         self.multiplier = multiplier
 

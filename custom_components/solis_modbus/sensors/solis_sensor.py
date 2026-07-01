@@ -104,7 +104,7 @@ class SolisSensor(RestoreSensor, SensorEntity):
 
             # If we haven't received all registers yet, wait
             if not all(reg in self._received_values for reg in self._register):
-                _LOGGER.debug(f"not all values received yet = {self._received_values}")
+                _LOGGER.debug("not all values received yet = %s", self._received_values)
                 return
 
             values = [self._received_values[reg] for reg in self._register]

@@ -228,6 +228,22 @@ def combine_u32(u32_values: list[int]) -> int:
     return ((u32_values[0] & 0xFFFF) << 16) | (u32_values[1] & 0xFFFF)
 
 
+def set_bit(value, bit_position, new_bit_value):
+    """Set or clear a specific bit in an integer value."""
+    if value is None:
+        value = 0
+    mask = 1 << bit_position
+    value &= ~mask  # Clear the bit
+    if new_bit_value:
+        value |= mask  # Set the bit
+    return round(value)
+
+
+def get_bit_bool(modbus_value, bit_position):
+    """Decode a Modbus value to the boolean state of the given (0-based) bit position."""
+    return (modbus_value >> bit_position) & 1 == 1
+
+
 def _any_in(target: list[int], collection: set[int]) -> bool:
     return any(item in collection for item in target)
 

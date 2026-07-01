@@ -4,7 +4,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.helpers import cache_get, cache_save, unique_id_generator
+from custom_components.solis_modbus.helpers import cache_get, cache_save, get_bit_bool, set_bit, unique_id_generator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -135,29 +135,3 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             await controller.async_write_holding_register(self._register, new_register_value)
             cache_save(self._hass, self._modbus_controller, self._register, new_register_value)
         self._attr_available = True
-
-
-def get_bit_bool(modbus_value, bit_position):
-    """
-    Decode Modbus value to boolean state for the specified bit position.
-
-    Parameters:
-    - modbus_value: The Modbus value to decode.
-    - bit_position: The position of the bit to extract (0-based).
-
-    Returns:
-    - True if the bit is ON, False if the bit is OFF.
-    """
-    # Check if the bit is ON by shifting 1 to the specified position and performing bitwise AND
-    return (modbus_value >> bit_position) & 1 == 1
-
-
-def set_bit(value, bit_position, new_bit_value):
-    """Set or clear a specific bit in an integer value."""
-    if value is None:
-        value = 0
-    mask = 1 << bit_position
-    value &= ~mask  # Clear the bit
-    if new_bit_value:
-        value |= mask  # Set the bit
-    return round(value)

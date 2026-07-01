@@ -88,7 +88,7 @@ class DataRetrieval:
         start_register = sensor_group.start_register
         for i, value in enumerate(values):
             reg = start_register + i
-            _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
+            _LOGGER.debug("block %s, register %s has value %s", start_register, reg, value)
             corrected_value = self.spike_filtering(reg, value)
             cache_save(self.hass, self.controller, reg, corrected_value)
             notify_register_update(self.hass, self.controller, reg, corrected_value)
@@ -425,8 +425,10 @@ class DataRetrieval:
 
                 total_duration = time.perf_counter() - total_start_time
                 _LOGGER.debug(f"✅ {speed.name} update completed in {total_duration:.4f}s")
-        except Exception as e:
-            _LOGGER.debug("exception caught: %s", e)
+        except Exception:
+            _LOGGER.warning(
+                "(%s.%s) Unexpected error during %s poll", self.controller.host, self.controller.slave, speed.name, exc_info=True
+            )
         finally:
             del self.poll_updating[speed][group_hash]  # ✅ Reset only this group set
 
