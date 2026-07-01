@@ -1,0 +1,73 @@
+rules:
+  # Bronze
+  action-setup: done
+  appropriate-polling:
+    status: done
+    comment: Three user-tunable poll tiers (fast/normal/slow) + essential-only mode.
+  brands: exempt
+  common-modules:
+    status: exempt
+    comment: Custom DataRetrieval poller predates DataUpdateCoordinator; block-read
+      groups with per-register dispatch do not map cleanly onto a coordinator.
+  config-flow: done
+  config-flow-test-coverage: done
+  dependency-transparency: done
+  docs-actions: done
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: todo
+  entity-event-setup: done
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  test-before-configure: done
+  test-before-setup:
+    status: exempt
+    comment: Dataloggers legitimately sleep overnight; setup proceeds and the
+      background watchdog reconnects, raising a repair issue when persistent.
+  unique-config-entry: done
+
+  # Silver
+  action-exceptions: done
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  entity-unavailable:
+    status: done
+    comment: Watchdog marks entities unavailable after poll-timeout; recovery
+      re-enables them.
+  integration-owner: done
+  log-when-unavailable: done
+  parallel-updates: done
+  reauthentication-flow:
+    status: exempt
+    comment: No credentials; Modbus TCP/RTU is unauthenticated.
+  test-coverage: done
+
+  # Gold
+  devices: done
+  diagnostics: done
+  discovery: exempt
+  discovery-update-info: exempt
+  docs-data-update: todo
+  docs-examples: todo
+  docs-known-limitations: todo
+  docs-supported-devices: done
+  docs-supported-functions: done
+  docs-troubleshooting: todo
+  docs-use-cases: todo
+  dynamic-devices: exempt
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default: done
+  entity-translations: todo
+  exception-translations: todo
+  icon-translations: todo
+  reconfiguration-flow: done
+  repair-issues: done
+  stale-devices: exempt
+
+  # Platinum
+  async-dependency: done
+  inject-websession: exempt
+  strict-typing: todo
