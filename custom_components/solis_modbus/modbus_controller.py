@@ -490,6 +490,18 @@ class ModbusController:
         """
         return self.client.connected if self.client else False
 
+    def force_close(self):
+        """Close the underlying client so a fresh connection can be established.
+
+        Used by the stale-link watchdog when the socket still claims to be
+        connected but reads have stopped succeeding (half-open TCP after the
+        datalogger sleeps or drops off WiFi).
+        """
+        try:
+            self.client.close()
+        except Exception as e:
+            _LOGGER.debug(f"({self.host}.{self.device_id}) Error closing stale client: {e}")
+
     def disable_connection(self):
         """Disables the Modbus connection.
 

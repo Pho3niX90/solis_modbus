@@ -17,6 +17,7 @@ def mock_controller():
     controller.device_identification = "XYZ"
     controller.sw_version = "1.0"
     controller.async_write_holding_register = AsyncMock()
+    controller.async_read_holding_register = AsyncMock()
     return controller
 
 
@@ -34,19 +35,38 @@ def test_set_bit_treats_none_as_zero():
 
 @pytest.mark.asyncio
 async def test_set_register_bit_with_uncached_register(mock_hass, mock_controller):
-    """Selecting a bit option before the first poll must not crash (cache is empty)."""
+    """Issue #402: selecting a bit option before the first poll must read the live
+    register value first instead of starting from 0 and clearing the other bits."""
     register = 43110
+    live_value = set_bit(set_bit(0, 6, True), 11, True)  # bits 6 and 11 already set on the device
+    mock_controller.async_read_holding_register.return_value = [live_value]
+
     with (
         patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=None),
         patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
     ):
         entity = SolisSelectEntity(mock_hass, mock_controller, {"register": register, "name": "Work Mode", "entities": []})
-        entity.set_register_bit(None, bit_position=0, conflicts_with=None, requires=None)
+        await entity.set_register_bit(None, bit_position=0, conflicts_with=None, requires=None)
 
-        mock_hass.create_task.assert_called_once()
-        task = mock_hass.create_task.call_args[0][0]
-        await task
-        mock_controller.async_write_holding_register.assert_awaited_once_with(register, 1)
+        mock_controller.async_read_holding_register.assert_awaited_once_with(register, 1)
+        expected = set_bit(live_value, 0, True)  # other bits preserved
+        mock_controller.async_write_holding_register.assert_awaited_once_with(register, expected)
+
+
+@pytest.mark.asyncio
+async def test_set_register_bit_uncached_failed_read_skips_write(mock_hass, mock_controller):
+    """Issue #402: with an empty cache and a failed live read, nothing must be written."""
+    register = 43110
+    mock_controller.async_read_holding_register.return_value = None
+
+    with (
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=None),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
+    ):
+        entity = SolisSelectEntity(mock_hass, mock_controller, {"register": register, "name": "Work Mode", "entities": []})
+        await entity.set_register_bit(None, bit_position=0, conflicts_with=None, requires=None)
+
+        mock_controller.async_write_holding_register.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -70,13 +90,28 @@ async def test_set_register_bit_enforces_conflicts_and_requires(mock_hass, mock_
         patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
     ):
         entity = SolisSelectEntity(mock_hass, mock_controller, entity_def)
-        entity.set_register_bit(None, bit_position=0, conflicts_with=(6, 11), requires=None)
+        await entity.set_register_bit(None, bit_position=0, conflicts_with=(6, 11), requires=None)
 
         expected = set_bit(set_bit(set_bit(0, 6, False), 11, False), 0, True)
+        mock_controller.async_write_holding_register.assert_awaited_once_with(register, expected)
 
-        mock_hass.create_task.assert_called_once()
-        task = mock_hass.create_task.call_args[0][0]
-        await task  # trigger the coroutine
+
+@pytest.mark.asyncio
+async def test_set_register_bit_writes_when_only_conflict_bits_change(mock_hass, mock_controller):
+    """If the target bit is already set but a conflicting bit must be cleared,
+    the write must still happen (regression: comparison against a mutated
+    working copy used to skip it)."""
+    register = 43110
+    cached = set_bit(set_bit(0, 0, True), 6, True)  # target bit 0 already on, conflict bit 6 on
+
+    with (
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=cached),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
+    ):
+        entity = SolisSelectEntity(mock_hass, mock_controller, {"register": register, "name": "Work Mode", "entities": []})
+        await entity.set_register_bit(None, bit_position=0, conflicts_with=(6,), requires=None)
+
+        expected = set_bit(0, 0, True)  # conflict cleared, target kept
         mock_controller.async_write_holding_register.assert_awaited_once_with(register, expected)
 
 
@@ -89,13 +124,9 @@ async def test_set_register_bit_with_requires(mock_hass, mock_controller):
     ):
         entity = SolisSelectEntity(mock_hass, mock_controller, {"register": register, "name": "Work Mode", "entities": []})
 
-        entity.set_register_bit(None, bit_position=1, conflicts_with=None, requires=[0])
+        await entity.set_register_bit(None, bit_position=1, conflicts_with=None, requires=[0])
 
         expected = set_bit(set_bit(0, 0, True), 1, True)
-
-        mock_hass.create_task.assert_called_once()
-        task = mock_hass.create_task.call_args[0][0]
-        await task
         mock_controller.async_write_holding_register.assert_awaited_once_with(register, expected)
 
 
