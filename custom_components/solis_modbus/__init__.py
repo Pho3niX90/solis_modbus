@@ -106,10 +106,14 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_update_options(entry):
-    """Handle options updates."""
-    hass = entry.hass
-    await hass.config_entries.async_update_entry(entry, options=entry.options)
+async def _async_reload_on_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the entry when its options change.
+
+    Without this, edits made in the options flow (poll intervals, model,
+    feature toggles, essential-only) are saved to the entry but never applied
+    until Home Assistant is restarted.
+    """
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -262,11 +266,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
 
-    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Set up all platforms in one call (concurrent) — matches the unload side,
+    # which already unloads [Platform.SENSOR, *PLATFORMS] together.
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
     hass.data[DOMAIN].setdefault("data_retrieval", {})
     hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+
+    # Apply option changes automatically (see _async_reload_on_update).
+    entry.async_on_unload(entry.add_update_listener(_async_reload_on_update))
 
     return True
 

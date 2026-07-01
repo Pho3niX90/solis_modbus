@@ -149,24 +149,25 @@ class ModbusController:
         Returns:
             None
         """
-        while True:
-            if not self.connected():
-                await asyncio.sleep(5)
-                continue
+        try:
+            while True:
+                # Block until a write is queued instead of busy-polling.
+                write_request = await self.write_queue.get()
+                try:
+                    if not self.connected():
+                        # Not connected yet; wait for the link then retry this item.
+                        await asyncio.sleep(5)
+                    register, value, multiple = write_request
 
-            if self.write_queue.empty():
-                await asyncio.sleep(0.2)
-                continue
-
-            write_request = await self.write_queue.get()
-            register, value, multiple = write_request
-
-            if multiple:
-                await self._execute_write_holding_registers(register, value)
-            else:
-                await self._execute_write_holding_register(register, value)
-
-            self.write_queue.task_done()
+                    if multiple:
+                        await self._execute_write_holding_registers(register, value)
+                    else:
+                        await self._execute_write_holding_register(register, value)
+                finally:
+                    self.write_queue.task_done()
+        except asyncio.CancelledError:
+            # Clean shutdown on entry unload/reload.
+            raise
 
     async def _execute_write_holding_register(self, register, value):
         """Executes a single register write with interframe delay.

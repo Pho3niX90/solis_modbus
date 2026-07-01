@@ -40,6 +40,7 @@ class DataRetrieval:
 
         self._unsub_listeners = []
         self._startup_unsub = None  # Store startup listener separately
+        self._write_task = None  # process_write_queue task, cancelled on unload
 
         if self.hass.is_running:
             self.hass.create_task(self.poll_controller())
@@ -165,7 +166,7 @@ class DataRetrieval:
         return results if results else None
 
     async def async_stop(self):
-        """Cancel all listeners."""
+        """Cancel all listeners and the write-queue task."""
         # Clean up the startup listener only if it hasn't fired yet
         if self._startup_unsub:
             self._startup_unsub()
@@ -175,6 +176,15 @@ class DataRetrieval:
             unsub()
         self._unsub_listeners = []
         self.connection_check = False  # Stop connection loop logic if any
+
+        # Cancel the infinite write-queue loop so it doesn't leak on reload.
+        if self._write_task is not None:
+            self._write_task.cancel()
+            try:
+                await self._write_task
+            except asyncio.CancelledError:
+                pass
+            self._write_task = None
 
     def _link_is_stale(self) -> bool:
         """True when the link claims to be connected but reads have stopped succeeding."""
@@ -279,7 +289,7 @@ class DataRetrieval:
             )
         )
 
-        self.hass.create_task(self.controller.process_write_queue())
+        self._write_task = self.hass.async_create_task(self.controller.process_write_queue())
 
     async def modbus_update_all(self):
         """Updates all sensor groups regardless of their poll speed.
