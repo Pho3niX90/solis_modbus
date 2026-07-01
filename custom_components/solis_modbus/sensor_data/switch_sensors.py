@@ -29,19 +29,26 @@ def get_switch_sensors(inverter_config):
                 {
                     "register": 43110,
                     "entities": [
-                        # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8
+                        # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8.
+                        # NOTE: Self-Use must NOT clear bit 4 — Reserve/Backup is bit 4 as a
+                        # modifier on Self-Use in every SolisCloud capture (17/49/51).
                         {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [2, 6, 11]},
                         {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6]},
-                        {"bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 6, 11]},
+                        {"bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 4, 6, 11]},
                         {"bit_position": 3, "name": "Battery Wakeup Switch"},
-                        {"bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [11]},
+                        {"bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [2, 11], "requires": [0]},
+                        # Doc literally says "0=Allow 1=Not allow" for bit 5, but every
+                        # field-verified source (SolisCloud writes 33/35/49/51/96/98) has the
+                        # OPPOSITE: bit set = grid charging allowed. Keep non-inverted.
                         {"bit_position": 5, "name": "Allow Grid to Charge the Battery"},
                         {"bit_position": 6, "name": "Feed-In Priority Mode", "conflicts_with": [0, 11]},
                         {"bit_position": 7, "name": "Batt OVC"},
                         {"bit_position": 8, "name": "Battery Forcecharge Peakshaving"},
                         {"bit_position": 9, "name": "Battery Current Correction"},
                         {"bit_position": 10, "name": "Battery Healing Mode"},
-                        {"bit_position": 11, "name": "Peak Shaving Mode", "conflicts_with": [0, 4, 6]},
+                        # TOU (1) and Off-Grid (2) must not survive entering Peak Shaving:
+                        # the EA1P cloud value is exactly 2080 = bits 5+11 (issue #413).
+                        {"bit_position": 11, "name": "Peak Shaving Mode", "conflicts_with": [0, 1, 2, 4, 6]},
                     ],
                 },
                 {

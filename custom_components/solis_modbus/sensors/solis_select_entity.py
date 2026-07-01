@@ -31,23 +31,44 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         # Sort by number of requires descending to prioritize more specific matches
         sorted_options = sorted(self._attr_options_raw, key=lambda e: len(e.get("requires", [])) if "requires" in e else 0, reverse=True)
 
-        for e in sorted_options:
-            on_value = e.get("on_value")
-            bit_position = e.get("bit_position")
-            requires = e.get("requires")
+        # Two passes: strict first (an option only matches when its conflicting bits,
+        # other than its own/required ones, are clear — makes resolution independent
+        # of file order, e.g. 43110=35 must not read as plain "Self-Use"), then a
+        # lenient pass so degenerate leftover combos (e.g. Peak Shaving with a stray
+        # TOU bit written by older versions) still resolve to the nearest option.
+        for strict in (True, False):
+            for e in sorted_options:
+                on_value = e.get("on_value")
+                bit_position = e.get("bit_position")
+                requires = e.get("requires") or []
 
-            if on_value is not None:
-                if reg_cache == on_value:
-                    return e["name"]
-            elif bit_position is not None:
-                if get_bit_bool(reg_cache, bit_position):
-                    if requires:
-                        if all(get_bit_bool(reg_cache, rbit) for rbit in requires):
-                            return e["name"]
-                    else:
+                if on_value is not None:
+                    if reg_cache == on_value:
                         return e["name"]
+                elif bit_position is not None:
+                    if not get_bit_bool(reg_cache, bit_position):
+                        continue
+                    if not all(get_bit_bool(reg_cache, rbit) for rbit in requires):
+                        continue
+                    if strict:
+                        own_bits = {bit_position, *requires}
+                        conflicts = [cbit for cbit in (e.get("conflicts_with") or []) if cbit not in own_bits]
+                        if any(get_bit_bool(reg_cache, cbit) for cbit in conflicts):
+                            continue
+                    return e["name"]
 
         return None
+
+    @property
+    def extra_state_attributes(self):
+        """Expose the raw register so unmatched bit combos are debuggable."""
+        reg_cache = cache_get(self._hass, self._modbus_controller, self._register)
+        if reg_cache is None:
+            return None
+        return {
+            "raw_value": reg_cache,
+            "set_bits": [bit for bit in range(16) if (int(reg_cache) >> bit) & 1],
+        }
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
