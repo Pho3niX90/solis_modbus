@@ -16,7 +16,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref }}
+          # Fork PRs: head_ref only exists on the contributor's repo, not upstream.
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -58,7 +60,9 @@ jobs:
         run: uv run python tests/generate_known_sensors.py
 
       - name: Commit and Push Changes
-        if: steps.drift_check.outcome == 'success'
+        if: |
+          steps.drift_check.outcome == 'success' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
