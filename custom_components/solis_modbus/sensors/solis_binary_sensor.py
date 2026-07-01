@@ -96,24 +96,39 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         """Return true if the binary sensor is on."""
         return self._attr_is_on
 
-    def turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn on called ")
         if self._register == 5:
             self._modbus_controller.enable_connection()
         else:
-            self.set_register_bit(True)
+            await self.set_register_bit(True)
 
-    def turn_off(self, **kwargs: Any) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn off called ")
         if self._register == 5:
             self._modbus_controller.disable_connection()
         else:
-            self.set_register_bit(False)
+            await self.set_register_bit(False)
 
-    def set_register_bit(self, value: bool):
+    async def set_register_bit(self, value: bool):
         """Set or clear a specific bit in the Modbus register, enforcing dependencies and conflicts."""
         controller = self._modbus_controller
         current_register_value: int = cache_get(self._hass, self._modbus_controller, self._register)
+
+        if current_register_value is None and self._bit_position is not None:
+            # A read-modify-write from an empty cache (e.g. right after a reload,
+            # before this register's group has been polled) would start from 0 and
+            # clear every other bit in the register (issue #402). Read the live
+            # value from the inverter first.
+            registers = await controller.async_read_holding_register(self._register, 1)
+            if not registers:
+                _LOGGER.warning(
+                    f"({controller.host}.{controller.device_id}) Cannot toggle bit {self._bit_position} of register "
+                    f"{self._register}: no cached value and live read failed; skipping write to avoid clearing other bits"
+                )
+                return
+            current_register_value = registers[0]
+            cache_save(self._hass, controller, self._register, current_register_value)
 
         new_register_value = current_register_value
 
@@ -152,7 +167,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
         if current_register_value != new_register_value and controller.connected():
             target_register = self._write_register
-            self._hass.create_task(controller.async_write_holding_register(target_register, new_register_value))
+            await controller.async_write_holding_register(target_register, new_register_value)
             cache_save(self._hass, self._modbus_controller, target_register, new_register_value)
 
         self._attr_is_on = value

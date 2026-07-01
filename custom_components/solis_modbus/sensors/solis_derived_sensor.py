@@ -84,6 +84,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 is_adjusted = clock_drift_test(
                     self.hass,
                     self.base_sensor.controller,
+                    self._received_values[33022],
+                    self._received_values[33023],
+                    self._received_values[33024],
                     self._received_values[33025],
                     self._received_values[33026],
                     self._received_values[33027],

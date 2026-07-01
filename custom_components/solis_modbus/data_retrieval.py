@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
@@ -176,6 +176,14 @@ class DataRetrieval:
         self._unsub_listeners = []
         self.connection_check = False  # Stop connection loop logic if any
 
+    def _link_is_stale(self) -> bool:
+        """True when the link claims to be connected but reads have stopped succeeding."""
+        last = self.controller.last_modbus_success
+        if last is None:
+            return False
+        stale_after = max(120.0, float(max(self.controller.poll_speed.values())) * 3)
+        return (datetime.now(UTC) - last).total_seconds() > stale_after
+
     async def check_connection(self, now=None):
         """Ensure the Modbus controller is connected, retrying on failure.
 
@@ -204,7 +212,17 @@ class DataRetrieval:
                 if self.first_poll:
                     await self.modbus_update_all()
                     self.first_poll = False
-                return
+                if not self._link_is_stale():
+                    return
+                # The socket claims to be connected but reads have stopped
+                # succeeding — a half-open TCP link (e.g. the WiFi datalogger
+                # slept overnight and the stack never noticed, issue #411).
+                # Force-close so the loop below establishes a fresh connection.
+                _LOGGER.warning(
+                    f"⚠️({self.controller.host}.{self.controller.slave}) Modbus link looks half-open: "
+                    f"no successful read since {self.controller.last_modbus_success}; forcing a reconnect."
+                )
+                self.controller.force_close()
 
             retry_delay = 0.5
             while not self.controller.connected():
