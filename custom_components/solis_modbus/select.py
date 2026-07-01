@@ -4,7 +4,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.helpers import get_controller_from_entry
+from custom_components.solis_modbus.helpers import get_controller_from_entry, is_essential_only
 from custom_components.solis_modbus.sensor_data.select_sensors import get_select_sensors
 from custom_components.solis_modbus.sensors.solis_select_entity import SolisSelectEntity
 
@@ -20,15 +20,11 @@ async def async_setup_entry(
     async_add_devices,
 ) -> None:
     controller: ModbusController = get_controller_from_entry(hass, config_entry)
-    # We only want this platform to be set up via discovery.
-    _LOGGER.info("Options %s", len(config_entry.options))
 
-    platform_config = config_entry.data or {}
-
-    if len(config_entry.options) > 0:
-        platform_config = config_entry.options
-
-    _LOGGER.info(f"Solis platform_config: {platform_config}")
+    if is_essential_only(config_entry):
+        # Read-only mode (#149): setting registers aren't polled — skip select entities.
+        _LOGGER.info("Essential-only mode: select entities suppressed (read-only)")
+        return
 
     sensor_groups = get_select_sensors(controller.inverter_config)
 

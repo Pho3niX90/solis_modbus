@@ -13,6 +13,7 @@ from custom_components.solis_modbus.helpers import (
     cache_get,
     get_controller_from_entry,
     is_correct_controller,
+    is_essential_only,
     register_update_signal,
     unique_id_generator,
 )
@@ -27,6 +28,11 @@ PARALLEL_UPDATES = 1
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
     modbus_controller: ModbusController = get_controller_from_entry(hass, config_entry)
+
+    if is_essential_only(config_entry):
+        # Read-only mode (#149): charge/discharge slot registers aren't polled — skip.
+        _LOGGER.info("Essential-only mode: time entities suppressed (read-only)")
+        return
 
     inverter_config = modbus_controller.inverter_config
 

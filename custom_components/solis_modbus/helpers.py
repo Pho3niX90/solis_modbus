@@ -200,6 +200,16 @@ def _iter_entities(bucket):
         yield from bucket or []
 
 
+def is_essential_only(config_entry: ConfigEntry) -> bool:
+    """True when the entry runs in essential-only (read-only) polling mode.
+
+    In that mode the 43xxx holding groups are never polled, so writable entities
+    would sit permanently unknown — the write platforms skip creating them
+    (issue #149: a switch to expose only read-only entities).
+    """
+    return {**config_entry.data, **config_entry.options}.get("essential_only", False)
+
+
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):
     """Store controller in hass.data using the Config Entry ID."""
     # We use entry_id because it is unique, immutable, and works for both TCP and Serial.
