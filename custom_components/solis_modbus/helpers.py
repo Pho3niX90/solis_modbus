@@ -81,10 +81,13 @@ def clock_drift_test(hass, controller, year, month, day, hours, minutes, seconds
         # RTC holds an impossible date (e.g. zeros after backup-power loss) — force a correction
         total_drift = float("inf")
 
-    # Ensure structure
+    # Ensure structure. Counters are keyed per link+slave — a single global
+    # counter would let one inverter's drift streak trigger (or reset) another's.
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    drift_counter = hass.data[DOMAIN].get(DRIFT_COUNTER, 0)
+    counters = hass.data[DOMAIN].setdefault(DRIFT_COUNTER, {})
+    counter_key = register_cache_key(controller, "drift")
+    drift_counter = counters.get(counter_key, 0)
     clock_adjusted = False
 
     if total_drift > 60:
@@ -105,9 +108,9 @@ def clock_drift_test(hass, controller, year, month, day, hours, minutes, seconds
                 )
                 clock_adjusted = True
         else:
-            hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
+            counters[counter_key] = drift_counter + 1
     else:
-        hass.data[DOMAIN][DRIFT_COUNTER] = 0
+        counters[counter_key] = 0
 
     _LOGGER.debug(f"Drift: {total_drift}s, Counter: {drift_counter}, Adjusted: {clock_adjusted}")
     return clock_adjusted

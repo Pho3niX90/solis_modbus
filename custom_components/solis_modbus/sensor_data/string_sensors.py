@@ -345,14 +345,15 @@ string_sensors = [
                 "multiplier": 0.01,
             },
             {
+                # READ-ONLY on purpose: with editable=True and no write_register this
+                # fell back to writing wire 3051 = doc-3052 POWER LIMITATION with a
+                # 0.001 scale — "setting PF 1.0" capped the inverter at 10% output.
+                # The PF *setting* is doc-3053 (wire 3052) and needs enable 3071=0xA1.
                 "name": "Actual Power Factor Adjustment",
                 "unique": "solis_modbus_inverter_actual_power_factor_adjustment",
                 "state_class": SensorStateClass.MEASUREMENT,
                 "register": ["3051"],
                 "multiplier": 0.001,
-                "editable": True,
-                "min": 0,
-                "max": 110,
             },
         ],
     },

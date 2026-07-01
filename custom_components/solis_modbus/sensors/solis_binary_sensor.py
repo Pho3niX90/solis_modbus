@@ -75,7 +75,8 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
                 is_on = self._on_value == updated_value
                 _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}, on_value = {self._on_value}, is_on = {is_on}, ")
 
-            if self._register == 5:
+            # Virtual register 90005 = integration enable/disable (not a Modbus register)
+            if self._register == 90005:
                 self._attr_is_on = self._modbus_controller.enabled
                 self._attr_available = True
                 return self._attr_is_on
@@ -100,14 +101,14 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn on called ")
-        if self._register == 5:
+        if self._register == 90005:
             self._modbus_controller.enable_connection()
         else:
             await self.set_register_bit(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn off called ")
-        if self._register == 5:
+        if self._register == 90005:
             self._modbus_controller.disable_connection()
         else:
             await self.set_register_bit(False)

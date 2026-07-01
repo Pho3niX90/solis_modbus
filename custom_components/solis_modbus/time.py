@@ -100,6 +100,8 @@ class SolisTimeEntity(RestoreSensor, TimeEntity):
                     updated_value = value
                 else:
                     updated_value = datetime.now(UTC)
+            elif value is None:
+                return  # nothing usable to decode; int(None) would raise in the dispatcher
             else:
                 updated_value = int(value)
             _LOGGER.debug(f"Sensor update received, register = {updated_register}, value = {updated_value}")

@@ -156,7 +156,9 @@ def get_switch_sensors(inverter_config):
                 {
                     "register": 43292,
                     "entities": [
-                        {"name": "Flexible Export Enabling Switch", "on_value": 170},
+                        # Solis AA/55 convention — without off_value, turning OFF wrote 0
+                        # instead of 0x55 (same convention as the 3069 power-limit switch).
+                        {"name": "Flexible Export Enabling Switch", "on_value": 170, "off_value": 85},
                     ],
                 },
                 {

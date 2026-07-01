@@ -264,7 +264,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "identification": clean_identification(user_input.get("identification", None)),
             "fast_poll": user_input.get("poll_interval_fast", 10),
             "normal_poll": user_input.get("poll_interval_normal", 15),
-            "slow_poll": user_input.get("poll_interval_slow", 15),
+            "slow_poll": user_input.get("poll_interval_slow", 30),
             "inverter_config": inverter_config,
             "connection_type": conn_type,
         }
