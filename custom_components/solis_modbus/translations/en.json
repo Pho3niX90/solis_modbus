@@ -70,7 +70,10 @@
     },
     "error": {
       "cannot_connect": "Failed to connect, please check your settings.",
-      "unknown": "Unexpected error occurred."
+      "unknown": "Unexpected error occurred.",
+      "invalid_model": "Invalid or unknown inverter model. Please select a model from the list.",
+      "serial_required": "Inverter serial number is required.",
+      "model_required": "Please select an inverter model."
     },
     "abort": {
       "already_configured": "This device is already configured."
