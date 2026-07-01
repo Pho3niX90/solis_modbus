@@ -55,6 +55,7 @@ BASE_CONFIG_SCHEMA = {
     vol.Required("has_battery", default=True): bool,
     vol.Required("has_hv_battery", default=False): bool,
     vol.Required("has_generator", default=True): bool,
+    vol.Required("has_dual_meter", default=False): bool,
 }
 
 # Combined schema that accepts both TCP and Serial fields (all optional except connection_type)
@@ -107,6 +108,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_battery", default=True): bool,
         vol.Required("has_hv_battery", default=False): bool,
         vol.Required("has_generator", default=True): bool,
+        vol.Required("has_dual_meter", default=False): bool,
     }
 )
 
