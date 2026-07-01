@@ -149,5 +149,11 @@
         }
       }
     }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Solis datalogger unreachable",
+      "description": "No successful Modbus read from {host} since {last_success}. The WiFi datalogger may be asleep, powered off or in a half-open state; the integration keeps retrying with backoff. Power-cycle the datalogger if this persists."
+    }
   }
 }

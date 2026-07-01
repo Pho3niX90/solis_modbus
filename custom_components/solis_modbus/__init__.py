@@ -286,7 +286,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # which already unloads [Platform.SENSOR, *PLATFORMS] together.
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
-        entry.runtime_data.data_retrieval = DataRetrieval(hass, controller)
+        entry.runtime_data.data_retrieval = DataRetrieval(hass, controller, entry.entry_id)
     except Exception:
         controller.close_connection()
         entry.runtime_data = None
