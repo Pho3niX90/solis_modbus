@@ -23,20 +23,15 @@ from .const import (
     CONF_STOPBITS,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
-    CONTROLLER,
     DEFAULT_BAUDRATE,
     DEFAULT_BYTESIZE,
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
-    NUMBER_ENTITIES,
-    SENSOR_DERIVED_ENTITIES,
-    SENSOR_ENTITIES,
-    TIME_ENTITIES,
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
-from .helpers import _iter_entities, get_controller, set_controller, unique_id_generator
+from .helpers import get_controller, iter_controllers, iter_platform_entities, set_controller, unique_id_generator
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisBaseSensor, SolisSensorGroup
 
@@ -72,7 +67,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             controller = get_controller(hass, host, slave)
             hass.create_task(controller.async_write_holding_register(int(address), int(value)))
         else:
-            for controller in hass.data[DOMAIN][CONTROLLER].values():
+            for controller in iter_controllers(hass):
                 hass.create_task(controller.async_write_holding_register(int(address), int(value)))
 
     async def service_set_time(call: ServiceCall) -> None:
@@ -94,14 +89,14 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             _LOGGER.error("❌ Failed to parse time string '%s': %s", time_str, e)
             return
 
-        # Look through the registered time entities (per-entry buckets) for a match
-        for entity in _iter_entities(call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES)):
+        # Look through the registered time entities (per-entry runtime data) for a match
+        for entity in iter_platform_entities(call.hass, "time"):
             if entity.entity_id == entity_id:
                 await entity.async_set_value(new_time)
                 _LOGGER.debug("Set time for %s to %s", entity_id, new_time)
                 return
 
-        _LOGGER.error("⚠️ Entity with id %s not found in solis_modbus TIME_ENTITIES", entity_id)
+        _LOGGER.error("⚠️ Entity with id %s not found in solis_modbus time entities", entity_id)
 
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)
@@ -159,12 +154,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _LOGGER.debug(config)
 
-    # Initialize storage for controllers
+    # Shared cross-entry storage (register cache); per-entry state lives on
+    # entry.runtime_data (see runtime.SolisRuntimeData).
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(CONTROLLER, {})
 
     # Stagger additional config entries on the same Modbus link so two inverters do not hammer the logger at once.
-    existing_same_link = sum(1 for c in hass.data[DOMAIN][CONTROLLER].values() if getattr(c, "connection_id", None) == connection_id)
+    existing_same_link = sum(1 for c in iter_controllers(hass) if getattr(c, "connection_id", None) == connection_id)
     if existing_same_link:
         delay_s = min(1.5 * existing_same_link, 5.0)
         _LOGGER.debug(
@@ -291,11 +286,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # which already unloads [Platform.SENSOR, *PLATFORMS] together.
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
-        hass.data[DOMAIN].setdefault("data_retrieval", {})
-        hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+        entry.runtime_data.data_retrieval = DataRetrieval(hass, controller)
     except Exception:
         controller.close_connection()
-        hass.data[DOMAIN].get(CONTROLLER, {}).pop(entry.entry_id, None)
+        entry.runtime_data = None
         raise
 
     # Apply option changes automatically (see _async_reload_on_update).
@@ -470,25 +464,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # fails with "config entry for solis_modbus.sensor has already been setup!".
     unload_ok = all(await asyncio.gather(*(hass.config_entries.async_forward_entry_unload(entry, platform) for platform in [Platform.SENSOR, *PLATFORMS])))
 
-    # Clean up resources
+    # Clean up resources (per-entry state lives on entry.runtime_data, which HA
+    # clears after unload; the shared register cache in hass.data survives on purpose)
     if unload_ok:
-        # 1. Stop Data Retrieval
-        if "data_retrieval" in hass.data[DOMAIN]:
-            data_retrieval = hass.data[DOMAIN]["data_retrieval"].pop(entry.entry_id, None)
-            if data_retrieval:
-                await data_retrieval.async_stop()
-
-        # 2. Close and REMOVE the specific controller for this entry
-        if CONTROLLER in hass.data[DOMAIN]:
-            controller = hass.data[DOMAIN][CONTROLLER].pop(entry.entry_id, None)
-            if controller:
-                _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
-                controller.close_connection()
-
-        # 3. Drop this entry's per-entry entity buckets so they don't leak on reload.
-        for bucket in (SENSOR_ENTITIES, SENSOR_DERIVED_ENTITIES, NUMBER_ENTITIES, TIME_ENTITIES):
-            bucket_data = hass.data[DOMAIN].get(bucket)
-            if isinstance(bucket_data, dict):
-                bucket_data.pop(entry.entry_id, None)
+        runtime = getattr(entry, "runtime_data", None)
+        if runtime is not None:
+            if runtime.data_retrieval is not None:
+                await runtime.data_retrieval.async_stop()
+            _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
+            runtime.controller.close_connection()
 
     return unload_ok

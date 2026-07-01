@@ -32,4 +32,5 @@ async def async_setup_entry(
     for sensor_group in sensor_groups:
         sensors.append(SolisSelectEntity(hass, controller, sensor_group))
     _LOGGER.info(f"Select entities = {len(sensors)}")
+    config_entry.runtime_data.entities["select"] = sensors
     async_add_devices(sensors, True)

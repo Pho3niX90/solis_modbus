@@ -37,6 +37,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._inverted = entity_definition.get("inverted", None)
         self._attr_unique_id = unique_id_generator_binary(modbus_controller, self._register, self._bit_position, self._on_value)
         self._attr_name = entity_definition["name"]
+        self._attr_has_entity_name = True
         self._attr_available = False
 
     async def async_added_to_hass(self) -> None:

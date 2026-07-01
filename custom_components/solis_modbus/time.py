@@ -8,7 +8,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import CONTROLLER, DOMAIN, REGISTER, SLAVE, TIME_ENTITIES, VALUE
+from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.helpers import (
     cache_get,
     get_controller_from_entry,
@@ -42,7 +42,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     for entity_definition in time_definitions:
         time_entities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
-    hass.data.setdefault(DOMAIN, {}).setdefault(TIME_ENTITIES, {})[config_entry.entry_id] = time_entities
+    config_entry.runtime_data.entities["time"] = time_entities
     async_add_devices(time_entities, True)
 
 

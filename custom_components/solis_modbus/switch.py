@@ -3,7 +3,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, ENTITIES, SWITCH_ENTITIES
+from custom_components.solis_modbus.const import ENTITIES
 from custom_components.solis_modbus.helpers import get_controller_from_entry, is_essential_only
 from custom_components.solis_modbus.sensor_data.switch_sensors import get_switch_sensors
 from custom_components.solis_modbus.sensors.solis_binary_sensor import SolisBinaryEntity
@@ -34,7 +34,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             child_entity["write_register"] = main_entity.get("write_register", None)
             switch_entities.append(SolisBinaryEntity(hass, modbus_controller, child_entity))
 
-    hass.data[DOMAIN][SWITCH_ENTITIES] = switch_entities
+    config_entry.runtime_data.entities["switch"] = switch_entities
     async_add_devices(switch_entities, True)
 
     return True

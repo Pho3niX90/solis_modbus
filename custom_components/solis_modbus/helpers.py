@@ -12,9 +12,7 @@ from custom_components.solis_modbus.const import (
     CONN_TYPE_TCP,
     CONTROLLER,
     DRIFT_COUNTER,
-    NUMBER_ENTITIES,
     REGISTER,
-    SENSOR_ENTITIES,
     SLAVE,
     VALUE,
     VALUES,
@@ -176,28 +174,26 @@ def cache_get(hass: HomeAssistant, controller, register: str | int):
     return hass.data[DOMAIN][VALUES].get(register_cache_key(controller, register), None)
 
 
+def iter_platform_entities(hass: HomeAssistant, *platforms: str):
+    """Yield entities of the given platform keys across all Solis config entries."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        runtime = getattr(entry, "runtime_data", None)
+        if runtime is None:
+            continue
+        for platform in platforms:
+            yield from runtime.entities.get(platform, [])
+
+
 def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, disabled_sensors: list) -> None:
     """Mark sensor/number platform entities unavailable when their SolisBaseSensor is dynamically disabled."""
     if not disabled_sensors:
         return
     disabled_set = frozenset(disabled_sensors)
-    domain_data = hass.data.get(DOMAIN) or {}
-    for bucket in (SENSOR_ENTITIES, NUMBER_ENTITIES):
-        for ent in _iter_entities(domain_data.get(bucket)):
-            base = getattr(ent, "base_sensor", None)
-            if base is not None and base in disabled_set:
-                ent._attr_available = False
-                ent.schedule_update_ha_state()
-
-
-def _iter_entities(bucket):
-    """Yield entities from a platform bucket that is either a per-entry dict of
-    lists (current) or a flat list (legacy)."""
-    if isinstance(bucket, dict):
-        for ent_list in bucket.values():
-            yield from ent_list or []
-    else:
-        yield from bucket or []
+    for ent in iter_platform_entities(hass, "sensor", "number"):
+        base = getattr(ent, "base_sensor", None)
+        if base is not None and base in disabled_set:
+            ent._attr_available = False
+            ent.schedule_update_ha_state()
 
 
 def is_essential_only(config_entry: ConfigEntry) -> bool:
@@ -211,14 +207,24 @@ def is_essential_only(config_entry: ConfigEntry) -> bool:
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):
-    """Store controller in hass.data using the Config Entry ID."""
-    # We use entry_id because it is unique, immutable, and works for both TCP and Serial.
-    hass.data[DOMAIN][CONTROLLER][config_entry.entry_id] = controller
+    """Attach a fresh SolisRuntimeData holding this controller to the entry."""
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    config_entry.runtime_data = SolisRuntimeData(controller=controller)
 
 
 def get_controller_from_entry(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Get controller from config entry using the Config Entry ID."""
-    return hass.data[DOMAIN][CONTROLLER].get(config_entry.entry_id)
+    """Get the controller from the entry's runtime data."""
+    runtime = getattr(config_entry, "runtime_data", None)
+    return runtime.controller if runtime is not None else None
+
+
+def iter_controllers(hass: HomeAssistant):
+    """Yield every controller across all Solis config entries."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        runtime = getattr(entry, "runtime_data", None)
+        if runtime is not None:
+            yield runtime.controller
 
 
 def get_controller(hass: HomeAssistant, host: str, slave: int = 1):
@@ -226,8 +232,7 @@ def get_controller(hass: HomeAssistant, host: str, slave: int = 1):
     Search for a controller matching the host and slave ID.
     Used by services (write_holding_register) that only know the IP/Host.
     """
-    for controller in hass.data[DOMAIN][CONTROLLER].values():
-        # Check if this controller matches the requested host and slave
+    for controller in iter_controllers(hass):
         # Use getattr to be safe if controller hasn't fully initialized
         if getattr(controller, "host", None) == host and getattr(controller, "device_id", 0) == slave:
             return controller
