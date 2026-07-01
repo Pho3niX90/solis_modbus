@@ -88,9 +88,33 @@ hybrid_sensors = [
         ],
     },
     {
-        "register_start": 33025,
+        "register_start": 33022,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
+            {
+                "name": "Clock (Year)",
+                "category": Category.BASIC_INFORMATION,
+                "unique": "solis_modbus_inverter_clock_year",
+                "register": ["33022"],
+                "multiplier": 0,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
+            {
+                "name": "Clock (Month)",
+                "category": Category.BASIC_INFORMATION,
+                "unique": "solis_modbus_inverter_clock_month",
+                "register": ["33023"],
+                "multiplier": 0,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
+            {
+                "name": "Clock (Day)",
+                "category": Category.BASIC_INFORMATION,
+                "unique": "solis_modbus_inverter_clock_day",
+                "register": ["33024"],
+                "multiplier": 0,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
             {
                 "name": "Clock (Hours)",
                 "category": Category.BASIC_INFORMATION,
@@ -3560,7 +3584,7 @@ hybrid_sensors_derived = [
         "unique": "solis_modbus_inverter_clock_rectification",
         "multiplier": 0,
         "device_class": SensorDeviceClass.TIMESTAMP,
-        "register": ["90007", "33025", "33026", "33027"],
+        "register": ["90007", "33022", "33023", "33024", "33025", "33026", "33027"],
     },
     {
         "name": "Status String",
