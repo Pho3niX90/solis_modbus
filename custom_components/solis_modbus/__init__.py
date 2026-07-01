@@ -435,14 +435,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # in async_setup_entry alongside PLATFORMS, so it must be unloaded here too —
     # otherwise a reload leaves the sensor platform set up and the next setup
     # fails with "config entry for solis_modbus.sensor has already been setup!".
-    unload_ok = all(
-        await asyncio.gather(
-            *(
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in [Platform.SENSOR, *PLATFORMS]
-            )
-        )
-    )
+    unload_ok = all(await asyncio.gather(*(hass.config_entries.async_forward_entry_unload(entry, platform) for platform in [Platform.SENSOR, *PLATFORMS])))
 
     # Clean up resources
     if unload_ok:
