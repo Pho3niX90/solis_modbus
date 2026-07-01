@@ -215,8 +215,17 @@ def split_s32(s32_values: list[int]):
     high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
     low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
 
-    # Combine the high and low words to form a 32-bit signed/unsigned integer
+    # Combine the high and low words to form a signed 32-bit integer (two's complement).
     return (high_word << 16) | (low_word & 0xFFFF)
+
+
+def combine_u32(u32_values: list[int]) -> int:
+    """Combine two 16-bit words (high word first) into an unsigned 32-bit integer.
+
+    Used for registers explicitly tagged ``data_type: U32`` (e.g. lifetime energy
+    totals) so they never wrap negative once the raw count crosses 0x7FFFFFFF.
+    """
+    return ((u32_values[0] & 0xFFFF) << 16) | (u32_values[1] & 0xFFFF)
 
 
 def _any_in(target: list[int], collection: set[int]) -> bool:

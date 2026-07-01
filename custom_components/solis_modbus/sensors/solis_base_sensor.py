@@ -18,6 +18,7 @@ from custom_components.solis_modbus.data.enums import Category, DataType, Invert
 from custom_components.solis_modbus.helpers import (
     _any_in,
     cache_get,
+    combine_u32,
     extract_serial_number,
     split_s32,
     unique_id_generator,
@@ -157,7 +158,14 @@ class SolisBaseSensor:
             values = values
             n_value = extract_serial_number(values)
         elif len(self.registrars) > 1:
-            combined_value = split_s32(values)
+            # Default to signed 32-bit (historical behaviour — the many 2-register
+            # power/current registers are genuinely signed). Registers explicitly
+            # tagged U32 (e.g. lifetime energy totals) decode as unsigned so they
+            # never wrap negative.
+            if self.data_type == DataType.U32.value:
+                combined_value = combine_u32(values)
+            else:
+                combined_value = split_s32(values)
 
             if self.multiplier == 0 or self.multiplier == 1:
                 n_value = round(combined_value)

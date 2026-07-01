@@ -494,7 +494,7 @@ string_sensors = [
         "register_start": 36013,
         "scan_interval": 0,
         "entities": [
-            {"name": "Model No", "unique": "solis_modbus_inverter_model_no", "register": ["36013"], "multiplier": 0},
+            {"name": "EPM Model No", "unique": "solis_modbus_inverter_epm_model_no", "register": ["36013"], "multiplier": 0},
             {
                 "name": "Inverter EPM Firmware Version",
                 "unique": "solis_modbus_inverter_epm_firmware_version",
