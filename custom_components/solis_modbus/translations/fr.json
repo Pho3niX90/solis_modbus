@@ -34,7 +34,8 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)"
         }
       },
       "reconfigure": {
@@ -62,13 +63,17 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)"
         }
       }
     },
     "error": {
       "cannot_connect": "Échec de la connexion, veuillez vérifier vos paramètres.",
-      "unknown": "Une erreur inattendue s'est produite."
+      "unknown": "Une erreur inattendue s'est produite.",
+      "invalid_model": "Modèle d'onduleur invalide ou inconnu. Veuillez sélectionner un modèle dans la liste.",
+      "serial_required": "Le numéro de série de l'onduleur est requis.",
+      "model_required": "Veuillez sélectionner un modèle d'onduleur."
     },
     "abort": {
       "already_configured": "Cet appareil est déjà configuré."
@@ -94,7 +99,8 @@
           "connection": "Type de connexion",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)"
         }
       }
     }
@@ -118,20 +124,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Lire un registre",
-      "description": "Lit une valeur d'un registre",
-      "fields": {
-        "address": {
-          "name": "Adresse",
-          "description": "Adresse à lire"
-        },
-        "host": {
-          "name": "Onduleur",
-          "description": "IP de l'onduleur (nécessaire uniquement si plusieurs onduleurs sont présents)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Modifier l'heure d'une entité",
       "description": "Définit l'heure de l'entité sur celle fournie",
@@ -145,6 +137,12 @@
           "description": "Heure au format HH:MM ou HH:MM:SS"
         }
       }
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Enregistreur de données Solis injoignable",
+      "description": "Aucune lecture Modbus réussie depuis {host} depuis {last_success}. L'enregistreur WiFi est peut-être en veille, hors tension ou dans un état semi-ouvert ; l'intégration continue de réessayer avec temporisation. Redémarrez l'enregistreur si le problème persiste."
     }
   }
 }

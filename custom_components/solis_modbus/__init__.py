@@ -9,7 +9,7 @@ from homeassistant.components.persistent_notification import async_create as pn_
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryError
+from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
@@ -96,7 +96,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
                 _LOGGER.debug("Set time for %s to %s", entity_id, new_time)
                 return
 
-        _LOGGER.error("⚠️ Entity with id %s not found in solis_modbus time entities", entity_id)
+        raise ServiceValidationError(f"Entity {entity_id} is not a solis_modbus time entity")
 
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)

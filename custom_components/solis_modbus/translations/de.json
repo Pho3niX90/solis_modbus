@@ -34,7 +34,8 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)"
         }
       },
       "reconfigure": {
@@ -62,13 +63,17 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)"
         }
       }
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen, bitte überprüfen Sie Ihre Einstellungen.",
-      "unknown": "Unerwarteter Fehler aufgetreten."
+      "unknown": "Unerwarteter Fehler aufgetreten.",
+      "invalid_model": "Ungültiges oder unbekanntes Wechselrichtermodell. Bitte ein Modell aus der Liste wählen.",
+      "serial_required": "Die Seriennummer des Wechselrichters ist erforderlich.",
+      "model_required": "Bitte ein Wechselrichtermodell auswählen."
     },
     "abort": {
       "already_configured": "Dieses Gerät ist bereits konfiguriert."
@@ -94,7 +99,8 @@
           "connection": "Verbindungstyp",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)"
         }
       }
     }
@@ -118,20 +124,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Register lesen",
-      "description": "Liest einen Wert aus einem Register",
-      "fields": {
-        "address": {
-          "name": "Adresse",
-          "description": "Adresse zum Lesen"
-        },
-        "host": {
-          "name": "Wechselrichter",
-          "description": "IP-Adresse des Wechselrichters (nur erforderlich, wenn mehrere Wechselrichter vorhanden sind)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Zeit einer Entität ändern",
       "description": "Setzt die Zeit der Entität auf die angegebene",
@@ -145,6 +137,12 @@
           "description": "Zeit im Format HH:MM oder HH:MM:SS"
         }
       }
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Solis-Datenlogger nicht erreichbar",
+      "description": "Kein erfolgreicher Modbus-Lesevorgang von {host} seit {last_success}. Der WiFi-Datenlogger schläft möglicherweise, ist ausgeschaltet oder in einem halboffenen Zustand; die Integration versucht es weiterhin mit Backoff. Bei anhaltendem Problem den Datenlogger stromlos machen."
     }
   }
 }
