@@ -71,10 +71,15 @@ def extract_serial_number(values):
     return packed.decode("ascii", errors="ignore").strip("\x00\r\n ")
 
 
-def clock_drift_test(hass, controller, hours, minutes, seconds):
+def clock_drift_test(hass, controller, year, month, day, hours, minutes, seconds):
     current_time = dt_utils.now()
-    device_time = datetime(current_time.year, current_time.month, current_time.day, hours, minutes, seconds, tzinfo=current_time.tzinfo)
-    total_drift = (current_time - device_time).total_seconds()
+    try:
+        # RTC year register holds 0-99 (offset from 2000)
+        device_time = datetime(2000 + year, month, day, hours, minutes, seconds, tzinfo=current_time.tzinfo)
+        total_drift = abs((current_time - device_time).total_seconds())
+    except ValueError:
+        # RTC holds an impossible date (e.g. zeros after backup-power loss) — force a correction
+        total_drift = float("inf")
 
     # Ensure structure
     if DOMAIN not in hass.data:
@@ -82,10 +87,22 @@ def clock_drift_test(hass, controller, hours, minutes, seconds):
     drift_counter = hass.data[DOMAIN].get(DRIFT_COUNTER, 0)
     clock_adjusted = False
 
-    if abs(total_drift) > 60:
+    if total_drift > 60:
         if drift_counter > 5:
             if controller.connected():
-                hass.create_task(controller.async_write_holding_registers(43003, [current_time.hour, current_time.minute, current_time.second]))
+                hass.create_task(
+                    controller.async_write_holding_registers(
+                        43000,
+                        [
+                            current_time.year % 100,
+                            current_time.month,
+                            current_time.day,
+                            current_time.hour,
+                            current_time.minute,
+                            current_time.second,
+                        ],
+                    )
+                )
                 clock_adjusted = True
         else:
             hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
