@@ -29,11 +29,14 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
+    NUMBER_ENTITIES,
+    SENSOR_DERIVED_ENTITIES,
+    SENSOR_ENTITIES,
     TIME_ENTITIES,
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
-from .helpers import get_controller, set_controller, unique_id_generator
+from .helpers import _iter_entities, get_controller, set_controller, unique_id_generator
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisBaseSensor, SolisSensorGroup
 
@@ -91,8 +94,8 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             _LOGGER.error("❌ Failed to parse time string '%s': %s", time_str, e)
             return
 
-        # Look through the registered time entities for one that matches the given entity_id
-        for entity in call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES, []):
+        # Look through the registered time entities (per-entry buckets) for a match
+        for entity in _iter_entities(call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES)):
             if entity.entity_id == entity_id:
                 await entity.async_set_value(new_time)
                 _LOGGER.debug("Set time for %s to %s", entity_id, new_time)
@@ -459,5 +462,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             if controller:
                 _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
                 controller.close_connection()
+
+        # 3. Drop this entry's per-entry entity buckets so they don't leak on reload.
+        for bucket in (SENSOR_ENTITIES, SENSOR_DERIVED_ENTITIES, NUMBER_ENTITIES, TIME_ENTITIES):
+            bucket_data = hass.data[DOMAIN].get(bucket)
+            if isinstance(bucket_data, dict):
+                bucket_data.pop(entry.entry_id, None)
 
     return unload_ok

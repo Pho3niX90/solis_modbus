@@ -180,11 +180,21 @@ def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, dis
     disabled_set = frozenset(disabled_sensors)
     domain_data = hass.data.get(DOMAIN) or {}
     for bucket in (SENSOR_ENTITIES, NUMBER_ENTITIES):
-        for ent in domain_data.get(bucket) or []:
+        for ent in _iter_entities(domain_data.get(bucket)):
             base = getattr(ent, "base_sensor", None)
             if base is not None and base in disabled_set:
                 ent._attr_available = False
                 ent.schedule_update_ha_state()
+
+
+def _iter_entities(bucket):
+    """Yield entities from a platform bucket that is either a per-entry dict of
+    lists (current) or a flat list (legacy)."""
+    if isinstance(bucket, dict):
+        for ent_list in bucket.values():
+            yield from ent_list or []
+    else:
+        yield from bucket or []
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):

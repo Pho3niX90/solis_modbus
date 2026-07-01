@@ -33,7 +33,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     for entity_definition in time_definitions:
         time_entities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
-    hass.data[DOMAIN][TIME_ENTITIES] = time_entities
+    hass.data.setdefault(DOMAIN, {}).setdefault(TIME_ENTITIES, {})[config_entry.entry_id] = time_entities
     async_add_devices(time_entities, True)
 
 

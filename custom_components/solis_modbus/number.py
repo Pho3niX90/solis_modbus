@@ -27,7 +27,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         for sensor in sensor_group.sensors:
             if sensor.name != "reserve" and sensor.editable:
                 sensors.append(SolisNumberEntity(hass, sensor))
-    hass.data.setdefault(DOMAIN, {})[NUMBER_ENTITIES] = sensors
+    hass.data.setdefault(DOMAIN, {}).setdefault(NUMBER_ENTITIES, {})[config_entry.entry_id] = sensors
     _LOGGER.info(f"Number entities = {len(sensors)}")
     async_add_devices(sensors, True)
     return True
