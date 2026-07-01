@@ -12,6 +12,9 @@ from custom_components.solis_modbus.sensors.solis_sensor import SolisSensor
 
 _LOGGER = logging.getLogger(__name__)
 
+# Read-only platform — no write serialization needed.
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""

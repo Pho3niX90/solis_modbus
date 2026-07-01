@@ -10,6 +10,9 @@ from custom_components.solis_modbus.sensors.solis_binary_sensor import SolisBina
 
 _LOGGER = logging.getLogger(__name__)
 
+# Serialize control writes — a single Modbus link can't take concurrent writes.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     modbus_controller: ModbusController = get_controller_from_entry(hass, config_entry)

@@ -111,8 +111,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             new_value = self.base_sensor.get_value
 
             if 33095 in self._register:
-                new_value = round(self.base_sensor.get_value)
-                new_value = STATUS_MAPPING.get(new_value, "Unknown")
+                code = round(self.base_sensor.get_value)
+                # Preserve the raw hex code for unmapped faults (matches SolisCloud alarm codes).
+                new_value = STATUS_MAPPING.get(code, f"Unknown (0x{code:04X})")
 
             if 33049 in self._register or 33051 in self._register or 33053 in self._register or 33055 in self._register:
                 r1_value = self._received_values[self._register[0]] * self.base_sensor.multiplier
@@ -185,12 +186,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self._attr_available = True
                 self._attr_native_value = new_value
                 self._state = new_value
-                self.schedule_update_ha_state()
-
-            # Update state if valid value exists
-            if new_value is not None:
-                self._attr_native_value = new_value
-                self.schedule_update_ha_state()
+                self.schedule_update_ha_state()  # single update — no redundant re-schedule
 
             # Clear received values after update
             self._received_values.clear()

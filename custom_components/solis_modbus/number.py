@@ -9,6 +9,9 @@ from custom_components.solis_modbus.sensors.solis_number_sensor import SolisNumb
 
 _LOGGER = logging.getLogger(__name__)
 
+# Serialize control writes — a single Modbus link can't take concurrent writes.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""

@@ -7,6 +7,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.components.switch import SwitchDeviceClass
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfApparentPower,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -138,6 +139,19 @@ class SolisBaseSensor:
             return 0.1
         if self.unit_of_measurement == UnitOfPower.WATT:
             return 1
+
+    @property
+    def entity_category(self) -> EntityCategory | None:
+        """Diagnostic bucket for identity/version/clock-style registers.
+
+        Deliberately conservative: only entities with no device_class (model,
+        serial, firmware versions, clock parts, operating mode, internal bus
+        data) are demoted. Real measurements (temperature, currents, voltages)
+        keep their normal placement even when tagged an "Information" category.
+        """
+        if self.device_class is None and self.category in (Category.BASIC_INFORMATION, Category.DEVICE_INTERNAL_DATA):
+            return EntityCategory.DIAGNOSTIC
+        return None
 
     @property
     def get_raw_values(self):
