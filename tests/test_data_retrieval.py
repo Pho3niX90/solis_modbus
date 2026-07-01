@@ -1,4 +1,5 @@
 import unittest
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.solis_modbus.const import DOMAIN, VALUES
@@ -254,3 +255,58 @@ class TestDataRetrieval(unittest.TestCase):
         # Check if once_group is removed from controller.sensor_groups
         self.assertNotIn(self.once_group, self.controller.sensor_groups)
         self.assertIn(self.normal_group, self.controller.sensor_groups)
+
+
+def _make_stale_watchdog_fixture(last_success):
+    """Build a DataRetrieval with a controller whose link state we fully control."""
+    hass = MagicMock()
+    hass.is_running = False  # don't kick off poll_controller in __init__
+    controller = MagicMock()
+    controller.host = "192.168.1.100"
+    controller.slave = 1
+    controller.device_id = 1
+    controller.poll_speed = {PollSpeed.FAST: 5, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
+    controller.last_modbus_success = last_success
+    controller.connect = AsyncMock(return_value=True)
+    retrieval = DataRetrieval(hass, controller)
+    retrieval.first_poll = False
+    return retrieval, controller
+
+
+async def test_check_connection_stale_link_forces_reconnect():
+    """Issue #411: a half-open socket reports connected() == True while every read
+    fails. Once last_modbus_success is old enough, the watchdog must force-close
+    the client and reconnect instead of trusting the zombie link forever."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    # connected: True on the initial check (zombie link), False after force_close
+    controller.connected = MagicMock(side_effect=[True, False])
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.check_connection()
+
+    controller.force_close.assert_called_once()
+    controller.connect.assert_awaited_once()
+
+
+async def test_check_connection_healthy_link_returns_early():
+    """A link with a recent successful read must not be torn down."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC))
+    controller.connected = MagicMock(return_value=True)
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.check_connection()
+
+    controller.force_close.assert_not_called()
+    controller.connect.assert_not_awaited()
+
+
+async def test_link_is_stale_thresholds():
+    retrieval, controller = _make_stale_watchdog_fixture(None)
+    # No success recorded yet -> not stale (avoid reconnect storm at startup)
+    assert retrieval._link_is_stale() is False
+
+    # Threshold is max(120s, slowest poll speed * 3) = 120s here
+    controller.last_modbus_success = datetime.now(UTC) - timedelta(seconds=60)
+    assert retrieval._link_is_stale() is False
+    controller.last_modbus_success = datetime.now(UTC) - timedelta(seconds=130)
+    assert retrieval._link_is_stale() is True
