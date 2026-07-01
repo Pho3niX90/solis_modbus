@@ -82,6 +82,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3008", "3009"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy This Month",
@@ -91,6 +92,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3010", "3011"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy Last Month",
@@ -100,6 +102,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3012", "3013"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy Today",
@@ -127,6 +130,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3016", "3017"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy Last Year",
@@ -136,6 +140,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3018", "3019"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {"type": "reserve", "register": ["3020"]},
             {

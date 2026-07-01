@@ -162,6 +162,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "PV Current Month Energy Generation",
@@ -172,6 +173,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "PV Last Month Energy Generation",
@@ -182,6 +184,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "PV Today Energy Generation",
@@ -212,6 +215,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "PV Last Year Energy Generation",
@@ -222,6 +226,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
         ],
     },
@@ -545,6 +550,7 @@ hybrid_sensors = [
                 "multiplier": 0.001,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Meter Voltage",
@@ -822,6 +828,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Today Battery Charge Energy",
@@ -852,6 +859,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Today Battery Discharge Energy",
@@ -882,6 +890,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Today Energy Imported From Grid",
@@ -912,6 +921,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Today Energy Fed Into Grid",
@@ -942,6 +952,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Today Energy Consumption",
@@ -962,6 +973,32 @@ hybrid_sensors = [
                 "multiplier": 0.1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+            },
+            {"type": "reserve", "register": ["33181", "33182", "33183", "33184", "33185"]},
+            {
+                # 33186-33189: new in protocol Ver3.4 (pp.12-13) — energy through the
+                # inverter's own AC grid port (differs from the meter/CT figures above
+                # on AC-coupled and dual-source installs).
+                "name": "AC Grid Port Total Energy Fed In",
+                "category": Category.ENERGY_DATA,
+                "unique": "solis_modbus_inverter_ac_grid_port_total_energy_fed_in",
+                "register": ["33186", "33187"],
+                "device_class": SensorDeviceClass.ENERGY,
+                "multiplier": 1,
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
+            },
+            {
+                "name": "AC Grid Port Total Energy Consumption",
+                "category": Category.ENERGY_DATA,
+                "unique": "solis_modbus_inverter_ac_grid_port_total_energy_consumption",
+                "register": ["33188", "33189"],
+                "device_class": SensorDeviceClass.ENERGY,
+                "multiplier": 1,
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
         ],
     },
@@ -1336,6 +1373,7 @@ hybrid_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Meter Total Active Energy To Grid",
@@ -1346,6 +1384,7 @@ hybrid_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
         ],
     },
@@ -1645,6 +1684,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Generator Phase B Active Power",
@@ -1681,6 +1721,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Household Load Year Energy",
@@ -1691,6 +1732,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Household Load Month Energy",
@@ -1701,6 +1743,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Household Load Today Energy",
@@ -1722,6 +1765,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Backup Load Year Energy",
@@ -1732,6 +1776,7 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Backup Load Month Energy",
@@ -1742,6 +1787,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Backup Load Today Energy",
@@ -1769,6 +1815,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "AC Coupling Year Power Generation",
@@ -1779,6 +1826,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "AC Coupling Month Power Generation",
@@ -1789,6 +1837,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32,
             },
             {
                 "name": "AC Coupling Today Power Generation",
