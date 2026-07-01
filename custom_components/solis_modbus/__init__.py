@@ -236,45 +236,53 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     controller = ModbusController(**controller_params)
 
-    controller._sensor_groups = []
-    for group in sensors:
-        feature_requirement = group.get("feature_requirement", [])
-        if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
-            group_name = group.get("name", group.get("register_start", "Unnamed"))
-            _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
-            continue
+    # From here the controller holds a ref on the shared Modbus client; release it
+    # if setup fails so a failed entry doesn't pin the connection open (HA won't
+    # call async_unload_entry when async_setup_entry raises).
+    try:
+        controller._sensor_groups = []
+        for group in sensors:
+            feature_requirement = group.get("feature_requirement", [])
+            if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
+                group_name = group.get("name", group.get("register_start", "Unnamed"))
+                _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
+                continue
 
-        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
+            controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
-    controller._derived_sensors = [
-        SolisBaseSensor(
-            hass=hass,
-            name=entity.get("name"),
-            controller=controller,
-            registrars=[int(r) for r in entity.get("register", [])],
-            write_register=entity.get("write_register", None),
-            state_class=entity.get("state_class", None),
-            device_class=entity.get("device_class", None),
-            unit_of_measurement=entity.get("unit_of_measurement", None),
-            multiplier=entity.get("multiplier", 1),
-            editable=entity.get("editable", False),
-            hidden=entity.get("hidden", False),
-            category=entity.get("category", None),
-            unique_id=unique_id_generator(controller, entity.get("unique", "reserve")),
-        )
-        for entity in sensors_derived
-    ]
+        controller._derived_sensors = [
+            SolisBaseSensor(
+                hass=hass,
+                name=entity.get("name"),
+                controller=controller,
+                registrars=[int(r) for r in entity.get("register", [])],
+                write_register=entity.get("write_register", None),
+                state_class=entity.get("state_class", None),
+                device_class=entity.get("device_class", None),
+                unit_of_measurement=entity.get("unit_of_measurement", None),
+                multiplier=entity.get("multiplier", 1),
+                editable=entity.get("editable", False),
+                hidden=entity.get("hidden", False),
+                category=entity.get("category", None),
+                unique_id=unique_id_generator(controller, entity.get("unique", "reserve")),
+            )
+            for entity in sensors_derived
+        ]
 
-    set_controller(hass, controller, entry)
+        set_controller(hass, controller, entry)
 
-    _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
+        _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
 
-    # Set up all platforms in one call (concurrent) — matches the unload side,
-    # which already unloads [Platform.SENSOR, *PLATFORMS] together.
-    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
+        # Set up all platforms in one call (concurrent) — matches the unload side,
+        # which already unloads [Platform.SENSOR, *PLATFORMS] together.
+        await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
-    hass.data[DOMAIN].setdefault("data_retrieval", {})
-    hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+        hass.data[DOMAIN].setdefault("data_retrieval", {})
+        hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+    except Exception:
+        controller.close_connection()
+        hass.data[DOMAIN].get(CONTROLLER, {}).pop(entry.entry_id, None)
+        raise
 
     # Apply option changes automatically (see _async_reload_on_update).
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_update))

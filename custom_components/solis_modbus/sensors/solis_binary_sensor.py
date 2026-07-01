@@ -179,5 +179,3 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
     def device_info(self):
         """Return device info."""
         return self._modbus_controller.device_info
-
-
