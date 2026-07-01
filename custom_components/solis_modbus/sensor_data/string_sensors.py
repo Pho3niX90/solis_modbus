@@ -494,6 +494,55 @@ string_sensors = [
         ],
     },
     {
+        # Direct-meter grid energy counters (issue #410, field-verified on S5-GR3P +
+        # Acrel DTSD1352-C against the meter's own display). Protocol §5.3: doc regs
+        # 3281-3286 → wire 3280-3285. These come from the attached meter itself, unlike
+        # the 36050 block which only exists on EPM-equipped inverters (exception code 2
+        # otherwise). On meter-less models this group auto-disables via exc-2 recovery.
+        "register_start": 3280,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "Meter Power Factor",
+                "unique": "solis_modbus_meter_power_factor",
+                "state_class": SensorStateClass.MEASUREMENT,
+                "device_class": SensorDeviceClass.POWER_FACTOR,
+                "register": ["3280"],
+                "multiplier": 0.001,
+                "data_type": DataType.S16,
+            },
+            {
+                "name": "Meter Grid Frequency",
+                "unique": "solis_modbus_meter_grid_frequency",
+                "unit_of_measurement": UnitOfFrequency.HERTZ,
+                "device_class": SensorDeviceClass.FREQUENCY,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "register": ["3281"],
+                "multiplier": 0.01,
+            },
+            {
+                "name": "Meter Grid Import Total Energy",
+                "unique": "solis_modbus_meter_grid_import_total_energy",
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                "device_class": SensorDeviceClass.ENERGY,
+                "state_class": SensorStateClass.TOTAL_INCREASING,
+                "register": ["3282", "3283"],
+                "multiplier": 0.01,
+                "data_type": DataType.U32,
+            },
+            {
+                "name": "Meter Grid Export Total Energy",
+                "unique": "solis_modbus_meter_grid_export_total_energy",
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                "device_class": SensorDeviceClass.ENERGY,
+                "state_class": SensorStateClass.TOTAL_INCREASING,
+                "register": ["3284", "3285"],
+                "multiplier": 0.01,
+                "data_type": DataType.U32,
+            },
+        ],
+    },
+    {
         "register_start": 36013,
         "essential": True,
         "scan_interval": 0,
