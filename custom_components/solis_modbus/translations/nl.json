@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Geforceerd laden/ontladen stoppen",
       "description": "Annuleert een actief geforceerd laden of ontladen"
+    },
+    "solis_dispatch": {
+      "name": "Externe dispatch",
+      "description": "Realtime dispatch: doelzoekende net-/batterijregeling met failsafe in de omvormer"
+    },
+    "solis_dispatch_stop": {
+      "name": "Stop externe dispatch",
+      "description": "Geeft dispatch vrij — de omvormer keert direct terug naar normale werking"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programmeer dispatch-schemaperiode",
+      "description": "Schrijft één van zes in de omvormer opgeslagen perioden (overleeft HA-herstarts)"
     }
   },
   "issues": {

@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Parar carga/descarga forçada",
       "description": "Cancela uma carga ou descarga forçada ativa"
+    },
+    "solis_dispatch": {
+      "name": "Despacho remoto",
+      "description": "Despacho em tempo real: controlo de rede/bateria com failsafe no inversor"
+    },
+    "solis_dispatch_stop": {
+      "name": "Parar despacho remoto",
+      "description": "Liberta o despacho — o inversor volta imediatamente ao funcionamento normal"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programar período de despacho",
+      "description": "Escreve um dos seis períodos agendados residentes no inversor (sobrevive a reinícios do HA)"
     }
   },
   "issues": {

@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Arrêter la charge/décharge forcée",
       "description": "Annule une charge ou décharge forcée active"
+    },
+    "solis_dispatch": {
+      "name": "Dispatch à distance",
+      "description": "Dispatch temps réel : contrôle réseau/batterie avec failsafe côté onduleur"
+    },
+    "solis_dispatch_stop": {
+      "name": "Arrêter le dispatch",
+      "description": "Libère le dispatch — l'onduleur revient immédiatement au fonctionnement normal"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programmer une période de dispatch",
+      "description": "Écrit l'une des six périodes planifiées résidentes dans l'onduleur (survit aux redémarrages de HA)"
     }
   },
   "issues": {

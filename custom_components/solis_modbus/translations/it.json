@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Ferma carica/scarica forzata",
       "description": "Annulla una carica o scarica forzata attiva"
+    },
+    "solis_dispatch": {
+      "name": "Dispacciamento remoto",
+      "description": "Dispacciamento in tempo reale: controllo rete/batteria con failsafe lato inverter"
+    },
+    "solis_dispatch_stop": {
+      "name": "Ferma dispacciamento",
+      "description": "Rilascia il dispacciamento — l'inverter torna subito al funzionamento normale"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programma periodo di dispacciamento",
+      "description": "Scrive uno dei sei periodi pianificati residenti nell'inverter (sopravvive ai riavvii di HA)"
     }
   },
   "issues": {

@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Stop force charge/discharge",
       "description": "Cancel an active force charge or discharge"
+    },
+    "solis_dispatch": {
+      "name": "Remote dispatch",
+      "description": "Real-time inverter dispatch: goal-seeking grid/battery control with inverter-side failsafe"
+    },
+    "solis_dispatch_stop": {
+      "name": "Stop remote dispatch",
+      "description": "Release dispatch — the inverter returns to normal operation immediately"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Program dispatch schedule period",
+      "description": "Write one of six inverter-resident scheduled dispatch periods (survives HA restarts)"
     }
   },
   "issues": {

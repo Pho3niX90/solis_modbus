@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Stop geforseerde laai/ontlaai",
       "description": "Kanselleer 'n aktiewe geforseerde laai of ontlaai"
+    },
+    "solis_dispatch": {
+      "name": "Afstandversending",
+      "description": "Intydse omsetterversending: doelsoekende netwerk-/batterybeheer met omsetter-failsafe"
+    },
+    "solis_dispatch_stop": {
+      "name": "Stop afstandversending",
+      "description": "Stel versending vry — die omsetter keer dadelik terug na normale werking"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programmeer versendingskedule-periode",
+      "description": "Skryf een van ses omsetter-residente geskeduleerde periodes (oorleef HA-herbegin)"
     }
   },
   "issues": {

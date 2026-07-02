@@ -52,6 +52,9 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 ### What's new in 4.2.0
 
 **New features**
+- **Remote Dispatch** (dispatch-capable firmware, register 34502 = 0xAA55): `solis_modbus.solis_dispatch` commands real-time goal-seeking control — *"hold grid import at 6 kW"*, *"charge battery at 3 kW"*, PV shutdown, per-dispatch SOC windows — with an **inverter-side failsafe** (the inverter reverts by itself if HA goes silent). `solis_dispatch_schedule` programs up to six **inverter-resident** daily periods that keep executing even if Home Assistant dies. Dispatch state is exposed as sensors (44100-44112).
+- **New telemetry**: fault/status bitfield words (33116-33123), battery/backup settings mirrors + fast (<1 s) battery current (33200-33217), EPM live state (33246-33250), inverting/rectifying bridge power (33157), remote-dispatch capability flags (34502/34503).
+- **Instant output clamp** (GrugBus-verified 43081 + 43070 gate): watt-level AC output limiting — number entity is registry-disabled by default; enable it to use.
 - **Storage Mode select** (renamed from "Work Mode", issue #413): mode changes now clear all conflicting mode bits — switching Self-Use ↔ Peak Shaving ↔ Feed-in writes exactly the values SolisCloud uses (grid-charge and wakeup bits are preserved). New *Reserve / Backup* options. The raw register value is exposed as a state attribute for debugging.
 - **Dual-meter support** (issue #425): enable *"Second smart meter installed"* to poll the Meter 2 block (33300-33337) on "Grid + PV Inverter" installs — per-phase V/A/W, total power, PF, frequency and lifetime import/export counters.
 - **Direct-meter grid energy for string inverters** (issue #410): grid import/export lifetime counters read from the attached meter (registers 3283-3286), for S5-GR3P-style installs without an EPM.

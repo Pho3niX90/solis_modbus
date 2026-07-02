@@ -17,6 +17,15 @@
     },
     "solis_stop_force_charge_discharge": {
       "service": "mdi:battery-off"
+    },
+    "solis_dispatch": {
+      "service": "mdi:transmission-tower-import"
+    },
+    "solis_dispatch_stop": {
+      "service": "mdi:transmission-tower-off"
+    },
+    "solis_dispatch_schedule": {
+      "service": "mdi:calendar-clock"
     }
   }
 }

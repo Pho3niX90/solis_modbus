@@ -94,6 +94,91 @@ RC_DISCHARGE_POWER_REG = 43129  # raw = watts / 10
 RC_TIMEOUT_REG = 43282  # minutes (1-30); command self-reverts after this
 RC_POWER_MULTIPLIER = 10
 
+# Remote Dispatch (protocol Ver3.4, 44100-44199; capability gate: input 34502
+# reads 0xAA55). RAM-only registers with an inverter-side failsafe (44101):
+# if the controller goes silent the inverter reverts on its own. Live-verified
+# write order: failsafe -> master on -> power/function/SOC -> control mode LAST
+# (the function field is re-initialized by the inverter unless dispatch is on).
+DISPATCH_CAPABILITY_REG = 34502
+DISPATCH_CAPABLE_MAGIC = 0xAA55
+DISPATCH_MASTER_REG = 44100
+DISPATCH_FAILSAFE_REG = 44101
+DISPATCH_MODE_REG = 44105
+DISPATCH_POWER_REG = 44106  # S32 pair 44106/44107, x10 W
+DISPATCH_FUNCTION_REG = 44108
+DISPATCH_SOC_LOW_REG = 44109
+DISPATCH_SOC_HIGH_REG = 44110
+DISPATCH_SCHEDULE_BASE = 44116  # 6 periods x 14 registers
+DISPATCH_SCHEDULE_STRIDE = 14
+
+# mode -> (44105 value, sign applied to power_watts); modes 3/4: +export/-import
+DISPATCH_MODES = {
+    "battery_hold": (1, 0),
+    "battery_charge": (2, 1),
+    "battery_discharge": (2, -1),
+    "grid_import": (3, -1),
+    "grid_export": (3, 1),
+    "grid_port_import": (4, -1),
+    "grid_port_export": (4, 1),
+    "self_consumption": (5, 0),
+    "feed_in_priority": (6, 0),
+}
+
+SCHEME_DISPATCH = vol.Schema(
+    {
+        vol.Required("mode"): vol.In(sorted(DISPATCH_MODES)),
+        vol.Optional("power_watts", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
+        vol.Optional("pv_shutdown"): vol.Coerce(bool),
+        vol.Optional("allow_grid_charge"): vol.Coerce(bool),
+        vol.Optional("disable_discharge"): vol.Coerce(bool),
+        vol.Optional("soc_min"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("soc_max"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("failsafe_minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+SCHEME_DISPATCH_SCHEDULE = vol.Schema(
+    {
+        vol.Required("period"): vol.All(vol.Coerce(int), vol.Range(min=1, max=6)),
+        vol.Required("enabled"): vol.Coerce(bool),
+        vol.Optional("start_time", default="00:00"): vol.Coerce(str),
+        vol.Optional("end_time", default="00:00"): vol.Coerce(str),
+        vol.Optional("mode", default="battery_hold"): vol.In(sorted(DISPATCH_MODES)),
+        vol.Optional("power_watts", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
+        vol.Optional("pv_shutdown"): vol.Coerce(bool),
+        vol.Optional("allow_grid_charge"): vol.Coerce(bool),
+        vol.Optional("disable_discharge"): vol.Coerce(bool),
+        vol.Optional("soc_min", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("soc_max", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("failsafe_minutes", default=1440): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+
+
+def _dispatch_function_value(pv_shutdown, allow_grid_charge, disable_discharge) -> int:
+    """Build the 44108 function bitfield. Each 2-bit pair: 0 = leave unchanged
+    ("invalid"), then per-field semantics (PV shutdown: 1 off / 2 on;
+    grid-charge: 1 allowed / 2 not allowed; discharge-disable: 1 off / 2 on)."""
+
+    def pair(value, true_code, false_code):
+        if value is None:
+            return 0
+        return true_code if value else false_code
+
+    return (
+        pair(pv_shutdown, 2, 1)  # bits 0-1
+        | (pair(allow_grid_charge, 1, 2) << 4)  # bits 4-5
+        | (pair(disable_discharge, 2, 1) << 10)  # bits 10-11
+    )
+
+
+def _s32_words(value: int) -> list[int]:
+    raw = value & 0xFFFFFFFF
+    return [(raw >> 16) & 0xFFFF, raw & 0xFFFF]
+
 
 async def async_remove_config_entry_device(hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
     """Remove a config entry from a device."""
@@ -228,12 +313,103 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         _require_hybrid(controller)
         await controller.async_write_holding_register(RC_FORCE_MODE_REG, 0)
 
+    async def _ensure_dispatch_capable(controller) -> None:
+        from .helpers import cache_get
+
+        capability = cache_get(hass, controller, DISPATCH_CAPABILITY_REG)
+        if capability is None:
+            values = await controller.async_read_input_register(DISPATCH_CAPABILITY_REG, 1)
+            capability = values[0] if values else None
+        if capability != DISPATCH_CAPABLE_MAGIC:
+            raise ServiceValidationError(f"This inverter does not support Remote Dispatch (register 34502 reads {capability}, expected 0xAA55)")
+
+    async def service_dispatch(call: ServiceCall) -> None:
+        """Real-time Remote Dispatch: goal-seeking grid/battery control with failsafe."""
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await _ensure_dispatch_capable(controller)
+
+        mode_value, sign = DISPATCH_MODES[call.data["mode"]]
+        power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
+
+        # Verified order: failsafe -> master ON -> power pair (atomic FC16) ->
+        # function/SOC -> mode LAST
+        await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 30)))
+        await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
+        await controller.async_write_holding_registers(DISPATCH_POWER_REG, _s32_words(power_raw))
+
+        function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
+        if function_value:
+            await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, function_value)
+        if call.data.get("soc_min") is not None:
+            await controller.async_write_holding_register(DISPATCH_SOC_LOW_REG, int(call.data["soc_min"]))
+        if call.data.get("soc_max") is not None:
+            await controller.async_write_holding_register(DISPATCH_SOC_HIGH_REG, int(call.data["soc_max"]))
+
+        await controller.async_write_holding_register(DISPATCH_MODE_REG, mode_value)
+
+    async def service_dispatch_stop(call: ServiceCall) -> None:
+        """Release Remote Dispatch (live-verified revert sequence)."""
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await controller.async_write_holding_register(DISPATCH_MODE_REG, 1)
+        await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, 1)
+        await controller.async_write_holding_register(DISPATCH_MASTER_REG, 0)
+
+    async def service_dispatch_schedule(call: ServiceCall) -> None:
+        """Program one of the six inverter-resident scheduled dispatch periods.
+
+        The schedule executes on the inverter itself — it keeps running even if
+        Home Assistant dies (until the failsafe interval expires unrefreshed).
+        """
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await _ensure_dispatch_capable(controller)
+
+        def packed_time(value: str) -> int:
+            parsed = datetime.strptime(value, "%H:%M")
+            return (parsed.hour << 8) | parsed.minute
+
+        try:
+            start_packed = packed_time(call.data.get("start_time", "00:00"))
+            end_packed = packed_time(call.data.get("end_time", "00:00"))
+        except ValueError as err:
+            raise ServiceValidationError(f"Invalid time (expected HH:MM): {err}") from err
+
+        mode_value, sign = DISPATCH_MODES[call.data.get("mode", "battery_hold")]
+        power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
+        function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
+
+        base = DISPATCH_SCHEDULE_BASE + (int(call.data["period"]) - 1) * DISPATCH_SCHEDULE_STRIDE
+        block = [
+            1 if call.data["enabled"] else 0,
+            start_packed,
+            end_packed,
+            mode_value,
+            *_s32_words(power_raw),
+            function_value,
+            int(call.data.get("soc_min", 0)),
+            int(call.data.get("soc_max", 100)),
+            0,  # battery reserve SOC (unused here)
+            0,  # PV power-limit percentage (unused here)
+        ]
+        await controller.async_write_holding_registers(base, block)
+
+        if call.data["enabled"]:
+            # Schedules need the dispatch master on; long failsafe by default so
+            # the plan survives HA restarts (re-push daily to keep it alive).
+            await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 1440)))
+            await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
+
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)
     hass.services.async_register(DOMAIN, "solis_read_register", service_read_register, schema=SCHEME_READ_REGISTER, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, "solis_force_battery_charge", service_force_battery_charge, schema=SCHEME_FORCE_CHARGE)
     hass.services.async_register(DOMAIN, "solis_force_battery_discharge", service_force_battery_discharge, schema=SCHEME_FORCE_CHARGE)
     hass.services.async_register(DOMAIN, "solis_stop_force_charge_discharge", service_stop_force_charge_discharge, schema=SCHEME_STOP_FORCE)
+    hass.services.async_register(DOMAIN, "solis_dispatch", service_dispatch, schema=SCHEME_DISPATCH)
+    hass.services.async_register(DOMAIN, "solis_dispatch_stop", service_dispatch_stop, schema=SCHEME_STOP_FORCE)
+    hass.services.async_register(DOMAIN, "solis_dispatch_schedule", service_dispatch_schedule, schema=SCHEME_DISPATCH_SCHEDULE)
 
     return True
 

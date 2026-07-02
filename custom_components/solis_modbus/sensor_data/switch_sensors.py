@@ -27,6 +27,14 @@ def get_switch_sensors(inverter_config):
                     ],
                 },
                 {
+                    # Gate for the instant AC output clamp (43081, x10 W). GrugBus
+                    # write-verified: 0xAA enables the limit, 0x55 disables (100%).
+                    "register": 43070,
+                    "entities": [
+                        {"name": "Output Limit Gate", "on_value": 170, "off_value": 85},
+                    ],
+                },
+                {
                     "register": 43110,
                     "entities": [
                         # Adheres to RS485_MODBUS ESINV-33000ID Hybrid Inverter V3.2 / Appendix 8.

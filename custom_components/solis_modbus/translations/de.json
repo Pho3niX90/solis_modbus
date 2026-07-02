@@ -156,6 +156,18 @@
     "solis_stop_force_charge_discharge": {
       "name": "Erzwungenes Laden/Entladen stoppen",
       "description": "Bricht ein aktives erzwungenes Laden oder Entladen ab"
+    },
+    "solis_dispatch": {
+      "name": "Fern-Dispatch",
+      "description": "Echtzeit-Dispatch: zielverfolgende Netz-/Batteriesteuerung mit wechselrichterseitigem Failsafe"
+    },
+    "solis_dispatch_stop": {
+      "name": "Fern-Dispatch stoppen",
+      "description": "Dispatch freigeben — der Wechselrichter kehrt sofort zum Normalbetrieb zurück"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Dispatch-Zeitplanperiode programmieren",
+      "description": "Schreibt eine von sechs im Wechselrichter gespeicherten Zeitplanperioden (übersteht HA-Neustarts)"
     }
   },
   "issues": {
