@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)"
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)"
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       }
     },
@@ -100,7 +102,8 @@
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
           "has_parallel": "Parallel inverter operation (multiple units)",
-          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)"
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       }
     }
@@ -137,6 +140,22 @@
           "description": "Zeit im Format HH:MM oder HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Register lesen",
+      "description": "Liest ein oder mehrere Register und gibt die Rohwerte zurück (Register-Erkundung / Debugging)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Batterieladung erzwingen",
+      "description": "Erzwingt das Laden der Batterie (Hybrid-Wechselrichter); endet nach dem Timeout"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Batterieentladung erzwingen",
+      "description": "Erzwingt das Entladen der Batterie (Hybrid-Wechselrichter); endet nach dem Timeout"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Erzwungenes Laden/Entladen stoppen",
+      "description": "Bricht ein aktives erzwungenes Laden oder Entladen ab"
     }
   },
   "issues": {

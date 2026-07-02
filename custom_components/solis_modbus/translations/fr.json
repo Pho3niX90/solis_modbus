@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)"
+          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
+          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)"
+          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
+          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }
       }
     },
@@ -100,7 +102,8 @@
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
           "has_parallel": "Parallel inverter operation (multiple units)",
-          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)"
+          "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
+          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }
       }
     }
@@ -137,6 +140,22 @@
           "description": "Heure au format HH:MM ou HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Lire un registre",
+      "description": "Lit un ou plusieurs registres et renvoie les valeurs brutes (découverte de registres / débogage)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Forcer la charge de la batterie",
+      "description": "Force la charge de la batterie (onduleurs hybrides) ; s'annule après le délai"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Forcer la décharge de la batterie",
+      "description": "Force la décharge de la batterie (onduleurs hybrides) ; s'annule après le délai"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Arrêter la charge/décharge forcée",
+      "description": "Annule une charge ou décharge forcée active"
     }
   },
   "issues": {

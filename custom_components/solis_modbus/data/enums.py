@@ -32,6 +32,7 @@ class InverterFeature(Enum):
     AC_COUPLING = "ac_coupling"
     PARALLEL = "parallel"
     DUAL_METER = "dual_meter"
+    EPM = "epm"
 
 
 class Category(Enum):
@@ -71,4 +72,8 @@ class DataType(Enum):
     S16 = "S16"
     U32 = "U32"
     S32 = "S32"
+    # Little-endian word order (low word first) — used by the string-inverter
+    # EPM block 36028-36057 per the 2021 protocol ("Low first, High Latter").
+    U32_LE = "U32_LE"
+    S32_LE = "S32_LE"
     STRING = "STRING"

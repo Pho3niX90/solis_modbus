@@ -20,8 +20,10 @@ from custom_components.solis_modbus.helpers import (
     _any_in,
     cache_get,
     combine_u32,
+    combine_u32_le,
     extract_serial_number,
     split_s32,
+    split_s32_le,
     unique_id_generator,
 )
 
@@ -172,12 +174,17 @@ class SolisBaseSensor:
             values = values
             n_value = extract_serial_number(values)
         elif len(self.registrars) > 1:
-            # Default to signed 32-bit (historical behaviour — the many 2-register
-            # power/current registers are genuinely signed). Registers explicitly
-            # tagged U32 (e.g. lifetime energy totals) decode as unsigned so they
-            # never wrap negative.
+            # Default to signed 32-bit big-endian (historical behaviour — the many
+            # 2-register power/current registers are genuinely signed). Registers
+            # explicitly tagged U32 (e.g. lifetime energy totals) decode unsigned so
+            # they never wrap negative; *_LE variants are low-word-first (the
+            # string-inverter EPM block 36028-36057 is documented little-endian).
             if self.data_type == DataType.U32.value:
                 combined_value = combine_u32(values)
+            elif self.data_type == DataType.U32_LE.value:
+                combined_value = combine_u32_le(values)
+            elif self.data_type == DataType.S32_LE.value:
+                combined_value = split_s32_le(values)
             else:
                 combined_value = split_s32(values)
 

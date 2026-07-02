@@ -58,3 +58,143 @@ solis_write_time:
       example: "14:50"
       selector:
         time:
+solis_read_register:
+  name: Read register
+  description: Reads one or more registers and returns the raw values (register discovery / debugging)
+  fields:
+    address:
+      name: Address
+      description: First register address to read
+      required: true
+      example: 33049
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+    count:
+      name: Count
+      description: Number of consecutive registers to read (1-50)
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 50
+          mode: box
+    register_type:
+      name: Register type
+      description: Input (3xxxx read-only data) or holding (4xxxx settings)
+      default: input
+      selector:
+        select:
+          options:
+            - input
+            - holding
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      example: 192.168.1.75
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_force_battery_charge:
+  name: Force battery charge
+  description: Force the battery to charge (hybrid inverters). Writes the enable + power + timeout combo in the order Solis firmware requires. Reverts automatically after the timeout.
+  fields:
+    power_watts:
+      name: Charge power
+      description: Charge power in watts (omit to keep the current setpoint)
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 60000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    duration_minutes:
+      name: Duration
+      description: Minutes before the command self-reverts (1-30, omit to keep the current timeout)
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: min
+          mode: box
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_force_battery_discharge:
+  name: Force battery discharge
+  description: Force the battery to discharge (hybrid inverters). Writes the enable + power + timeout combo in the order Solis firmware requires. Reverts automatically after the timeout.
+  fields:
+    power_watts:
+      name: Discharge power
+      description: Discharge power in watts (omit to keep the current setpoint)
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 60000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    duration_minutes:
+      name: Duration
+      description: Minutes before the command self-reverts (1-30, omit to keep the current timeout)
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: min
+          mode: box
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_stop_force_charge_discharge:
+  name: Stop force charge/discharge
+  description: Cancel an active force charge or discharge (writes RC mode = none)
+  fields:
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box

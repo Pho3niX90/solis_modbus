@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)"
+          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)"
+          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       }
     },
@@ -100,7 +102,8 @@
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
           "has_parallel": "Parallel inverter operation (multiple units)",
-          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)"
+          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       }
     }
@@ -137,6 +140,22 @@
           "description": "Tyd in HH:MM of HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Lees register",
+      "description": "Lees een of meer registers en gee die rou waardes terug (registerontdekking / foutopsporing)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Forseer batterylaai",
+      "description": "Forseer die battery om te laai (hibriede omsetters); keer terug ná die uitteltyd"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Forseer batteryontlaai",
+      "description": "Forseer die battery om te ontlaai (hibriede omsetters); keer terug ná die uitteltyd"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Stop geforseerde laai/ontlaai",
+      "description": "Kanselleer 'n aktiewe geforseerde laai of ontlaai"
     }
   },
   "issues": {

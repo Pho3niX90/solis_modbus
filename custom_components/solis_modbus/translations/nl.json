@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)"
+          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
+          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)"
+          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
+          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
         }
       }
     },
@@ -100,7 +102,8 @@
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
           "has_parallel": "Parallel inverter operation (multiple units)",
-          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)"
+          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
+          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
         }
       }
     }
@@ -137,6 +140,22 @@
           "description": "Tijd in HH:MM of HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Register lezen",
+      "description": "Leest een of meer registers en geeft de ruwe waarden terug (registerverkenning / debuggen)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Batterij geforceerd laden",
+      "description": "Forceert het laden van de batterij (hybride omvormers); stopt na de time-out"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Batterij geforceerd ontladen",
+      "description": "Forceert het ontladen van de batterij (hybride omvormers); stopt na de time-out"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Geforceerd laden/ontladen stoppen",
+      "description": "Annuleert een actief geforceerd laden of ontladen"
     }
   },
   "issues": {

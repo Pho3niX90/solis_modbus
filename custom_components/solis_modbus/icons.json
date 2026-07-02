@@ -5,6 +5,18 @@
     },
     "solis_write_time": {
       "service": "mdi:clock-edit-outline"
+    },
+    "solis_read_register": {
+      "service": "mdi:magnify-scan"
+    },
+    "solis_force_battery_charge": {
+      "service": "mdi:battery-plus"
+    },
+    "solis_force_battery_discharge": {
+      "service": "mdi:battery-minus"
+    },
+    "solis_stop_force_charge_discharge": {
+      "service": "mdi:battery-off"
     }
   }
 }

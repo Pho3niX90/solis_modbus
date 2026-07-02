@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)"
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)"
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       }
     },
@@ -100,7 +102,8 @@
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
           "has_parallel": "Parallel inverter operation (multiple units)",
-          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)"
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       }
     }
@@ -137,6 +140,22 @@
           "description": "Ora nel formato HH:MM o HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Leggi registro",
+      "description": "Legge uno o più registri e restituisce i valori grezzi (scoperta registri / debug)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Forza carica batteria",
+      "description": "Forza la carica della batteria (inverter ibridi); si annulla dopo il timeout"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Forza scarica batteria",
+      "description": "Forza la scarica della batteria (inverter ibridi); si annulla dopo il timeout"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Ferma carica/scarica forzata",
+      "description": "Annulla una carica o scarica forzata attiva"
     }
   },
   "issues": {

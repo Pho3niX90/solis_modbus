@@ -8,8 +8,8 @@ import voluptuous as vol
 from homeassistant.components.persistent_notification import async_create as pn_create
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import ConfigEntryError, HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
@@ -31,7 +31,16 @@ from .const import (
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
-from .helpers import get_controller, iter_controllers, iter_platform_entities, set_controller, unique_id_generator
+from .helpers import (
+    combine_u32,
+    combine_u32_le,
+    get_controller,
+    iter_controllers,
+    iter_platform_entities,
+    set_controller,
+    split_s32,
+    unique_id_generator,
+)
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisBaseSensor, SolisSensorGroup
 
@@ -52,6 +61,38 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
     }
 )
 SCHEME_TIME_SET = vol.Schema({vol.Required("entity_id"): vol.Coerce(str), vol.Required("time"): vol.Coerce(str)})
+SCHEME_READ_REGISTER = vol.Schema(
+    {
+        vol.Required("address"): vol.Coerce(int),
+        vol.Optional("count", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
+        vol.Optional("register_type", default="input"): vol.In(["input", "holding"]),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+SCHEME_FORCE_CHARGE = vol.Schema(
+    {
+        vol.Optional("power_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=60000)),
+        vol.Optional("duration_minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+SCHEME_STOP_FORCE = vol.Schema(
+    {
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+
+# RC (remote control) force charge/discharge registers — the #352 latch combo:
+# Solis firmware requires 43135 to be enabled BEFORE the setpoints and timeout
+# are written, otherwise they do not stick.
+RC_FORCE_MODE_REG = 43135  # 0 = none, 1 = force charge, 2 = force discharge
+RC_CHARGE_POWER_REG = 43136  # raw = watts / 10
+RC_DISCHARGE_POWER_REG = 43129  # raw = watts / 10
+RC_TIMEOUT_REG = 43282  # minutes (1-30); command self-reverts after this
+RC_POWER_MULTIPLIER = 10
 
 
 async def async_remove_config_entry_device(hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
@@ -110,8 +151,89 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
         raise ServiceValidationError(f"Entity {entity_id} is not a solis_modbus time entity")
 
+    def _resolve_controller(call: ServiceCall):
+        """Resolve the target controller from optional host/slave service fields."""
+        host = call.data.get("host")
+        slave = call.data.get("slave", 1)
+        if host:
+            controller = get_controller(hass, host, slave)
+            if controller is None:
+                raise ServiceValidationError(f"No Solis inverter found for host {host} (slave {slave})")
+            return controller
+        controllers = list(iter_controllers(hass))
+        if not controllers:
+            raise ServiceValidationError("No Solis inverter is configured")
+        if len(controllers) > 1:
+            raise ServiceValidationError("Multiple Solis inverters configured — specify the 'host' field")
+        return controllers[0]
+
+    async def service_read_register(call: ServiceCall) -> dict:
+        """Read arbitrary registers and return the values (register discovery / debugging)."""
+        address = int(call.data["address"])
+        count = int(call.data.get("count", 1))
+        register_type = call.data.get("register_type", "input")
+        controller = _resolve_controller(call)
+
+        if register_type == "holding":
+            values = await controller.async_read_holding_register(address, count)
+        else:
+            values = await controller.async_read_input_register(address, count)
+
+        if values is None:
+            raise HomeAssistantError(f"Read of {register_type} register {address} (count {count}) failed — see logs")
+
+        response = {
+            "address": address,
+            "count": count,
+            "register_type": register_type,
+            "values": list(values),
+            "hex": [f"0x{v:04X}" for v in values],
+        }
+        if count == 2:
+            # Convenience decodes for 32-bit probing
+            response["u32_be"] = combine_u32(list(values))
+            response["s32_be"] = split_s32(list(values))
+            response["u32_le"] = combine_u32_le(list(values))
+        return response
+
+    def _require_hybrid(controller):
+        if controller.inverter_config.type not in (InverterType.HYBRID, InverterType.ENERGY):
+            raise ServiceValidationError("Force charge/discharge is only supported on hybrid/energy-storage inverters")
+
+    async def _force_battery(call: ServiceCall, mode: int, power_register: int) -> None:
+        """Write the #352 RC combo: enable 43135 first, then setpoint + timeout."""
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+
+        await controller.async_write_holding_register(RC_FORCE_MODE_REG, mode)
+
+        power_watts = call.data.get("power_watts")
+        if power_watts is not None:
+            max_watts = getattr(controller.inverter_config, "wattage_chosen", 60000) or 60000
+            watts = min(int(power_watts), int(max_watts))
+            await controller.async_write_holding_register(power_register, round(watts / RC_POWER_MULTIPLIER))
+
+        duration = call.data.get("duration_minutes")
+        if duration is not None:
+            await controller.async_write_holding_register(RC_TIMEOUT_REG, int(duration))
+
+    async def service_force_battery_charge(call: ServiceCall) -> None:
+        await _force_battery(call, 1, RC_CHARGE_POWER_REG)
+
+    async def service_force_battery_discharge(call: ServiceCall) -> None:
+        await _force_battery(call, 2, RC_DISCHARGE_POWER_REG)
+
+    async def service_stop_force_charge_discharge(call: ServiceCall) -> None:
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await controller.async_write_holding_register(RC_FORCE_MODE_REG, 0)
+
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)
+    hass.services.async_register(DOMAIN, "solis_read_register", service_read_register, schema=SCHEME_READ_REGISTER, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, "solis_force_battery_charge", service_force_battery_charge, schema=SCHEME_FORCE_CHARGE)
+    hass.services.async_register(DOMAIN, "solis_force_battery_discharge", service_force_battery_discharge, schema=SCHEME_FORCE_CHARGE)
+    hass.services.async_register(DOMAIN, "solis_stop_force_charge_discharge", service_stop_force_charge_discharge, schema=SCHEME_STOP_FORCE)
 
     return True
 
