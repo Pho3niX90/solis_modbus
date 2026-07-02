@@ -331,22 +331,23 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
         mode_value, sign = DISPATCH_MODES[call.data["mode"]]
         power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
-
-        # Verified order: failsafe -> master ON -> power pair (atomic FC16) ->
-        # function/SOC -> mode LAST
-        await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 30)))
-        await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
-        await controller.async_write_holding_registers(DISPATCH_POWER_REG, _s32_words(power_raw))
-
         function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
-        if function_value:
-            await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, function_value)
-        if call.data.get("soc_min") is not None:
-            await controller.async_write_holding_register(DISPATCH_SOC_LOW_REG, int(call.data["soc_min"]))
-        if call.data.get("soc_max") is not None:
-            await controller.async_write_holding_register(DISPATCH_SOC_HIGH_REG, int(call.data["soc_max"]))
+        soc_low = int(call.data["soc_min"]) if call.data.get("soc_min") is not None else 0
+        soc_high = int(call.data["soc_max"]) if call.data.get("soc_max") is not None else 100
 
-        await controller.async_write_holding_register(DISPATCH_MODE_REG, mode_value)
+        # The dispatch block must be written as contiguous chunks (Ver3.4 doc):
+        # scattered single-register writes get silently dropped/re-initialized,
+        # especially under write-queue contention. Two atomic FC16 blocks:
+        #   global 44100-44104  = master, failsafe, no system caps (0xFFFF = default)
+        #   realtime 44105-44112 = mode, power(S32), function, SOC window
+        # Global first so dispatch is active before the realtime block lands
+        # (the function field is re-initialized unless the master is already on).
+        await controller.async_write_holding_registers(
+            DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), 0, 0xFFFF, 0xFFFF]
+        )
+        await controller.async_write_holding_registers(
+            DISPATCH_MODE_REG, [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, 0, 0]
+        )
 
     async def service_dispatch_stop(call: ServiceCall) -> None:
         """Release Remote Dispatch (live-verified revert sequence)."""

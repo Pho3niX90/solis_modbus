@@ -66,8 +66,13 @@ async def test_dispatch_grid_import_sequence(hass: HomeAssistant, controller):
             {"mode": "grid_import", "power_watts": 6000, "pv_shutdown": True, "failsafe_minutes": 30},
             blocking=True,
         )
-    assert single_writes(controller) == [(44101, 30), (44100, 1), (44108, 2), (44105, 3)]
-    controller.async_write_holding_registers.assert_awaited_once_with(44106, [0xFFFF, 0xFDA8])
+    # Two atomic FC16 chunks: global (44100-44104) then realtime (44105-44112)
+    blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
+    assert blocks == [
+        (44100, [1, 30, 0, 0xFFFF, 0xFFFF]),
+        (44105, [3, 0xFFFF, 0xFDA8, 2, 0, 100, 0, 0]),
+    ]
+    assert single_writes(controller) == []
 
 
 @pytest.mark.asyncio
@@ -75,8 +80,10 @@ async def test_dispatch_battery_charge_positive_sign(hass: HomeAssistant, contro
     await setup_services(hass, controller)
     with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
         await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_charge", "power_watts": 3000}, blocking=True)
-    controller.async_write_holding_registers.assert_awaited_once_with(44106, [0, 300])
-    assert single_writes(controller)[-1] == (44105, 2)
+    blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
+    # battery_charge => mode 2, positive power 3000 W -> raw 300
+    assert blocks[0] == (44100, [1, 30, 0, 0xFFFF, 0xFFFF])
+    assert blocks[1] == (44105, [2, 0, 300, 0, 0, 100, 0, 0])
 
 
 @pytest.mark.asyncio
