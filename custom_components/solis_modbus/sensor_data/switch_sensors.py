@@ -178,7 +178,10 @@ def get_switch_sensors(inverter_config):
                     # (register 43282, default 5 minutes) unless refreshed.
                     "register": 44280,
                     "entities": [
-                        {"bit_position": 4, "name": "PV Shutdown"},
+                        # keep_alive: re-write inside the RC-timeout window while ON so
+                        # the shutdown holds (negative-price curtailment). If HA dies,
+                        # the RC timeout reverts the register and PV resumes — fail-safe.
+                        {"bit_position": 4, "name": "PV Shutdown", "keep_alive": True},
                     ],
                 },
                 {
