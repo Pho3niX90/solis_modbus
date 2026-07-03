@@ -2,8 +2,6 @@ name: AI PR Agent
 on:
   pull_request_target:
     types: [opened, reopened, ready_for_review, edited, synchronize]
-  issue_comment:
-    types: [created]
 jobs:
   pr_agent_job:
     permissions:
@@ -11,7 +9,7 @@ jobs:
       pull-requests: write
       contents: read
     runs-on: ubuntu-latest
-    name: Run pr agent on every pull request, respond to user comments
+    name: Generate PR descriptions and labels
     steps:
       - name: PR Agent action step
         id: pragent
@@ -19,6 +17,9 @@ jobs:
         env:
           OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_action_config.auto_review: "false"
+          github_action_config.auto_describe: "true"
+          github_action_config.auto_improve: "false"
           PR_DESCRIPTION.GENERATE_AI_TITLE: "true"
           PR_DESCRIPTION.PUBLISH_LABELS: "true"
-          PR_REVIEWER.ENABLE_AUTO_APPROVAL: "true"
+          PR_REVIEWER.ENABLE_AUTO_APPROVAL: "false"

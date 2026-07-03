@@ -5,7 +5,8 @@ require_tests_review=true
 require_estimate_effort_to_review=true
 require_can_be_split_review=true
 require_security_review=true
-require_ticket_analysis_review=true
+# Disable ticket compliance analysis to avoid noisy "not compliant" comments.
+require_ticket_analysis_review=false
 # general options
 persistent_comment=true
 extra_instructions = ""
@@ -20,7 +21,7 @@ minimal_minutes_for_incremental_review=0
 enable_intro_text=true
 enable_help_text=false # Determines whether to include help text in the PR review. Enabled by default.
 # auto approval
-enable_auto_approval=true
+enable_auto_approval=false
 
 [pr_description] # /describe #
 publish_labels=true
