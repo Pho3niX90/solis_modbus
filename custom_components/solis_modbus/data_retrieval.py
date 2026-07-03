@@ -183,8 +183,11 @@ class DataRetrieval:
         self._unsub_listeners = []
         self.connection_check = False  # Stop connection loop logic if any
 
-        # Cancel the background tasks so they don't leak on reload.
-        for task_attr in ("_write_task", "_poll_task"):
+        # Cancel the background tasks so they don't leak on reload. Cancel _poll_task
+        # FIRST: poll_controller() creates _write_task as its last step, so stopping
+        # poll first prevents it spawning a fresh write task after we've cancelled the
+        # old one. getattr re-reads _write_task afterwards, catching any it just created.
+        for task_attr in ("_poll_task", "_write_task"):
             task = getattr(self, task_attr)
             if task is not None:
                 task.cancel()

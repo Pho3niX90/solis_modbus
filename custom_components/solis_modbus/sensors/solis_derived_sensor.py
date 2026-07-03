@@ -33,6 +33,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         self._unit_of_measurement = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
+        # Mirror SolisSensor: carry the diagnostic/config entity_category through so
+        # derived sensors get categorised like their base sensors (not left uncategorised).
+        self._attr_entity_category = sensor.entity_category
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
         self._attr_available = not sensor.hidden
         self._attr_entity_registry_enabled_default = sensor.enabled and not sensor.hidden

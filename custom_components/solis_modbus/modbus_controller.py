@@ -154,8 +154,10 @@ class ModbusController:
                 # Block until a write is queued instead of busy-polling.
                 write_request = await self.write_queue.get()
                 try:
-                    if not self.connected():
-                        # Not connected yet; wait for the link then retry this item.
+                    # Wait for the link BEFORE processing, so a write queued during a
+                    # reconnect window isn't executed (and acked via task_done) while
+                    # still disconnected — which could silently drop a control write.
+                    while not self.connected():
                         await asyncio.sleep(5)
                     register, value, multiple = write_request
 
