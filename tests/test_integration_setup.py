@@ -4,7 +4,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solis_modbus.const import CONTROLLER, DOMAIN
+from custom_components.solis_modbus.const import DOMAIN
 
 
 @pytest.fixture(autouse=True)
@@ -52,18 +52,20 @@ async def test_setup_entry(hass: HomeAssistant):
         # Verify Config Entry is Loaded
         assert config_entry.state.value == "loaded"
 
-        # Verify controller is stored using Entry ID
+        # Verify per-entry runtime data holds the controller and the entity lists
         assert DOMAIN in hass.data
-        assert CONTROLLER in hass.data[DOMAIN]
-        assert config_entry.entry_id in hass.data[DOMAIN][CONTROLLER]
-        assert hass.data[DOMAIN][CONTROLLER][config_entry.entry_id] is not None
+        runtime = config_entry.runtime_data
+        assert runtime is not None
+        assert runtime.controller is not None
+        assert runtime.data_retrieval is not None
+        assert len(runtime.entities.get("sensor", [])) > 0
 
         # Test unload
         assert await hass.config_entries.async_unload(config_entry.entry_id)
         await hass.async_block_till_done()
 
-        # Verify controller is removed from hass.data
-        assert config_entry.entry_id not in hass.data[DOMAIN][CONTROLLER]
+        # HA clears runtime_data after unload
+        assert getattr(config_entry, "runtime_data", None) is None
 
 
 @pytest.mark.asyncio

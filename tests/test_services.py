@@ -39,10 +39,13 @@ async def test_service_write_holding_register(hass: HomeAssistant, mock_controll
 @pytest.mark.asyncio
 async def test_service_write_holding_register_no_host(hass: HomeAssistant, mock_controller):
     """Test solis_write_holding_register service without host (broadcast to all)."""
-    from custom_components.solis_modbus.const import CONTROLLER
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-    # Store controller in hass.data
-    hass.data[DOMAIN] = {CONTROLLER: {"1.2.3.4_1": mock_controller}}
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    entry.runtime_data = SolisRuntimeData(controller=mock_controller)
 
     from custom_components.solis_modbus import async_setup
 
@@ -58,8 +61,6 @@ async def test_service_set_time(hass: HomeAssistant):
     """Test solis_write_time service."""
     from datetime import time
 
-    from custom_components.solis_modbus.const import TIME_ENTITIES
-
     mock_entity = MagicMock()
     mock_entity.entity_id = "time.test_time"
     mock_entity.async_set_value = MagicMock(return_value=None)
@@ -70,8 +71,14 @@ async def test_service_set_time(hass: HomeAssistant):
 
     mock_entity.async_set_value = MagicMock(side_effect=async_set_value)
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][TIME_ENTITIES] = [mock_entity]
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    entry.runtime_data = SolisRuntimeData(controller=MagicMock())
+    entry.runtime_data.entities["time"] = [mock_entity]
 
     from custom_components.solis_modbus import async_setup
 

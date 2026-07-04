@@ -12,9 +12,7 @@ from custom_components.solis_modbus.const import (
     CONN_TYPE_TCP,
     CONTROLLER,
     DRIFT_COUNTER,
-    NUMBER_ENTITIES,
     REGISTER,
-    SENSOR_ENTITIES,
     SLAVE,
     VALUE,
     VALUES,
@@ -81,10 +79,13 @@ def clock_drift_test(hass, controller, year, month, day, hours, minutes, seconds
         # RTC holds an impossible date (e.g. zeros after backup-power loss) — force a correction
         total_drift = float("inf")
 
-    # Ensure structure
+    # Ensure structure. Counters are keyed per link+slave — a single global
+    # counter would let one inverter's drift streak trigger (or reset) another's.
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    drift_counter = hass.data[DOMAIN].get(DRIFT_COUNTER, 0)
+    counters = hass.data[DOMAIN].setdefault(DRIFT_COUNTER, {})
+    counter_key = register_cache_key(controller, "drift")
+    drift_counter = counters.get(counter_key, 0)
     clock_adjusted = False
 
     if total_drift > 60:
@@ -105,9 +106,9 @@ def clock_drift_test(hass, controller, year, month, day, hours, minutes, seconds
                 )
                 clock_adjusted = True
         else:
-            hass.data[DOMAIN][DRIFT_COUNTER] = drift_counter + 1
+            counters[counter_key] = drift_counter + 1
     else:
-        hass.data[DOMAIN][DRIFT_COUNTER] = 0
+        counters[counter_key] = 0
 
     _LOGGER.debug(f"Drift: {total_drift}s, Counter: {drift_counter}, Adjusted: {clock_adjusted}")
     return clock_adjusted
@@ -173,39 +174,57 @@ def cache_get(hass: HomeAssistant, controller, register: str | int):
     return hass.data[DOMAIN][VALUES].get(register_cache_key(controller, register), None)
 
 
+def iter_platform_entities(hass: HomeAssistant, *platforms: str):
+    """Yield entities of the given platform keys across all Solis config entries."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        runtime = getattr(entry, "runtime_data", None)
+        if runtime is None:
+            continue
+        for platform in platforms:
+            yield from runtime.entities.get(platform, [])
+
+
 def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, disabled_sensors: list) -> None:
     """Mark sensor/number platform entities unavailable when their SolisBaseSensor is dynamically disabled."""
     if not disabled_sensors:
         return
     disabled_set = frozenset(disabled_sensors)
-    domain_data = hass.data.get(DOMAIN) or {}
-    for bucket in (SENSOR_ENTITIES, NUMBER_ENTITIES):
-        for ent in _iter_entities(domain_data.get(bucket)):
-            base = getattr(ent, "base_sensor", None)
-            if base is not None and base in disabled_set:
-                ent._attr_available = False
-                ent.schedule_update_ha_state()
+    for ent in iter_platform_entities(hass, "sensor", "number"):
+        base = getattr(ent, "base_sensor", None)
+        if base is not None and base in disabled_set:
+            ent._attr_available = False
+            ent.schedule_update_ha_state()
 
 
-def _iter_entities(bucket):
-    """Yield entities from a platform bucket that is either a per-entry dict of
-    lists (current) or a flat list (legacy)."""
-    if isinstance(bucket, dict):
-        for ent_list in bucket.values():
-            yield from ent_list or []
-    else:
-        yield from bucket or []
+def is_essential_only(config_entry: ConfigEntry) -> bool:
+    """True when the entry runs in essential-only (read-only) polling mode.
+
+    In that mode the 43xxx holding groups are never polled, so writable entities
+    would sit permanently unknown — the write platforms skip creating them
+    (issue #149: a switch to expose only read-only entities).
+    """
+    return {**config_entry.data, **config_entry.options}.get("essential_only", False)
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):
-    """Store controller in hass.data using the Config Entry ID."""
-    # We use entry_id because it is unique, immutable, and works for both TCP and Serial.
-    hass.data[DOMAIN][CONTROLLER][config_entry.entry_id] = controller
+    """Attach a fresh SolisRuntimeData holding this controller to the entry."""
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    config_entry.runtime_data = SolisRuntimeData(controller=controller)
 
 
 def get_controller_from_entry(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Get controller from config entry using the Config Entry ID."""
-    return hass.data[DOMAIN][CONTROLLER].get(config_entry.entry_id)
+    """Get the controller from the entry's runtime data."""
+    runtime = getattr(config_entry, "runtime_data", None)
+    return runtime.controller if runtime is not None else None
+
+
+def iter_controllers(hass: HomeAssistant):
+    """Yield every controller across all Solis config entries."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        runtime = getattr(entry, "runtime_data", None)
+        if runtime is not None:
+            yield runtime.controller
 
 
 def get_controller(hass: HomeAssistant, host: str, slave: int = 1):
@@ -213,8 +232,7 @@ def get_controller(hass: HomeAssistant, host: str, slave: int = 1):
     Search for a controller matching the host and slave ID.
     Used by services (write_holding_register) that only know the IP/Host.
     """
-    for controller in hass.data[DOMAIN][CONTROLLER].values():
-        # Check if this controller matches the requested host and slave
+    for controller in iter_controllers(hass):
         # Use getattr to be safe if controller hasn't fully initialized
         if getattr(controller, "host", None) == host and getattr(controller, "device_id", 0) == slave:
             return controller

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus.helpers import (
@@ -14,6 +15,7 @@ from custom_components.solis_modbus.helpers import (
     notify_register_update,
 )
 
+from .const import DOMAIN
 from .data.enums import PollSpeed
 from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
@@ -22,12 +24,17 @@ _LOGGER = logging.getLogger(__name__)
 
 _MAX_REGISTER_RECOVERY_DEPTH = 24
 
+# Raise a repair issue once the reconnect loop has failed this many times
+# (~the datalogger has been gone for a while, not a single blip).
+_ISSUE_AFTER_FAILURES = 5
+
 
 class DataRetrieval:
-    def __init__(self, hass: HomeAssistant, controller: ModbusController):
+    def __init__(self, hass: HomeAssistant, controller: ModbusController, entry_id: str | None = None):
         self._spike_counter = {}
         self.controller: ModbusController = controller
         self.hass = hass
+        self._entry_id = entry_id
         self.poll_lock = asyncio.Lock()
         self.connection_check = False
         self.first_poll = True
@@ -172,6 +179,7 @@ class DataRetrieval:
         # Signal any in-flight reconnect loop to exit (it may be mid-backoff while
         # the datalogger is offline — otherwise it keeps spinning after unload).
         self._stopping = True
+        self._update_connection_issue(False)
 
         # Clean up the startup listener only if it hasn't fired yet
         if self._startup_unsub:
@@ -205,6 +213,28 @@ class DataRetrieval:
         stale_after = max(120.0, float(max(self.controller.poll_speed.values())) * 3)
         return (datetime.now(UTC) - last).total_seconds() > stale_after
 
+    def _update_connection_issue(self, unreachable: bool) -> None:
+        """Raise/clear the 'datalogger unreachable' repair issue for this entry."""
+        if self._entry_id is None:
+            return
+        issue_id = f"datalogger_unreachable_{self._entry_id}"
+        if unreachable:
+            last = self.controller.last_modbus_success
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="datalogger_unreachable",
+                translation_placeholders={
+                    "host": str(self.controller.host),
+                    "last_success": last.isoformat(timespec="seconds") if last else "unknown",
+                },
+            )
+        else:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+
     async def check_connection(self, now=None):
         """Ensure the Modbus controller is connected, retrying on failure.
 
@@ -234,6 +264,7 @@ class DataRetrieval:
                     await self.modbus_update_all()
                     self.first_poll = False
                 if not self._link_is_stale():
+                    self._update_connection_issue(False)
                     return
                 # The socket claims to be connected but reads have stopped
                 # succeeding — a half-open TCP link (e.g. the WiFi datalogger
@@ -243,6 +274,7 @@ class DataRetrieval:
                     f"⚠️({self.controller.host}.{self.controller.slave}) Modbus link looks half-open: "
                     f"no successful read since {self.controller.last_modbus_success}; forcing a reconnect."
                 )
+                self._update_connection_issue(True)
                 self.controller.force_close()
 
             retry_delay = 0.5
@@ -250,10 +282,15 @@ class DataRetrieval:
                 try:
                     if await self.controller.connect():
                         _LOGGER.info(f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
+                        self._update_connection_issue(False)
                         break
                     _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
                 except Exception as e:
                     _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
+
+                # Persistent failure (not a single blip) -> surface a repair issue
+                if self.controller.connect_failures >= _ISSUE_AFTER_FAILURES:
+                    self._update_connection_issue(True)
 
                 if self._stopping:
                     break

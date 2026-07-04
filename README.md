@@ -49,6 +49,34 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 **Poll Interval**:
 - Customize how frequently sensors update. Faster polling provides more real-time data but increases Modbus load.
 
+### What's new in 4.2.0
+
+**New features**
+- **Storage Mode select** (renamed from "Work Mode", issue #413): mode changes now clear all conflicting mode bits — switching Self-Use ↔ Peak Shaving ↔ Feed-in writes exactly the values SolisCloud uses (grid-charge and wakeup bits are preserved). New *Reserve / Backup* options. The raw register value is exposed as a state attribute for debugging.
+- **Dual-meter support** (issue #425): enable *"Second smart meter installed"* to poll the Meter 2 block (33300-33337) on "Grid + PV Inverter" installs — per-phase V/A/W, total power, PF, frequency and lifetime import/export counters.
+- **Direct-meter grid energy for string inverters** (issue #410): grid import/export lifetime counters read from the attached meter (registers 3283-3286), for S5-GR3P-style installs without an EPM.
+- **Read-only mode completed** (issue #149): with *"Essential sensors only"* enabled, control entities (numbers/switches/selects/times) are no longer created.
+- **Diagnostics**: download a redacted support dump from the integration's menu.
+- **Repairs**: a repair issue is raised when the datalogger is unreachable for a sustained period, and auto-clears on reconnect.
+- New AC-grid-port lifetime energy sensors (registers 33186-33189, protocol Ver3.4).
+
+**Fixes** (highlights)
+- "Solis Modbus Enabled" switch actually enables/disables polling again.
+- Leaving a "+ TOU" work mode via the select is possible again.
+- Options changes now apply immediately (no restart needed).
+- Reduced Modbus retry storms on S2-WL sticks (issues #395/#406) — pymodbus retries lowered; the integration's own watchdog handles recovery.
+- Lifetime energy counters decode as unsigned (can no longer wrap negative and corrupt the Energy dashboard).
+- Grid-TOU time entities are no longer created for grid/string inverters.
+
+**Monthly grid energy** (issue #400): the inverter's Modbus map has no monthly grid import/export registers (SolisCloud computes those server-side). Use a [utility meter helper](https://www.home-assistant.io/integrations/utility_meter/) instead:
+
+```yaml
+utility_meter:
+  monthly_grid_import:
+    source: sensor.solis_inverter_today_energy_imported_from_grid
+    cycle: monthly
+```
+
 ### Version 4.0+ Migration (Important)
 As of version 4.0+, the integration uses the **Inverter Serial Number** to generate unique IDs for all entities.
 - **New Installs**: Will use Serial Number automatically.

@@ -1,26 +1,60 @@
 solis_write_holding_register:
+  name: Write holding register
   description: Writes a value to a holding register
   fields:
     address:
-      description: Address to write to
-      default: ''
+      name: Address
+      description: Register address to write to
+      required: true
       example: 43142
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
     value:
+      name: Value
       description: Value to write
-      default: ''
+      required: true
       example: 500
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
     host:
+      name: Host
       description: IP of the inverter, only required when running multiple inverters
-      default: ''
       example: 192.168.1.75
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
 solis_write_time:
-  description: Writes a time string to an entity
+  name: Write time
+  description: Writes a time string to a Solis time entity
   fields:
     entity_id:
-      description: Value to write
-      default: ''
-      example: 'sensor.solis_time_charging_charge_start_hour_slot_1'
+      name: Entity
+      description: The Solis time entity to write to
+      required: true
+      example: "time.solis_time_charging_charge_start_slot_1"
+      selector:
+        entity:
+          filter:
+            integration: solis_modbus
+            domain: time
     time:
-      description: Time string in HH:MM or HH:MM:SS
-      default: ''
-      example: '14:50'
+      name: Time
+      description: "Time string in HH:MM or HH:MM:SS"
+      required: true
+      example: "14:50"
+      selector:
+        time:

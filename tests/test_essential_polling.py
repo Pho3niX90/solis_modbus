@@ -64,3 +64,17 @@ def test_config_schemas_offer_essential_only():
         }
     )
     assert validated["essential_only"] is False
+
+
+def test_essential_only_helper_reads_data_and_options():
+    from unittest.mock import MagicMock
+
+    from custom_components.solis_modbus.helpers import is_essential_only
+
+    entry = MagicMock()
+    entry.data = {"essential_only": False}
+    entry.options = {}
+    assert is_essential_only(entry) is False
+
+    entry.options = {"essential_only": True}  # options take priority
+    assert is_essential_only(entry) is True

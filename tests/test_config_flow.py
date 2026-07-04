@@ -18,9 +18,9 @@ async def test_flow_user_success(hass: HomeAssistant):
     """Test user initialized flow with success."""
     with (
         patch(
-            "custom_components.solis_modbus.modbus_controller.ModbusController.connect",
-            return_value=True,
-        ) as mock_connect,
+            "custom_components.solis_modbus.config_flow.ModbusConfigFlow._validate_config",
+            return_value=(True, None),
+        ) as mock_validate,
         patch(
             "custom_components.solis_modbus.async_setup_entry",
             return_value=True,
@@ -70,7 +70,7 @@ async def test_flow_user_success(hass: HomeAssistant):
         assert result["data"]["host"] == "1.2.3.4"
         assert result["data"]["slave"] == 1
 
-        mock_connect.assert_called()
+        mock_validate.assert_called()
         mock_setup_entry.assert_called_once()
 
 
@@ -78,8 +78,8 @@ async def test_flow_user_success(hass: HomeAssistant):
 async def test_flow_user_connection_error(hass: HomeAssistant):
     """Test user initialized flow with connection error."""
     with patch(
-        "custom_components.solis_modbus.modbus_controller.ModbusController.connect",
-        return_value=False,
+        "custom_components.solis_modbus.config_flow.ModbusConfigFlow._validate_config",
+        return_value=(False, "cannot_connect"),
     ):
         # Step 1: Select connection type
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
@@ -109,7 +109,7 @@ async def test_flow_user_connection_error(hass: HomeAssistant):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input=config_input)
 
         assert result["type"] == data_entry_flow.FlowResultType.FORM
-        assert result["errors"] == {"base": "Cannot connect to Modbus device. Please check your configuration."}
+        assert result["errors"] == {"base": "cannot_connect"}
 
 
 @pytest.mark.asyncio
@@ -125,8 +125,8 @@ async def test_flow_user_duplicates(hass: HomeAssistant):
     entry.add_to_hass(hass)
 
     with patch(
-        "custom_components.solis_modbus.modbus_controller.ModbusController.connect",
-        return_value=True,
+        "custom_components.solis_modbus.config_flow.ModbusConfigFlow._validate_config",
+        return_value=(True, None),
     ):
         # Step 1: Select connection type
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
@@ -208,3 +208,62 @@ async def test_options_flow_suggestions_use_merged_data_and_options(hass: HomeAs
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     assert entry.options["has_ac_coupling"] is True
     assert entry.options["has_generator"] is True
+
+
+@pytest.mark.asyncio
+async def test_validate_config_uses_throwaway_client(hass: HomeAssistant):
+    """Validation must never touch the shared ModbusClientManager (it used to
+    over-release a live entry's client); it probes with its own client and
+    always closes it."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.solis_modbus.client_manager import ModbusClientManager
+    from custom_components.solis_modbus.config_flow import ModbusConfigFlow
+
+    flow = ModbusConfigFlow()
+    flow.hass = hass
+
+    probe_result = MagicMock()
+    probe_result.isError.return_value = False
+
+    mock_client = MagicMock()
+    mock_client.connect = AsyncMock()
+    mock_client.connected = True
+    mock_client.read_input_registers = AsyncMock(return_value=probe_result)
+
+    manager_clients_before = dict(ModbusClientManager.get_instance()._clients)
+
+    with patch(
+        "custom_components.solis_modbus.config_flow.AsyncModbusTcpClient",
+        return_value=mock_client,
+    ):
+        valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
+
+    assert (valid, err) == (True, None)
+    mock_client.read_input_registers.assert_awaited_once()
+    mock_client.close.assert_called()
+    # Shared manager untouched — no acquire, no release
+    assert ModbusClientManager.get_instance()._clients == manager_clients_before
+
+
+@pytest.mark.asyncio
+async def test_validate_config_cannot_connect(hass: HomeAssistant):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.solis_modbus.config_flow import ModbusConfigFlow
+
+    flow = ModbusConfigFlow()
+    flow.hass = hass
+
+    mock_client = MagicMock()
+    mock_client.connect = AsyncMock()
+    mock_client.connected = False
+
+    with (
+        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=mock_client),
+        patch("custom_components.solis_modbus.config_flow.asyncio.sleep", new=AsyncMock()),
+    ):
+        valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
+
+    assert (valid, err) == (False, "cannot_connect")
+    mock_client.close.assert_called()

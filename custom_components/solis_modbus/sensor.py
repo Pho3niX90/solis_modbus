@@ -5,7 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import DOMAIN, SENSOR_DERIVED_ENTITIES, SENSOR_ENTITIES, VALUES
+from custom_components.solis_modbus.const import DOMAIN, VALUES
 from custom_components.solis_modbus.helpers import get_controller_from_entry
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 from custom_components.solis_modbus.sensors.solis_sensor import SolisSensor
@@ -34,9 +34,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     for sensor in controller.derived_sensors:
         sensor_derived_entities.append(SolisDerivedSensor(hass, sensor))
 
-    # Key entity buckets by entry_id so a second inverter doesn't clobber the first.
-    hass.data[DOMAIN].setdefault(SENSOR_ENTITIES, {})[config_entry.entry_id] = sensor_entities
-    hass.data[DOMAIN].setdefault(SENSOR_DERIVED_ENTITIES, {})[config_entry.entry_id] = sensor_derived_entities
+    config_entry.runtime_data.entities["sensor"] = sensor_entities
+    config_entry.runtime_data.entities["sensor_derived"] = sensor_derived_entities
 
     async_add_entities(sensor_entities, True)
     async_add_entities(sensor_derived_entities, True)

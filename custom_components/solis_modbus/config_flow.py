@@ -5,8 +5,8 @@ import re
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import OptionsFlow
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
-from . import ModbusController
 from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
@@ -55,22 +55,7 @@ BASE_CONFIG_SCHEMA = {
     vol.Required("has_battery", default=True): bool,
     vol.Required("has_hv_battery", default=False): bool,
     vol.Required("has_generator", default=True): bool,
-}
-
-# Combined schema that accepts both TCP and Serial fields (all optional except connection_type)
-# This allows the form to accept either type of connection
-COMBINED_CONFIG_SCHEMA = {
-    **BASE_CONFIG_SCHEMA,
-    # TCP fields (optional)
-    vol.Optional("host", default=""): str,
-    vol.Optional("port", default=502): int,
-    vol.Optional("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
-    # Serial fields (optional)
-    vol.Optional(CONF_SERIAL_PORT, default="/dev/ttyUSB0"): str,
-    vol.Optional(CONF_BAUDRATE, default=DEFAULT_BAUDRATE): vol.In([9600, 19200, 38400, 57600, 115200]),
-    vol.Optional(CONF_BYTESIZE, default=DEFAULT_BYTESIZE): vol.In([7, 8]),
-    vol.Optional(CONF_PARITY, default=DEFAULT_PARITY): vol.In(PARITY_OPTIONS),
-    vol.Optional(CONF_STOPBITS, default=DEFAULT_STOPBITS): vol.In([1, 2]),
+    vol.Required("has_dual_meter", default=False): bool,
 }
 
 # TCP-specific fields (includes WiFi dongle type)
@@ -107,6 +92,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_battery", default=True): bool,
         vol.Required("has_hv_battery", default=False): bool,
         vol.Required("has_generator", default=True): bool,
+        vol.Required("has_dual_meter", default=False): bool,
     }
 )
 
@@ -187,17 +173,25 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Update existing entry data with new input
             data = {**entry.data, **user_input}
+            serial = (data.get(CONF_INVERTER_SERIAL) or "").strip()
 
             # Require serial and model so the form always collects them
-            if not (data.get(CONF_INVERTER_SERIAL) or "").strip():
-                errors["base"] = "Inverter serial number is required."
+            if not serial:
+                errors["base"] = "serial_required"
             elif not data.get("model"):
-                errors["base"] = "Please select an inverter model."
+                errors["base"] = "model_required"
+            elif any(other.unique_id == serial and other.entry_id != entry.entry_id for other in self.hass.config_entries.async_entries(DOMAIN)):
+                # Another entry already manages this inverter
+                return self.async_abort(reason="already_configured")
             else:
-                valid, err_msg = await self._validate_config(data)
+                valid, err_key = await self._validate_config(data)
                 if valid:
-                    return self.async_update_reload_and_abort(entry, data=data)
-                errors["base"] = err_msg or "Cannot connect to Modbus device. Please check your configuration."
+                    # Strip reconfigured keys from options: setup merges
+                    # {**data, **options}, so stale option values would silently
+                    # shadow the freshly reconfigured data otherwise.
+                    new_options = {k: v for k, v in entry.options.items() if k not in user_input}
+                    return self.async_update_reload_and_abort(entry, data=data, options=new_options, unique_id=serial)
+                errors["base"] = err_key or "cannot_connect"
 
         # 1. Select the full schema (TCP or Serial) so reconfigure shows all fields
         conn_type = entry.data.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP)
@@ -221,9 +215,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).upper()
 
         # 2. Validate Connection
-        valid, err_msg = await self._validate_config(data)
+        valid, err_key = await self._validate_config(data)
         if not valid:
-            errors["base"] = err_msg or "Cannot connect to Modbus device. Please check your configuration."
+            errors["base"] = err_key or "cannot_connect"
 
             # Determine which schema to show again based on connection type
             if data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_TCP:
@@ -242,78 +236,71 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=data)
 
     async def _validate_config(self, user_input):
-        """Validate the configuration by trying to connect to the Modbus device.
-        Returns (True, None) on success, (False, error_message) on failure.
+        """Validate the configuration by probing the Modbus device.
+
+        Uses a throwaway pymodbus client on purpose: building a ModbusController
+        here would acquire the SHARED client from ModbusClientManager and the old
+        retry loop released it up to 5 times per validation — closing a running
+        entry's connection out from under it during reconfigure or when adding a
+        second inverter on the same datalogger.
+
+        Returns (True, None) on success, (False, error_key) on failure.
         """
         inverter_model = user_input.get("model")
         inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
         if inverter_template is None:
             _LOGGER.warning("Invalid or unknown inverter model: %s", inverter_model)
-            return False, "Invalid or unknown inverter model. Please select a model from the list."
+            return False, "invalid_model"
 
         user_options = inverter_options_from_config(user_input, inverter_template)
         inverter_config = inverter_template.clone_with_options(user_options, user_input.get("connection", "S2_WL_ST"))
 
         conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
-
-        # Build ModbusController parameters based on connection type
-        controller_params = {
-            "hass": self.hass,
-            "device_id": user_input.get("slave", 1),
-            "identification": clean_identification(user_input.get("identification", None)),
-            "fast_poll": user_input.get("poll_interval_fast", 10),
-            "normal_poll": user_input.get("poll_interval_normal", 15),
-            "slow_poll": user_input.get("poll_interval_slow", 15),
-            "inverter_config": inverter_config,
-            "connection_type": conn_type,
-        }
+        device_id = user_input.get("slave", 1)
+        probe_register = 3041 if inverter_config.type in [InverterType.GRID, InverterType.STRING] else 35000
 
         if conn_type == CONN_TYPE_TCP:
-            controller_params["host"] = user_input["host"]
-            controller_params["port"] = user_input.get("port", 502)
+            client = AsyncModbusTcpClient(host=user_input["host"], port=user_input.get("port", 502), timeout=5, retries=1)
         else:  # Serial
-            controller_params["serial_port"] = user_input[CONF_SERIAL_PORT]
-            controller_params["baudrate"] = user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE)
-            controller_params["bytesize"] = user_input.get(CONF_BYTESIZE, DEFAULT_BYTESIZE)
-            controller_params["parity"] = user_input.get(CONF_PARITY, DEFAULT_PARITY)
-            controller_params["stopbits"] = user_input.get(CONF_STOPBITS, DEFAULT_STOPBITS)
+            client = AsyncModbusSerialClient(
+                port=user_input[CONF_SERIAL_PORT],
+                baudrate=user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
+                bytesize=user_input.get(CONF_BYTESIZE, DEFAULT_BYTESIZE),
+                parity=user_input.get(CONF_PARITY, DEFAULT_PARITY),
+                stopbits=user_input.get(CONF_STOPBITS, DEFAULT_STOPBITS),
+                timeout=5,
+                retries=1,
+            )
 
-        modbus_controller = ModbusController(**controller_params)
-
-        for attempt in range(5):
+        try:
+            for attempt in range(3):
+                try:
+                    await client.connect()
+                    if not client.connected:
+                        raise ConnectionError("Failed to connect")
+                    if conn_type == CONN_TYPE_TCP:
+                        result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
+                    else:
+                        client.slave = device_id
+                        result = await client.read_input_registers(address=probe_register, count=1)
+                    if result.isError():
+                        raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
+                    return True, None
+                except Exception as e:
+                    _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
+                    if attempt < 2:
+                        await asyncio.sleep(1)
+        finally:
             try:
-                if not await modbus_controller.connect():
-                    raise ConnectionError("Failed to connect")
-                if inverter_config.type in [InverterType.GRID, InverterType.STRING]:
-                    await modbus_controller.async_read_input_register(3041, 1)
-                else:
-                    await modbus_controller.async_read_input_register(35000, 1)
+                client.close()
+            except Exception:  # noqa: BLE001 - best-effort cleanup of a throwaway client
+                pass
 
-                return True, None
-            except Exception as e:
-                _LOGGER.warning(f"Connection failed attempt {attempt + 1}/5: {str(e)}")
-                if attempt < 4:
-                    await asyncio.sleep(1)
-            finally:
-                modbus_controller.close_connection()
-
-        _LOGGER.error(f"Connection failed after 5 attempts: {str(controller_params)}")
-        return False, "Cannot connect to Modbus device. Please check your configuration."
-
-    def _get_user_schema(self, user_input=None):
-        """Return the appropriate schema based on connection type selection."""
-        if user_input and CONF_CONNECTION_TYPE in user_input:
-            conn_type = user_input[CONF_CONNECTION_TYPE]
-            if conn_type == CONN_TYPE_TCP:
-                return vol.Schema(TCP_CONFIG_SCHEMA)
-            else:
-                return vol.Schema(SERIAL_CONFIG_SCHEMA)
-
-        return vol.Schema(SERIAL_CONFIG_SCHEMA)
+        _LOGGER.error("Connection validation failed after 3 attempts (%s)", conn_type)
+        return False, "cannot_connect"
 
     @staticmethod
-    @config_entries.HANDLERS.register(DOMAIN)
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
         return ModbusOptionsFlowHandler()
