@@ -10,6 +10,9 @@ from custom_components.solis_modbus.sensors.solis_select_entity import SolisSele
 
 _LOGGER = logging.getLogger(__name__)
 
+# Serialize control writes — a single Modbus link can't take concurrent writes.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

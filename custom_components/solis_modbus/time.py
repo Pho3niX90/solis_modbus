@@ -20,6 +20,9 @@ from custom_components.solis_modbus.sensor_data.time_sensors import get_time_sen
 
 _LOGGER = logging.getLogger(__name__)
 
+# Serialize control writes — a single Modbus link can't take concurrent writes.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the time platform."""
@@ -33,7 +36,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
 
     for entity_definition in time_definitions:
         time_entities.append(SolisTimeEntity(hass, modbus_controller, entity_definition))
-    hass.data[DOMAIN][TIME_ENTITIES] = time_entities
+    hass.data.setdefault(DOMAIN, {}).setdefault(TIME_ENTITIES, {})[config_entry.entry_id] = time_entities
     async_add_devices(time_entities, True)
 
 

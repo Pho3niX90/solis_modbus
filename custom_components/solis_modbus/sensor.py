@@ -12,6 +12,9 @@ from custom_components.solis_modbus.sensors.solis_sensor import SolisSensor
 
 _LOGGER = logging.getLogger(__name__)
 
+# Read-only platform — no write serialization needed.
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     """Set up Modbus sensors from a config entry."""
@@ -19,7 +22,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     sensor_entities: list[SolisSensor] = []
     sensor_derived_entities: list[SensorEntity] = []
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][VALUES] = {}
+    # Never wipe the shared register cache on setup/reload — keys are namespaced
+    # per link+slave, so other controllers' cached values must survive.
+    hass.data[DOMAIN].setdefault(VALUES, {})
 
     for sensor_group in controller.sensor_groups:
         for sensor in sensor_group.sensors:
@@ -29,8 +34,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     for sensor in controller.derived_sensors:
         sensor_derived_entities.append(SolisDerivedSensor(hass, sensor))
 
-    hass.data[DOMAIN][SENSOR_ENTITIES] = sensor_entities
-    hass.data[DOMAIN][SENSOR_DERIVED_ENTITIES] = sensor_derived_entities
+    # Key entity buckets by entry_id so a second inverter doesn't clobber the first.
+    hass.data[DOMAIN].setdefault(SENSOR_ENTITIES, {})[config_entry.entry_id] = sensor_entities
+    hass.data[DOMAIN].setdefault(SENSOR_DERIVED_ENTITIES, {})[config_entry.entry_id] = sensor_derived_entities
 
     async_add_entities(sensor_entities, True)
     async_add_entities(sensor_derived_entities, True)

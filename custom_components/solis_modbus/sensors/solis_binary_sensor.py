@@ -11,8 +11,10 @@ from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VA
 from custom_components.solis_modbus.helpers import (
     cache_get,
     cache_save,
+    get_bit_bool,
     is_correct_controller,
     register_update_signal,
+    set_bit,
     unique_id_generator_binary,
 )
 
@@ -177,29 +179,3 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
     def device_info(self):
         """Return device info."""
         return self._modbus_controller.device_info
-
-
-def set_bit(value, bit_position, new_bit_value):
-    """Set or clear a specific bit in an integer value."""
-    if value is None:
-        value = 0
-    mask = 1 << bit_position
-    value &= ~mask  # Clear the bit
-    if new_bit_value:
-        value |= mask  # Set the bit
-    return round(value)
-
-
-def get_bit_bool(modbus_value, bit_position):
-    """
-    Decode Modbus value to boolean state for the specified bit position.
-
-    Parameters:
-    - modbus_value: The Modbus value to decode.
-    - bit_position: The position of the bit to extract (0-based).
-
-    Returns:
-    - True if the bit is ON, False if the bit is OFF.
-    """
-    # Check if the bit is ON by shifting 1 to the specified position and performing bitwise AND
-    return (modbus_value >> bit_position) & 1 == 1

@@ -149,24 +149,27 @@ class ModbusController:
         Returns:
             None
         """
-        while True:
-            if not self.connected():
-                await asyncio.sleep(5)
-                continue
+        try:
+            while True:
+                # Block until a write is queued instead of busy-polling.
+                write_request = await self.write_queue.get()
+                try:
+                    # Wait for the link BEFORE processing, so a write queued during a
+                    # reconnect window isn't executed (and acked via task_done) while
+                    # still disconnected — which could silently drop a control write.
+                    while not self.connected():
+                        await asyncio.sleep(5)
+                    register, value, multiple = write_request
 
-            if self.write_queue.empty():
-                await asyncio.sleep(0.2)
-                continue
-
-            write_request = await self.write_queue.get()
-            register, value, multiple = write_request
-
-            if multiple:
-                await self._execute_write_holding_registers(register, value)
-            else:
-                await self._execute_write_holding_register(register, value)
-
-            self.write_queue.task_done()
+                    if multiple:
+                        await self._execute_write_holding_registers(register, value)
+                    else:
+                        await self._execute_write_holding_register(register, value)
+                finally:
+                    self.write_queue.task_done()
+        except asyncio.CancelledError:
+            # Clean shutdown on entry unload/reload.
+            raise
 
     async def _execute_write_holding_register(self, register, value):
         """Executes a single register write with interframe delay.
@@ -253,12 +256,7 @@ class ModbusController:
                         f"({self.host}.{self.device_id}) Exception during write holding registers "
                         f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}"
                     )
-                    # Close connection to clear any stale state/responses
-                    try:
-                        if hasattr(self.client, "connected") and self.client.connected:
-                            self.client.close()
-                    except Exception:
-                        pass
+                    self._safe_close()
                     return None
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
@@ -304,7 +302,7 @@ class ModbusController:
                     self.client.slave = self.device_id
                     result = await self.client.read_input_registers(address=register, count=count)
 
-                _LOGGER.debug(f"({self.host}.{self.device_id}) Read Input Registers: register = {register}, count = {count}")
+                _LOGGER.debug("(%s.%s) Read Input Registers: register = %s, count = %s", self.host, self.device_id, register, count)
 
                 if result.isError():
                     exc = _exception_code_from_modbus_result(result)
@@ -319,12 +317,7 @@ class ModbusController:
                 error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
                 log_fn(f"({self.host}.{self.device_id}) Exception reading input registers at {register}: {error_msg}")
-                # Close connection to clear any stale state/responses
-                try:
-                    if hasattr(self.client, "connected") and self.client.connected:
-                        self.client.close()
-                except Exception:
-                    pass
+                self._safe_close()
                 return None, None
 
     async def _async_read_input_register_raw(self, register, count):
@@ -373,7 +366,7 @@ class ModbusController:
                     self.client.slave = self.device_id
                     result = await self.client.read_holding_registers(address=register, count=count)
 
-                _LOGGER.debug(f"({self.host}.{self.device_id}) Read Holding Registers: register = {register}, count = {count}")
+                _LOGGER.debug("(%s.%s) Read Holding Registers: register = %s, count = %s", self.host, self.device_id, register, count)
 
                 if result.isError():
                     exc = _exception_code_from_modbus_result(result)
@@ -388,12 +381,7 @@ class ModbusController:
                 error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
                 log_fn(f"({self.host}.{self.device_id}) Exception reading holding registers at {register}: {error_msg}")
-                # Close connection to clear any stale state/responses
-                try:
-                    if hasattr(self.client, "connected") and self.client.connected:
-                        self.client.close()
-                except Exception:
-                    pass
+                self._safe_close()
                 return None, None
 
     async def _async_read_holding_register_raw(self, register, count):
@@ -447,31 +435,16 @@ class ModbusController:
                 if self.connected():
                     _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")
                     self.connect_failures = 0
-
-                    if self.serial_number is None:
-                        _LOGGER.info(f"serial got from device: {self.serial_number}")
-                    else:
-                        _LOGGER.info(f"serial got from cache: {self.serial_number}")
-
+                    _LOGGER.debug("(%s.%s) serial number: %s", self.host, self.device_id, self.serial_number)
                     return True
                 self.connect_failures += 1
                 _LOGGER.debug(f"⚠️ ({self.host}:{self.port}.{self.device_id}) Connection attempt {self.connect_failures} failed")
-                # Close connection to clear any pending responses/state
-                try:
-                    if hasattr(self.client, "connected") and self.client.connected:
-                        self.client.close()
-                except Exception:
-                    pass
+                self._safe_close()
                 return False
             except Exception as e:
                 self.connect_failures += 1
                 _LOGGER.debug(f"❌ ({self.host}.{self.device_id}) Connection error (attempt {self.connect_failures}): {e}")
-                # Close connection to clear any pending responses/state on connection error
-                try:
-                    if hasattr(self.client, "connected") and self.client.connected:
-                        self.client.close()
-                except Exception:
-                    pass
+                self._safe_close()
                 return False
 
         lock = self.poll_lock
@@ -489,6 +462,14 @@ class ModbusController:
             bool: True if the client is connected, False otherwise.
         """
         return self.client.connected if self.client else False
+
+    def _safe_close(self) -> None:
+        """Close the client if open, ignoring errors — clears stale state/responses."""
+        try:
+            if getattr(self.client, "connected", False):
+                self.client.close()
+        except Exception:
+            pass
 
     def force_close(self):
         """Close the underlying client so a fresh connection can be established.

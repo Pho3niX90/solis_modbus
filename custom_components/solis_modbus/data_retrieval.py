@@ -40,9 +40,12 @@ class DataRetrieval:
 
         self._unsub_listeners = []
         self._startup_unsub = None  # Store startup listener separately
+        self._write_task = None  # process_write_queue task, cancelled on unload
+        self._poll_task = None  # poll_controller task, cancelled on unload
+        self._stopping = False  # set on async_stop so in-flight reconnect loops exit
 
         if self.hass.is_running:
-            self.hass.create_task(self.poll_controller())
+            self._poll_task = self.hass.async_create_task(self.poll_controller())
         else:
             # Store the unsub function separately so we can manage its lifecycle
             self._startup_unsub = self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self.poll_controller)
@@ -87,7 +90,7 @@ class DataRetrieval:
         start_register = sensor_group.start_register
         for i, value in enumerate(values):
             reg = start_register + i
-            _LOGGER.debug(f"block {start_register}, register {reg} has value {value}")
+            _LOGGER.debug("block %s, register %s has value %s", start_register, reg, value)
             corrected_value = self.spike_filtering(reg, value)
             cache_save(self.hass, self.controller, reg, corrected_value)
             notify_register_update(self.hass, self.controller, reg, corrected_value)
@@ -165,7 +168,11 @@ class DataRetrieval:
         return results if results else None
 
     async def async_stop(self):
-        """Cancel all listeners."""
+        """Cancel all listeners and background tasks."""
+        # Signal any in-flight reconnect loop to exit (it may be mid-backoff while
+        # the datalogger is offline — otherwise it keeps spinning after unload).
+        self._stopping = True
+
         # Clean up the startup listener only if it hasn't fired yet
         if self._startup_unsub:
             self._startup_unsub()
@@ -175,6 +182,20 @@ class DataRetrieval:
             unsub()
         self._unsub_listeners = []
         self.connection_check = False  # Stop connection loop logic if any
+
+        # Cancel the background tasks so they don't leak on reload. Cancel _poll_task
+        # FIRST: poll_controller() creates _write_task as its last step, so stopping
+        # poll first prevents it spawning a fresh write task after we've cancelled the
+        # old one. getattr re-reads _write_task afterwards, catching any it just created.
+        for task_attr in ("_poll_task", "_write_task"):
+            task = getattr(self, task_attr)
+            if task is not None:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                setattr(self, task_attr, None)
 
     def _link_is_stale(self) -> bool:
         """True when the link claims to be connected but reads have stopped succeeding."""
@@ -225,7 +246,7 @@ class DataRetrieval:
                 self.controller.force_close()
 
             retry_delay = 0.5
-            while not self.controller.connected():
+            while not self.controller.connected() and not self._stopping:
                 try:
                     if await self.controller.connect():
                         _LOGGER.info(f"✅({self.controller.host}.{self.controller.slave}) Modbus controller connected successfully.")
@@ -234,6 +255,8 @@ class DataRetrieval:
                 except Exception as e:
                     _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
 
+                if self._stopping:
+                    break
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 30)
         finally:
@@ -279,7 +302,7 @@ class DataRetrieval:
             )
         )
 
-        self.hass.create_task(self.controller.process_write_queue())
+        self._write_task = self.hass.async_create_task(self.controller.process_write_queue())
 
     async def modbus_update_all(self):
         """Updates all sensor groups regardless of their poll speed.
@@ -415,8 +438,8 @@ class DataRetrieval:
 
                 total_duration = time.perf_counter() - total_start_time
                 _LOGGER.debug(f"✅ {speed.name} update completed in {total_duration:.4f}s")
-        except Exception as e:
-            _LOGGER.debug("exception caught: %s", e)
+        except Exception:
+            _LOGGER.warning("(%s.%s) Unexpected error during %s poll", self.controller.host, self.controller.slave, speed.name, exc_info=True)
         finally:
             del self.poll_updating[speed][group_hash]  # ✅ Reset only this group set
 

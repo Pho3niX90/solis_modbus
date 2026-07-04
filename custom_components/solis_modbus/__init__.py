@@ -29,11 +29,14 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
+    NUMBER_ENTITIES,
+    SENSOR_DERIVED_ENTITIES,
+    SENSOR_ENTITIES,
     TIME_ENTITIES,
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
-from .helpers import get_controller, set_controller, unique_id_generator
+from .helpers import _iter_entities, get_controller, set_controller, unique_id_generator
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisBaseSensor, SolisSensorGroup
 
@@ -91,8 +94,8 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             _LOGGER.error("❌ Failed to parse time string '%s': %s", time_str, e)
             return
 
-        # Look through the registered time entities for one that matches the given entity_id
-        for entity in call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES, []):
+        # Look through the registered time entities (per-entry buckets) for a match
+        for entity in _iter_entities(call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES)):
             if entity.entity_id == entity_id:
                 await entity.async_set_value(new_time)
                 _LOGGER.debug("Set time for %s to %s", entity_id, new_time)
@@ -106,10 +109,14 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_update_options(entry):
-    """Handle options updates."""
-    hass = entry.hass
-    await hass.config_entries.async_update_entry(entry, options=entry.options)
+async def _async_reload_on_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the entry when its options change.
+
+    Without this, edits made in the options flow (poll intervals, model,
+    feature toggles, essential-only) are saved to the entry but never applied
+    until Home Assistant is restarted.
+    """
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -229,57 +236,70 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     controller = ModbusController(**controller_params)
 
-    controller._sensor_groups = []
-    essential_only = config.get("essential_only", False)
-    skipped_essential = 0
-    for group in sensors:
-        feature_requirement = group.get("feature_requirement", [])
-        if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
-            group_name = group.get("name", group.get("register_start", "Unnamed"))
-            _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
-            continue
+    # From here the controller holds a ref on the shared Modbus client; release it
+    # if setup fails so a failed entry doesn't pin the connection open (HA won't
+    # call async_unload_entry when async_setup_entry raises).
+    try:
+        controller._sensor_groups = []
+        essential_only = config.get("essential_only", False)
+        skipped_essential = 0
+        for group in sensors:
+            feature_requirement = group.get("feature_requirement", [])
+            if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
+                group_name = group.get("name", group.get("register_start", "Unnamed"))
+                _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
+                continue
 
-        if essential_only and not group.get("essential", False):
-            skipped_essential += 1
-            continue
+            if essential_only and not group.get("essential", False):
+                skipped_essential += 1
+                continue
 
-        controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
+            controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
-    if essential_only:
-        _LOGGER.info(
-            "Essential-only polling enabled: %d sensor group(s) skipped, %d remaining (reduces datalogger load)",
-            skipped_essential,
-            len(controller._sensor_groups),
-        )
+        if essential_only:
+            _LOGGER.info(
+                "Essential-only polling enabled: %d sensor group(s) skipped, %d remaining (reduces datalogger load)",
+                skipped_essential,
+                len(controller._sensor_groups),
+            )
 
-    controller._derived_sensors = [
-        SolisBaseSensor(
-            hass=hass,
-            name=entity.get("name"),
-            controller=controller,
-            registrars=[int(r) for r in entity.get("register", [])],
-            write_register=entity.get("write_register", None),
-            state_class=entity.get("state_class", None),
-            device_class=entity.get("device_class", None),
-            unit_of_measurement=entity.get("unit_of_measurement", None),
-            multiplier=entity.get("multiplier", 1),
-            editable=entity.get("editable", False),
-            hidden=entity.get("hidden", False),
-            category=entity.get("category", None),
-            unique_id=unique_id_generator(controller, entity.get("unique", "reserve")),
-        )
-        for entity in sensors_derived
-    ]
+        controller._derived_sensors = [
+            SolisBaseSensor(
+                hass=hass,
+                name=entity.get("name"),
+                controller=controller,
+                registrars=[int(r) for r in entity.get("register", [])],
+                write_register=entity.get("write_register", None),
+                state_class=entity.get("state_class", None),
+                device_class=entity.get("device_class", None),
+                unit_of_measurement=entity.get("unit_of_measurement", None),
+                multiplier=entity.get("multiplier", 1),
+                editable=entity.get("editable", False),
+                hidden=entity.get("hidden", False),
+                category=entity.get("category", None),
+                unique_id=unique_id_generator(controller, entity.get("unique", "reserve")),
+            )
+            for entity in sensors_derived
+        ]
 
-    set_controller(hass, controller, entry)
 
-    _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
+        set_controller(hass, controller, entry)
 
-    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
 
-    hass.data[DOMAIN].setdefault("data_retrieval", {})
-    hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+        # Set up all platforms in one call (concurrent) — matches the unload side,
+        # which already unloads [Platform.SENSOR, *PLATFORMS] together.
+        await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
+
+        hass.data[DOMAIN].setdefault("data_retrieval", {})
+        hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+    except Exception:
+        controller.close_connection()
+        hass.data[DOMAIN].get(CONTROLLER, {}).pop(entry.entry_id, None)
+        raise
+
+    # Apply option changes automatically (see _async_reload_on_update).
+    entry.async_on_unload(entry.add_update_listener(_async_reload_on_update))
 
     return True
 
@@ -464,5 +484,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             if controller:
                 _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
                 controller.close_connection()
+
+        # 3. Drop this entry's per-entry entity buckets so they don't leak on reload.
+        for bucket in (SENSOR_ENTITIES, SENSOR_DERIVED_ENTITIES, NUMBER_ENTITIES, TIME_ENTITIES):
+            bucket_data = hass.data[DOMAIN].get(bucket)
+            if isinstance(bucket_data, dict):
+                bucket_data.pop(entry.entry_id, None)
 
     return unload_ok

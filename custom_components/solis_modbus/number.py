@@ -9,6 +9,9 @@ from custom_components.solis_modbus.sensors.solis_number_sensor import SolisNumb
 
 _LOGGER = logging.getLogger(__name__)
 
+# Serialize control writes — a single Modbus link can't take concurrent writes.
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
     """Set up the number platform."""
@@ -27,7 +30,7 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
         for sensor in sensor_group.sensors:
             if sensor.name != "reserve" and sensor.editable:
                 sensors.append(SolisNumberEntity(hass, sensor))
-    hass.data.setdefault(DOMAIN, {})[NUMBER_ENTITIES] = sensors
+    hass.data.setdefault(DOMAIN, {}).setdefault(NUMBER_ENTITIES, {})[config_entry.entry_id] = sensors
     _LOGGER.info(f"Number entities = {len(sensors)}")
     async_add_devices(sensors, True)
     return True

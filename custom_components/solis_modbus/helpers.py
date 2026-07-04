@@ -180,11 +180,21 @@ def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, dis
     disabled_set = frozenset(disabled_sensors)
     domain_data = hass.data.get(DOMAIN) or {}
     for bucket in (SENSOR_ENTITIES, NUMBER_ENTITIES):
-        for ent in domain_data.get(bucket) or []:
+        for ent in _iter_entities(domain_data.get(bucket)):
             base = getattr(ent, "base_sensor", None)
             if base is not None and base in disabled_set:
                 ent._attr_available = False
                 ent.schedule_update_ha_state()
+
+
+def _iter_entities(bucket):
+    """Yield entities from a platform bucket that is either a per-entry dict of
+    lists (current) or a flat list (legacy)."""
+    if isinstance(bucket, dict):
+        for ent_list in bucket.values():
+            yield from ent_list or []
+    else:
+        yield from bucket or []
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):
@@ -215,8 +225,33 @@ def split_s32(s32_values: list[int]):
     high_word = s32_values[0] - (1 << 16) if s32_values[0] & (1 << 15) else s32_values[0]
     low_word = s32_values[1] - (1 << 16) if s32_values[1] & (1 << 15) else s32_values[1]
 
-    # Combine the high and low words to form a 32-bit signed/unsigned integer
+    # Combine the high and low words to form a signed 32-bit integer (two's complement).
     return (high_word << 16) | (low_word & 0xFFFF)
+
+
+def combine_u32(u32_values: list[int]) -> int:
+    """Combine two 16-bit words (high word first) into an unsigned 32-bit integer.
+
+    Used for registers explicitly tagged ``data_type: U32`` (e.g. lifetime energy
+    totals) so they never wrap negative once the raw count crosses 0x7FFFFFFF.
+    """
+    return ((u32_values[0] & 0xFFFF) << 16) | (u32_values[1] & 0xFFFF)
+
+
+def set_bit(value, bit_position, new_bit_value):
+    """Set or clear a specific bit in an integer value."""
+    if value is None:
+        value = 0
+    mask = 1 << bit_position
+    value &= ~mask  # Clear the bit
+    if new_bit_value:
+        value |= mask  # Set the bit
+    return round(value)
+
+
+def get_bit_bool(modbus_value, bit_position):
+    """Decode a Modbus value to the boolean state of the given (0-based) bit position."""
+    return (modbus_value >> bit_position) & 1 == 1
 
 
 def _any_in(target: list[int], collection: set[int]) -> bool:
