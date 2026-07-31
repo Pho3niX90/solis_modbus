@@ -1,0 +1,10 @@
+{
+  "services": {
+    "solis_write_holding_register": {
+      "service": "mdi:pencil-box-outline"
+    },
+    "solis_write_time": {
+      "service": "mdi:clock-edit-outline"
+    }
+  }
+}

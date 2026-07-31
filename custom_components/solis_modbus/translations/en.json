@@ -34,7 +34,8 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)"
         }
       },
       "reconfigure": {
@@ -62,13 +63,17 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)"
         }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect, please check your settings.",
-      "unknown": "Unexpected error occurred."
+      "unknown": "Unexpected error occurred.",
+      "invalid_model": "Invalid or unknown inverter model. Please select a model from the list.",
+      "serial_required": "Inverter serial number is required.",
+      "model_required": "Please select an inverter model."
     },
     "abort": {
       "already_configured": "This device is already configured."
@@ -94,7 +99,8 @@
           "has_generator": "Has Generator",
           "phases": "Phases",
           "connection": "Connection Type",
-          "inverter_serial": "Inverter Serial"
+          "inverter_serial": "Inverter Serial",
+          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)"
         }
       }
     }
@@ -118,20 +124,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Read register",
-      "description": "Writes a value to a holding register",
-      "fields": {
-        "address": {
-          "name": "Address",
-          "description": "Address to write to"
-        },
-        "host": {
-          "name": "Inverter",
-          "description": "Inverter IP (only required if you have multiple inverters)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Change the time of a entity",
       "description": "Sets the time of the entity to the provided one",
@@ -145,6 +137,12 @@
           "description": "Time in HH:MM or HH:MM:SS"
         }
       }
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Solis datalogger unreachable",
+      "description": "No successful Modbus read from {host} since {last_success}. The WiFi datalogger may be asleep, powered off or in a half-open state; the integration keeps retrying with backoff. Power-cycle the datalogger if this persists."
     }
   }
 }

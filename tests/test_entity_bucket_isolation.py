@@ -1,33 +1,59 @@
-"""Multi-inverter isolation: entity buckets are keyed per config entry and the
-_iter_entities consumer helper tolerates both the per-entry dict and legacy list.
+"""Multi-inverter isolation: per-entry runtime data keeps each inverter's
+entities separate, and cross-entry iteration sees them all.
 """
 
-from custom_components.solis_modbus.helpers import _iter_entities
+from unittest.mock import MagicMock
+
+from custom_components.solis_modbus.helpers import (
+    get_controller_from_entry,
+    iter_controllers,
+    iter_platform_entities,
+)
+from custom_components.solis_modbus.runtime import SolisRuntimeData
 
 
-def test_iter_entities_dict_of_lists():
-    bucket = {"entry_a": ["a1", "a2"], "entry_b": ["b1"]}
-    assert sorted(_iter_entities(bucket)) == ["a1", "a2", "b1"]
+def make_entry(controller=None, entities=None):
+    entry = MagicMock()
+    entry.runtime_data = SolisRuntimeData(controller=controller or MagicMock())
+    entry.runtime_data.entities.update(entities or {})
+    return entry
 
 
-def test_iter_entities_legacy_flat_list():
-    assert list(_iter_entities(["x", "y"])) == ["x", "y"]
+def make_hass(entries):
+    hass = MagicMock()
+    hass.config_entries.async_entries.return_value = entries
+    return hass
 
 
-def test_iter_entities_none_and_empty():
-    assert list(_iter_entities(None)) == []
-    assert list(_iter_entities({})) == []
-    assert list(_iter_entities([])) == []
+def test_entries_do_not_clobber_each_other():
+    entry_a = make_entry(entities={"sensor": ["sensor_a"]})
+    entry_b = make_entry(entities={"sensor": ["sensor_b"]})
+    hass = make_hass([entry_a, entry_b])
+
+    assert sorted(iter_platform_entities(hass, "sensor")) == ["sensor_a", "sensor_b"]
+    # Each entry keeps its own list
+    assert entry_a.runtime_data.entities["sensor"] == ["sensor_a"]
+    assert entry_b.runtime_data.entities["sensor"] == ["sensor_b"]
 
 
-def test_per_entry_buckets_do_not_clobber():
-    """Two entries writing into the same bucket both survive (the bug was a flat
-    overwrite where the second inverter replaced the first)."""
-    bucket = {}
-    bucket.setdefault("entry_a", ["sensor_a"])
-    bucket.setdefault("entry_b", ["sensor_b"])
-    assert set(bucket) == {"entry_a", "entry_b"}
-    assert sorted(_iter_entities(bucket)) == ["sensor_a", "sensor_b"]
-    # Unload of entry_a leaves entry_b intact.
-    bucket.pop("entry_a", None)
-    assert list(_iter_entities(bucket)) == ["sensor_b"]
+def test_iteration_spans_platforms_and_skips_missing_runtime():
+    entry_a = make_entry(entities={"sensor": ["s1"], "number": ["n1"]})
+    entry_no_runtime = MagicMock(spec=[])  # not set up yet — no runtime_data attribute
+    hass = make_hass([entry_a, entry_no_runtime])
+
+    assert sorted(iter_platform_entities(hass, "sensor", "number")) == ["n1", "s1"]
+    assert list(iter_platform_entities(hass, "time")) == []
+
+
+def test_controller_lookup_via_runtime_data():
+    controller_a, controller_b = MagicMock(), MagicMock()
+    entry_a, entry_b = make_entry(controller_a), make_entry(controller_b)
+    hass = make_hass([entry_a, entry_b])
+
+    assert get_controller_from_entry(hass, entry_a) is controller_a
+    assert list(iter_controllers(hass)) == [controller_a, controller_b]
+
+    # unloaded entry (runtime_data cleared) yields nothing and returns None
+    entry_a.runtime_data = None
+    assert get_controller_from_entry(hass, entry_a) is None
+    assert list(iter_controllers(hass)) == [controller_b]

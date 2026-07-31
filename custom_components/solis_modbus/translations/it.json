@@ -34,7 +34,8 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)"
         }
       },
       "reconfigure": {
@@ -62,13 +63,17 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)"
         }
       }
     },
     "error": {
       "cannot_connect": "Impossibile connettersi, controlla le impostazioni.",
-      "unknown": "Si è verificato un errore imprevisto."
+      "unknown": "Si è verificato un errore imprevisto.",
+      "invalid_model": "Modello di inverter non valido o sconosciuto. Selezionare un modello dall'elenco.",
+      "serial_required": "Il numero di serie dell'inverter è obbligatorio.",
+      "model_required": "Selezionare un modello di inverter."
     },
     "abort": {
       "already_configured": "Questo dispositivo è già configurato."
@@ -94,7 +99,8 @@
           "connection": "Tipo di Connessione",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)"
         }
       }
     }
@@ -118,20 +124,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Leggi registro",
-      "description": "Legge un valore da un registro",
-      "fields": {
-        "address": {
-          "name": "Indirizzo",
-          "description": "Indirizzo da leggere"
-        },
-        "host": {
-          "name": "Inverter",
-          "description": "IP Inverter (richiesto solo se hai più inverter)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Cambia l'ora di un'entità",
       "description": "Imposta l'ora dell'entità a quella fornita",
@@ -145,6 +137,12 @@
           "description": "Ora nel formato HH:MM o HH:MM:SS"
         }
       }
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Datalogger Solis irraggiungibile",
+      "description": "Nessuna lettura Modbus riuscita da {host} da {last_success}. Il datalogger WiFi potrebbe essere in sospensione, spento o in uno stato semiaperto; l'integrazione continua a riprovare con backoff. Riavviare l'alimentazione del datalogger se il problema persiste."
     }
   }
 }

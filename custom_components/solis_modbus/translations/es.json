@@ -34,7 +34,8 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)"
         }
       },
       "reconfigure": {
@@ -62,13 +63,17 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)"
         }
       }
     },
     "error": {
       "cannot_connect": "No se puede conectar al inversor. Verifique su configuración.",
-      "unknown": "Ocurrió un error inesperado."
+      "unknown": "Ocurrió un error inesperado.",
+      "invalid_model": "Modelo de inversor no válido o desconocido. Seleccione un modelo de la lista.",
+      "serial_required": "Se requiere el número de serie del inversor.",
+      "model_required": "Seleccione un modelo de inversor."
     },
     "abort": {
       "already_configured": "Este dispositivo ya está configurado."
@@ -94,7 +99,8 @@
           "connection": "Tipo de conexión",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)"
         }
       }
     }
@@ -118,20 +124,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Leer registro",
-      "description": "Lee un valor de un registro",
-      "fields": {
-        "address": {
-          "name": "Dirección",
-          "description": "Dirección para leer"
-        },
-        "host": {
-          "name": "Inversor",
-          "description": "IP del inversor (solo necesario si tiene varios inversores)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Cambiar la hora de una entidad",
       "description": "Establece la hora de la entidad a la proporcionada",
@@ -145,6 +137,12 @@
           "description": "Hora en formato HH:MM o HH:MM:SS"
         }
       }
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Datalogger de Solis inaccesible",
+      "description": "Sin lecturas Modbus correctas desde {host} desde {last_success}. El datalogger WiFi puede estar dormido, apagado o en estado semiabierto; la integración sigue reintentando con espera progresiva. Reinicie la alimentación del datalogger si persiste."
     }
   }
 }

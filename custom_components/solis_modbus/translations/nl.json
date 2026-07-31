@@ -34,7 +34,8 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)"
         }
       },
       "reconfigure": {
@@ -62,13 +63,17 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)"
         }
       }
     },
     "error": {
       "cannot_connect": "Verbinding mislukt, controleer uw instellingen.",
-      "unknown": "Onverwachte fout opgetreden."
+      "unknown": "Onverwachte fout opgetreden.",
+      "invalid_model": "Ongeldig of onbekend omvormermodel. Selecteer een model uit de lijst.",
+      "serial_required": "Het serienummer van de omvormer is verplicht.",
+      "model_required": "Selecteer een omvormermodel."
     },
     "abort": {
       "already_configured": "Dit apparaat is al geconfigureerd."
@@ -94,7 +99,8 @@
           "connection": "Verbindingstype",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)"
         }
       }
     }
@@ -118,20 +124,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Lees register",
-      "description": "Leest een waarde van een register",
-      "fields": {
-        "address": {
-          "name": "Adres",
-          "description": "Adres om te lezen"
-        },
-        "host": {
-          "name": "Omvormer",
-          "description": "Omvormer IP (alleen nodig bij meerdere omvormers)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Wijzig de tijd van een entiteit",
       "description": "Stelt de tijd van de entiteit in op de opgegeven waarde",
@@ -145,6 +137,12 @@
           "description": "Tijd in HH:MM of HH:MM:SS"
         }
       }
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Solis-datalogger onbereikbaar",
+      "description": "Geen geslaagde Modbus-uitlezing van {host} sinds {last_success}. De WiFi-datalogger slaapt mogelijk, is uitgeschakeld of half-open; de integratie blijft het met backoff proberen. Herstart de voeding van de datalogger als dit aanhoudt."
     }
   }
 }
