@@ -44,6 +44,11 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
         vol.Required("address"): vol.Coerce(int),
         vol.Required("value"): vol.Coerce(int),
         vol.Optional("host"): vol.Coerce(str),
+        # services.yaml documents `slave` and the handler reads it, so it has to
+        # be declared here -- voluptuous rejects undeclared keys, which made any
+        # call passing a slave fail validation before it reached the handler.
+        # Deliberately no default: an omitted slave still means "all controllers".
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_TIME_SET = vol.Schema({vol.Required("entity_id"): vol.Coerce(str), vol.Required("time"): vol.Coerce(str)})
@@ -61,13 +66,20 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         address = call.data.get("address")
         value = call.data.get("value")
         host = call.data.get("host")
-        slave = call.data.get("slave", 1)
+        slave = call.data.get("slave")
 
         if host:
-            controller = get_controller(hass, host, slave)
+            controller = get_controller(hass, host, slave if slave is not None else 1)
+            if controller is None:
+                raise ServiceValidationError(f"No Solis inverter configured for host {host} (slave {slave if slave is not None else 1})")
             hass.create_task(controller.async_write_holding_register(int(address), int(value)))
         else:
-            for controller in iter_controllers(hass):
+            # Without a host we write to every controller, unless a slave was
+            # given explicitly -- in which case only matching devices are written.
+            targets = [controller for controller in iter_controllers(hass) if slave is None or getattr(controller, "device_id", 1) == slave]
+            if not targets:
+                raise ServiceValidationError(f"No Solis inverter configured with slave {slave}")
+            for controller in targets:
                 hass.create_task(controller.async_write_holding_register(int(address), int(value)))
 
     async def service_set_time(call: ServiceCall) -> None:
@@ -276,7 +288,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             )
             for entity in sensors_derived
         ]
-
 
         set_controller(hass, controller, entry)
 

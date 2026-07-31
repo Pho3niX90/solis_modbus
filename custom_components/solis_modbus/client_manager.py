@@ -49,6 +49,9 @@ class ModbusClientManager:
         key = serial_port  # Use serial_port as the key
         if key not in self._clients:
             _LOGGER.debug(f"Creating new Modbus Serial client for {serial_port} (baudrate={baudrate})")
+            # retries=1 for the same reason as the TCP client: the integration's own
+            # reconnect watchdog handles recovery, and pymodbus retry storms only
+            # add latency on an already-struggling link.
             client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
             self._clients[key] = {
                 "client": client,

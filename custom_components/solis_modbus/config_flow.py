@@ -279,11 +279,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     await client.connect()
                     if not client.connected:
                         raise ConnectionError("Failed to connect")
-                    if conn_type == CONN_TYPE_TCP:
-                        result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
-                    else:
-                        client.slave = device_id
-                        result = await client.read_input_registers(address=probe_register, count=1)
+                    # Both client types take the target unit as `device_id` on the
+                    # request itself. Assigning `client.slave` did nothing on the
+                    # serial client, so the probe always read device 1 regardless
+                    # of the configured slave.
+                    result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
                     if result.isError():
                         raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
                     return True, None

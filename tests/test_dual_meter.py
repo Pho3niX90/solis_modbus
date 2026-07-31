@@ -4,7 +4,7 @@ The 33300/33316 register groups only poll when the user enables the
 "has_dual_meter" option (Grid + PV Inverter dual-meter installs).
 """
 
-from custom_components.solis_modbus.data.enums import InverterFeature
+from custom_components.solis_modbus.data.enums import DataType, InverterFeature
 from custom_components.solis_modbus.data.solis_config import SOLIS_INVERTERS, inverter_options_from_config
 from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
 
@@ -47,4 +47,6 @@ def test_meter2_energy_counters_are_unsigned():
     for group in _meter2_groups():
         for entity in group["entities"]:
             if "energy" in entity.get("unique", ""):
-                assert entity.get("data_type") is not None, entity["unique"]
+                # Meter 2 lifetime counters must be U32 -- a signed decode wraps
+                # negative past 32767 and corrupts the energy dashboard.
+                assert entity.get("data_type") == DataType.U32, entity["unique"]

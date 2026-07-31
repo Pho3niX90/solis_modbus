@@ -90,3 +90,81 @@ async def test_service_set_time(hass: HomeAssistant):
     mock_entity.async_set_value.assert_called()
     call_args = mock_entity.async_set_value.call_args
     assert call_args[0][0] == time(12, 30, 0)
+
+
+@pytest.mark.asyncio
+async def test_service_accepts_documented_slave_field(hass: HomeAssistant, mock_controller):
+    """services.yaml documents `slave`, so the schema must accept it.
+
+    Regression: SCHEME_HOLDING_REGISTER omitted the key, and voluptuous rejects
+    undeclared keys — so every call passing a slave failed validation before it
+    ever reached the handler that reads it.
+    """
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.solis_modbus import async_setup
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    entry.runtime_data = SolisRuntimeData(controller=mock_controller)
+
+    await async_setup(hass, {})
+
+    await hass.services.async_call(
+        DOMAIN,
+        "solis_write_holding_register",
+        {"address": 123, "value": 456, "slave": 1},
+        blocking=True,
+    )
+
+    mock_controller.async_write_holding_register.assert_called_with(123, 456)
+
+
+@pytest.mark.asyncio
+async def test_service_slave_filters_targets(hass: HomeAssistant, mock_controller):
+    """An explicit slave should only write to matching controllers."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.solis_modbus import async_setup
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    other = MagicMock()
+    other.host = "5.6.7.8"
+    other.device_id = 2
+    other.async_write_holding_register = AsyncMock(return_value=None)
+
+    for controller in (mock_controller, other):
+        entry = MockConfigEntry(domain=DOMAIN, data={}, entry_id=f"entry_{controller.device_id}")
+        entry.add_to_hass(hass)
+        entry.runtime_data = SolisRuntimeData(controller=controller)
+
+    await async_setup(hass, {})
+
+    await hass.services.async_call(
+        DOMAIN,
+        "solis_write_holding_register",
+        {"address": 1, "value": 2, "slave": 2},
+        blocking=True,
+    )
+
+    other.async_write_holding_register.assert_called_with(1, 2)
+    mock_controller.async_write_holding_register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_service_unknown_host_raises(hass: HomeAssistant):
+    """An unmatched host must raise, not dereference None."""
+    from homeassistant.exceptions import ServiceValidationError
+
+    from custom_components.solis_modbus import async_setup
+
+    await async_setup(hass, {})
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "solis_write_holding_register",
+            {"address": 1, "value": 2, "host": "no.such.host"},
+            blocking=True,
+        )

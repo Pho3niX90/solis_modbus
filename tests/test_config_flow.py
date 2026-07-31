@@ -267,3 +267,45 @@ async def test_validate_config_cannot_connect(hass: HomeAssistant):
 
     assert (valid, err) == (False, "cannot_connect")
     mock_client.close.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_serial_probe_passes_device_id(hass: HomeAssistant):
+    """The serial probe must target the configured slave.
+
+    Regression: it assigned `client.slave = device_id` and then called
+    read_input_registers() without a device_id. pymodbus takes the unit as a
+    request kwarg (default 1) and AsyncModbusSerialClient has no `slave`
+    attribute, so the probe silently validated against device 1 instead.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.solis_modbus.config_flow import ModbusConfigFlow
+    from custom_components.solis_modbus.const import CONF_SERIAL_PORT, CONN_TYPE_SERIAL
+
+    flow = ModbusConfigFlow()
+    flow.hass = hass
+
+    probe_result = MagicMock()
+    probe_result.isError.return_value = False
+
+    mock_client = MagicMock()
+    mock_client.connect = AsyncMock()
+    mock_client.connected = True
+    mock_client.read_input_registers = AsyncMock(return_value=probe_result)
+
+    with patch(
+        "custom_components.solis_modbus.config_flow.AsyncModbusSerialClient",
+        return_value=mock_client,
+    ):
+        valid, err = await flow._validate_config(
+            {
+                "connection_type": CONN_TYPE_SERIAL,
+                CONF_SERIAL_PORT: "/dev/ttyUSB0",
+                "slave": 7,
+                "model": "S6-EH1P",
+            }
+        )
+
+    assert (valid, err) == (True, None)
+    assert mock_client.read_input_registers.await_args.kwargs["device_id"] == 7
