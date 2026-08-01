@@ -97,6 +97,32 @@ OPTIONS_SCHEMA = vol.Schema(
 )
 
 
+async def _probe_tcp_port(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str | None]:
+    """Check that something is actually accepting TCP connections on host:port.
+
+    A plain socket open is far cheaper than a Modbus handshake and separates the two
+    failure modes cleanly: a refused/timed-out connect means nothing is listening,
+    whereas a successful connect that then fails the register probe means Modbus (or
+    the slave id) is the problem. Returns (reachable, reason).
+    """
+    writer = None
+    try:
+        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
+        return True, None
+    except TimeoutError:
+        return False, "timeout"
+    except OSError as e:
+        # ConnectionRefusedError, host unreachable, DNS failure — all OSError subclasses.
+        return False, type(e).__name__
+    finally:
+        if writer is not None:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except OSError:  # pragma: no cover - best-effort cleanup
+                pass
+
+
 def clean_identification(iden: str | None) -> str | None:
     if not iden or not iden.strip():
         return None
@@ -261,7 +287,17 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         probe_register = 3041 if inverter_config.type in [InverterType.GRID, InverterType.STRING] else 35000
 
         if conn_type == CONN_TYPE_TCP:
-            client = AsyncModbusTcpClient(host=user_input["host"], port=user_input.get("port", 502), timeout=5, retries=1)
+            host, port = user_input["host"], user_input.get("port", 502)
+            reachable, reason = await _probe_tcp_port(host, port)
+            if not reachable:
+                # Distinguish "nothing is listening on 502" from "Modbus itself failed".
+                # Recent Solis datalogger firmware closes the local TCP services while
+                # cloud upload keeps working, which otherwise surfaces as a generic
+                # "check your configuration" and sends people hunting the wrong problem
+                # (issue #432).
+                _LOGGER.error("TCP pre-probe of %s:%s failed (%s) — nothing is serving Modbus there", host, port, reason)
+                return False, "tcp_port_closed"
+            client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
             client = AsyncModbusSerialClient(
                 port=user_input[CONF_SERIAL_PORT],

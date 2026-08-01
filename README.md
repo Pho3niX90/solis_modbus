@@ -307,6 +307,37 @@ Solis and equivalent Axitec, Zonneplan inverters
 - Waveshare
 
 ## Troubleshooting
+
+### ⚠️ "Cannot connect" — datalogger firmware closing local port 502
+
+Several Solis dataloggers (**S5-WiFi-ST**, and reports on **S2-WL-ST** too) have stopped
+serving Modbus TCP after a firmware/OTA update. SolisCloud keeps working, so the inverter
+looks perfectly healthy while Home Assistant can no longer reach it.
+
+Check it from any PC on the same LAN — **no Home Assistant involved**:
+
+```powershell
+Test-NetConnection 192.168.1.50 -Port 502
+```
+```bash
+nc -vz 192.168.1.50 502
+```
+
+If ping succeeds but the TCP test fails, the port is closed on the device and **no
+integration setting will fix it** — nothing can reopen a port the logger has shut. Port 80
+(the logger's own web UI) is usually dead too, which is a good confirmation.
+
+Known workarounds:
+
+* Raise it with Solis support — the more reports the better. Note that the S2-WL-ST
+  product page does advertise Modbus TCP support, which gives you something to point at.
+* Use an RS485-to-TCP bridge on the inverter's RS485 port instead of the logger's WiFi
+  stick — an **Elfin EW11** and a **Waveshare RS485-to-Ethernet** have both been confirmed
+  working by users who hit this. The integration then works normally.
+* A direct USB RS485 adapter with the **serial** connection type also bypasses the logger.
+
+See [issue #432](https://github.com/Pho3niX90/solis_modbus/issues/432) for the thread.
+
 ### Restoring Sensor History
 If a sensor's entity ID changes (e.g., during migration) and you lose its history, you can manually restore it using Home Assistant's statistics tool:
 

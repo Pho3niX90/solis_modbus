@@ -73,7 +73,8 @@
       "unknown": "Unerwarteter Fehler aufgetreten.",
       "invalid_model": "Ungültiges oder unbekanntes Wechselrichtermodell. Bitte ein Modell aus der Liste wählen.",
       "serial_required": "Die Seriennummer des Wechselrichters ist erforderlich.",
-      "model_required": "Bitte ein Wechselrichtermodell auswählen."
+      "model_required": "Bitte ein Wechselrichtermodell auswählen.",
+      "tcp_port_closed": "Auf dieser Adresse und diesem Port nimmt nichts Modbus-Verbindungen an. Das Gerät ist möglicherweise erreichbar (es antwortet auf Ping), stellt aber kein Modbus bereit — prüfen Sie, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe."
     },
     "abort": {
       "already_configured": "Dieses Gerät ist bereits konfiguriert."
