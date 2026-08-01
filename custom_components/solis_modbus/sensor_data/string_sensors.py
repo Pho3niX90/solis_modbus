@@ -11,7 +11,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
-from custom_components.solis_modbus.data.enums import DataType, PollSpeed
+from custom_components.solis_modbus.data.enums import DataType, InverterFeature, PollSpeed
 
 # base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [
@@ -549,6 +549,7 @@ string_sensors = [
     },
     {
         "register_start": 36013,
+        "feature_requirement": [InverterFeature.EPM],
         "essential": True,
         "scan_interval": 0,
         "entities": [
@@ -563,6 +564,7 @@ string_sensors = [
     },
     {
         "register_start": 36022,
+        "feature_requirement": [InverterFeature.EPM],
         "scan_interval": 60,
         "entities": [
             {
@@ -593,6 +595,7 @@ string_sensors = [
     },
     {
         "register_start": 36028,
+        "feature_requirement": [InverterFeature.EPM],
         "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
@@ -604,11 +607,13 @@ string_sensors = [
                 "multiplier": 100,
                 "unit_of_measurement": UnitOfPower.WATT,
                 "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S32_LE,
             }
         ],
     },
     {
         "register_start": 36050,
+        "feature_requirement": [InverterFeature.EPM],
         "essential": True,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
@@ -620,6 +625,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
             {
                 "name": "Load Total Consumption Energy",
@@ -629,6 +635,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
             {
                 "name": "Grid Import Total Active Energy",
@@ -638,6 +645,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
             {
                 "name": "Grid Export Total Active Energy",
@@ -647,6 +655,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
         ],
     },

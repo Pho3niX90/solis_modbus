@@ -4,6 +4,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
@@ -39,6 +40,11 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
         self._attr_available = False
+        # Keep-alive: RC-style registers (e.g. 44280 PV shutdown) self-revert after
+        # the RC timeout (43282) — while ON, the bit is re-written inside that
+        # window. Fail-safe by design: if HA dies, the inverter reverts on its own.
+        self._keep_alive = entity_definition.get("keep_alive", False)
+        self._keep_alive_unsub = None
 
     async def async_added_to_hass(self) -> None:
         """Called when entity is added to HA."""
@@ -106,16 +112,51 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
             self._modbus_controller.enable_connection()
         else:
             await self.set_register_bit(True)
+            if self._keep_alive:
+                self._schedule_keep_alive()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         _LOGGER.debug(f"{self._register}-{self._bit_position} turn off called ")
+        self._cancel_keep_alive()
         if self._register == 90005:
             self._modbus_controller.disable_connection()
         else:
             await self.set_register_bit(False)
 
-    async def set_register_bit(self, value: bool):
-        """Set or clear a specific bit in the Modbus register, enforcing dependencies and conflicts."""
+    def _keep_alive_interval(self) -> float:
+        """Refresh comfortably inside the RC timeout window (43282, minutes)."""
+        timeout_min = cache_get(self._hass, self._modbus_controller, 43282) or 5
+        return max(30.0, float(timeout_min) * 60 - 60)
+
+    def _schedule_keep_alive(self) -> None:
+        self._cancel_keep_alive()
+        self._keep_alive_unsub = async_call_later(self._hass, self._keep_alive_interval(), self._keep_alive_refresh)
+
+    def _cancel_keep_alive(self) -> None:
+        if self._keep_alive_unsub is not None:
+            self._keep_alive_unsub()
+            self._keep_alive_unsub = None
+
+    async def _keep_alive_refresh(self, _now) -> None:
+        self._keep_alive_unsub = None
+        if not self._attr_is_on:
+            return
+        # Force the write: the device may have reverted while the cache still
+        # holds our last-written value (no poll in between).
+        await self.set_register_bit(True, force=True)
+        self._schedule_keep_alive()
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._cancel_keep_alive()
+        await super().async_will_remove_from_hass()
+
+    async def set_register_bit(self, value: bool, force: bool = False):
+        """Set or clear a specific bit in the Modbus register, enforcing dependencies and conflicts.
+
+        force=True always writes, even when the cached value already matches —
+        needed by the keep-alive refresh, where the device may have silently
+        reverted while our cache still holds the value we last wrote.
+        """
         controller = self._modbus_controller
         current_register_value: int = cache_get(self._hass, self._modbus_controller, self._register)
 
@@ -169,7 +210,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
         _LOGGER.debug(f"Attempting bit {self._bit_position} to {value} in register {self._register}. New value for register {new_register_value}")
 
-        if current_register_value != new_register_value and controller.connected():
+        if (force or current_register_value != new_register_value) and controller.connected():
             target_register = self._write_register
             await controller.async_write_holding_register(target_register, new_register_value)
             cache_save(self._hass, self._modbus_controller, target_register, new_register_value)

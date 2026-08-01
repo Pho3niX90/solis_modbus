@@ -56,6 +56,7 @@ BASE_CONFIG_SCHEMA = {
     vol.Required("has_hv_battery", default=False): bool,
     vol.Required("has_generator", default=True): bool,
     vol.Required("has_dual_meter", default=False): bool,
+    vol.Required("has_epm", default=True): bool,
 }
 
 # TCP-specific fields (includes WiFi dongle type)
@@ -93,6 +94,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_hv_battery", default=False): bool,
         vol.Required("has_generator", default=True): bool,
         vol.Required("has_dual_meter", default=False): bool,
+        vol.Required("has_epm", default=True): bool,
     }
 )
 

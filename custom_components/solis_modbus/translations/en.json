@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)"
+          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)",
+          "has_epm": "EPM / export power manager installed (36xxx meter registers)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)"
+          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)",
+          "has_epm": "EPM / export power manager installed (36xxx meter registers)"
         }
       }
     },
@@ -101,7 +103,8 @@
           "phases": "Phases",
           "connection": "Connection Type",
           "inverter_serial": "Inverter Serial",
-          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)"
+          "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)",
+          "has_epm": "EPM / export power manager installed (36xxx meter registers)"
         }
       }
     }
@@ -138,6 +141,34 @@
           "description": "Time in HH:MM or HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Read register",
+      "description": "Reads one or more registers and returns the raw values (register discovery / debugging)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Force battery charge",
+      "description": "Force the battery to charge (hybrid inverters); reverts after the timeout"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Force battery discharge",
+      "description": "Force the battery to discharge (hybrid inverters); reverts after the timeout"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Stop force charge/discharge",
+      "description": "Cancel an active force charge or discharge"
+    },
+    "solis_dispatch": {
+      "name": "Remote dispatch",
+      "description": "Real-time inverter dispatch: goal-seeking grid/battery control with inverter-side failsafe"
+    },
+    "solis_dispatch_stop": {
+      "name": "Stop remote dispatch",
+      "description": "Release dispatch — the inverter returns to normal operation immediately"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Program dispatch schedule period",
+      "description": "Write one of six inverter-resident scheduled dispatch periods (survives HA restarts)"
     }
   },
   "issues": {

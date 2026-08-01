@@ -247,6 +247,21 @@ def split_s32(s32_values: list[int]):
     return (high_word << 16) | (low_word & 0xFFFF)
 
 
+def combine_u32_le(values: list[int]) -> int:
+    """Combine two 16-bit words (LOW word first) into an unsigned 32-bit integer.
+
+    The string-inverter EPM block (36028-36057) is documented little-endian
+    ("Low first, High Latter") — big-endian decode reads garbage once the raw
+    count exceeds 65535 (e.g. energies past 655.35 kWh).
+    """
+    return ((values[1] & 0xFFFF) << 16) | (values[0] & 0xFFFF)
+
+
+def split_s32_le(values: list[int]) -> int:
+    """Signed 32-bit from two 16-bit words with LOW word first."""
+    return split_s32([values[1], values[0]])
+
+
 def combine_u32(u32_values: list[int]) -> int:
     """Combine two 16-bit words (high word first) into an unsigned 32-bit integer.
 

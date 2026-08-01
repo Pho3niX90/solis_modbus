@@ -35,7 +35,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)"
+          "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)",
+          "has_epm": "EPM / gestor de potência de exportação instalado (registos de contador 36xxx)"
         }
       },
       "reconfigure": {
@@ -64,7 +65,8 @@
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
-          "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)"
+          "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)",
+          "has_epm": "EPM / gestor de potência de exportação instalado (registos de contador 36xxx)"
         }
       }
     },
@@ -101,7 +103,8 @@
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
           "has_parallel": "Parallel inverter operation (multiple units)",
-          "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)"
+          "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)",
+          "has_epm": "EPM / gestor de potência de exportação instalado (registos de contador 36xxx)"
         }
       }
     }
@@ -138,6 +141,34 @@
           "description": "Hora no formato HH:MM ou HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Ler registo",
+      "description": "Lê um ou mais registos e devolve os valores brutos (descoberta de registos / depuração)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Forçar carga da bateria",
+      "description": "Força o carregamento da bateria (inversores híbridos); reverte após o tempo limite"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Forçar descarga da bateria",
+      "description": "Força a descarga da bateria (inversores híbridos); reverte após o tempo limite"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Parar carga/descarga forçada",
+      "description": "Cancela uma carga ou descarga forçada ativa"
+    },
+    "solis_dispatch": {
+      "name": "Despacho remoto",
+      "description": "Despacho em tempo real: controlo de rede/bateria com failsafe no inversor"
+    },
+    "solis_dispatch_stop": {
+      "name": "Parar despacho remoto",
+      "description": "Liberta o despacho — o inversor volta imediatamente ao funcionamento normal"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programar período de despacho",
+      "description": "Escreve um dos seis períodos agendados residentes no inversor (sobrevive a reinícios do HA)"
     }
   },
   "issues": {

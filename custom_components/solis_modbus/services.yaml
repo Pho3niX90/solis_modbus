@@ -58,3 +58,345 @@ solis_write_time:
       example: "14:50"
       selector:
         time:
+solis_read_register:
+  name: Read register
+  description: Reads one or more registers and returns the raw values (register discovery / debugging)
+  fields:
+    address:
+      name: Address
+      description: First register address to read
+      required: true
+      example: 33049
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+    count:
+      name: Count
+      description: Number of consecutive registers to read (1-50)
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 50
+          mode: box
+    register_type:
+      name: Register type
+      description: Input (3xxxx read-only data) or holding (4xxxx settings)
+      default: input
+      selector:
+        select:
+          options:
+            - input
+            - holding
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      example: 192.168.1.75
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_force_battery_charge:
+  name: Force battery charge
+  description: Force the battery to charge (hybrid inverters). Writes the enable + power + timeout combo in the order Solis firmware requires. Reverts automatically after the timeout.
+  fields:
+    power_watts:
+      name: Charge power
+      description: Charge power in watts (omit to keep the current setpoint)
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 60000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    duration_minutes:
+      name: Duration
+      description: Minutes before the command self-reverts (1-30, omit to keep the current timeout)
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: min
+          mode: box
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_force_battery_discharge:
+  name: Force battery discharge
+  description: Force the battery to discharge (hybrid inverters). Writes the enable + power + timeout combo in the order Solis firmware requires. Reverts automatically after the timeout.
+  fields:
+    power_watts:
+      name: Discharge power
+      description: Discharge power in watts (omit to keep the current setpoint)
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 60000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    duration_minutes:
+      name: Duration
+      description: Minutes before the command self-reverts (1-30, omit to keep the current timeout)
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: min
+          mode: box
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_stop_force_charge_discharge:
+  name: Stop force charge/discharge
+  description: Cancel an active force charge or discharge (writes RC mode = none)
+  fields:
+    host:
+      name: Host
+      description: IP of the inverter, only required when running multiple inverters
+      selector:
+        text:
+    slave:
+      name: Slave
+      description: Modbus device/slave ID (defaults to 1)
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_dispatch:
+  name: Remote dispatch
+  description: Real-time inverter dispatch (Ver3.4 44100 block) — goal-seeking grid/battery control with an inverter-side failsafe. Requires dispatch-capable firmware (register 34502 = 0xAA55).
+  fields:
+    mode:
+      name: Mode
+      description: What to control. grid_import/grid_export target the meter (PCC); battery_charge/discharge command battery power; battery_hold freezes the battery
+      required: true
+      example: grid_import
+      selector:
+        select:
+          options:
+            - grid_import
+            - grid_export
+            - grid_port_import
+            - grid_port_export
+            - battery_charge
+            - battery_discharge
+            - battery_hold
+            - self_consumption
+            - feed_in_priority
+    power_watts:
+      name: Power target
+      description: Unsigned watts; direction comes from the mode
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 240000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    pv_shutdown:
+      name: PV shutdown
+      description: Shut PV generation down for the duration of the dispatch (omit = leave unchanged)
+      selector:
+        boolean:
+    allow_grid_charge:
+      name: Allow grid charging
+      description: Permit/deny grid-to-battery charging during the dispatch (omit = leave unchanged)
+      selector:
+        boolean:
+    disable_discharge:
+      name: Disable discharge
+      description: Inhibit battery discharge during the dispatch (omit = leave unchanged)
+      selector:
+        boolean:
+    soc_min:
+      name: SOC lower limit
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    soc_max:
+      name: SOC upper limit
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    failsafe_minutes:
+      name: Failsafe interval
+      description: The inverter reverts to normal operation by itself if no dispatch write arrives within this window
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+          mode: box
+    host:
+      name: Host
+      selector:
+        text:
+    slave:
+      name: Slave
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_dispatch_stop:
+  name: Stop remote dispatch
+  description: Release remote dispatch — inverter returns to its normal storage-mode logic immediately
+  fields:
+    host:
+      name: Host
+      selector:
+        text:
+    slave:
+      name: Slave
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
+solis_dispatch_schedule:
+  name: Program dispatch schedule period
+  description: Write one of the six inverter-resident scheduled dispatch periods. The schedule executes on the inverter itself — it survives Home Assistant restarts (re-push within the failsafe window to keep it alive)
+  fields:
+    period:
+      name: Period
+      description: Schedule slot 1-6 (overlaps resolve to the lowest slot number)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 6
+          mode: box
+    enabled:
+      name: Enabled
+      required: true
+      selector:
+        boolean:
+    start_time:
+      name: Start time
+      example: "08:30"
+      selector:
+        time:
+    end_time:
+      name: End time
+      example: "16:00"
+      selector:
+        time:
+    mode:
+      name: Mode
+      default: battery_hold
+      selector:
+        select:
+          options:
+            - grid_import
+            - grid_export
+            - grid_port_import
+            - grid_port_export
+            - battery_charge
+            - battery_discharge
+            - battery_hold
+            - self_consumption
+            - feed_in_priority
+    power_watts:
+      name: Power target
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 240000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    pv_shutdown:
+      name: PV shutdown
+      selector:
+        boolean:
+    allow_grid_charge:
+      name: Allow grid charging
+      selector:
+        boolean:
+    disable_discharge:
+      name: Disable discharge
+      selector:
+        boolean:
+    soc_min:
+      name: SOC lower limit
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    soc_max:
+      name: SOC upper limit
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    failsafe_minutes:
+      name: Failsafe interval
+      default: 1440
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+          mode: box
+    host:
+      name: Host
+      selector:
+        text:
+    slave:
+      name: Slave
+      selector:
+        number:
+          min: 1
+          max: 247
+          mode: box
