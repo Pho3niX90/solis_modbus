@@ -73,7 +73,8 @@
       "unknown": "Une erreur inattendue s'est produite.",
       "invalid_model": "Modèle d'onduleur invalide ou inconnu. Veuillez sélectionner un modèle dans la liste.",
       "serial_required": "Le numéro de série de l'onduleur est requis.",
-      "model_required": "Veuillez sélectionner un modèle d'onduleur."
+      "model_required": "Veuillez sélectionner un modèle d'onduleur.",
+      "tcp_port_closed": "Rien n'accepte les connexions Modbus sur cette adresse et ce port. L'appareil est peut-être joignable (il répond au ping) mais ne sert pas Modbus — vérifiez que Modbus TCP est activé sur l'enregistreur. Les firmwares récents des enregistreurs Solis sont connus pour fermer le port local 502 ; un pont RS485 vers TCP est une solution de contournement."
     },
     "abort": {
       "already_configured": "Cet appareil est déjà configuré."

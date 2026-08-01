@@ -73,7 +73,8 @@
       "unknown": "Unexpected error occurred.",
       "invalid_model": "Invalid or unknown inverter model. Please select a model from the list.",
       "serial_required": "Inverter serial number is required.",
-      "model_required": "Please select an inverter model."
+      "model_required": "Please select an inverter model.",
+      "tcp_port_closed": "Nothing is accepting Modbus connections on that address and port. The device may be reachable (it answers ping) but not serving Modbus — check that Modbus TCP is enabled on the datalogger. Recent Solis logger firmware is known to close local port 502; an RS485-to-TCP bridge is a workaround."
     },
     "abort": {
       "already_configured": "This device is already configured."

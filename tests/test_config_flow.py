@@ -233,9 +233,13 @@ async def test_validate_config_uses_throwaway_client(hass: HomeAssistant):
 
     manager_clients_before = dict(ModbusClientManager.get_instance()._clients)
 
-    with patch(
-        "custom_components.solis_modbus.config_flow.AsyncModbusTcpClient",
-        return_value=mock_client,
+    with (
+        patch(
+            "custom_components.solis_modbus.config_flow.AsyncModbusTcpClient",
+            return_value=mock_client,
+        ),
+        # Port is open — this test is about the Modbus probe, not reachability.
+        patch("custom_components.solis_modbus.config_flow._probe_tcp_port", AsyncMock(return_value=(True, None))),
     ):
         valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
 
@@ -262,6 +266,8 @@ async def test_validate_config_cannot_connect(hass: HomeAssistant):
     with (
         patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=mock_client),
         patch("custom_components.solis_modbus.config_flow.asyncio.sleep", new=AsyncMock()),
+        # Port is open — the failure under test is the Modbus connect, not the port.
+        patch("custom_components.solis_modbus.config_flow._probe_tcp_port", AsyncMock(return_value=(True, None))),
     ):
         valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
 
