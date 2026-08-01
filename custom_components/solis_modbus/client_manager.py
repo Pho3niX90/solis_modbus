@@ -27,7 +27,11 @@ class ModbusClientManager:
         key = f"{host}:{port}"
         if key not in self._clients:
             _LOGGER.debug(f"Creating new Modbus TCP client for {host}:{port}")
-            client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=5)
+            # retries=1: the integration has its own reconnect watchdog and per-group
+            # recovery. pymodbus-level retry storms (5 × 5 s per dead group) flood the
+            # S2-WL datalogger, desync transaction IDs, and starve its cloud uplink
+            # (issues #395/#406).
+            client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,
@@ -45,7 +49,10 @@ class ModbusClientManager:
         key = serial_port  # Use serial_port as the key
         if key not in self._clients:
             _LOGGER.debug(f"Creating new Modbus Serial client for {serial_port} (baudrate={baudrate})")
-            client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5)
+            # retries=1 for the same reason as the TCP client: the integration's own
+            # reconnect watchdog handles recovery, and pymodbus retry storms only
+            # add latency on an already-struggling link.
+            client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,

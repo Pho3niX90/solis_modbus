@@ -34,7 +34,9 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       },
       "reconfigure": {
@@ -62,13 +64,19 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       }
     },
     "error": {
       "cannot_connect": "Kan nie aan die omsetter koppel nie. Gaan jou instellings na.",
-      "unknown": "Onverwagte fout het voorgekom."
+      "unknown": "Onverwagte fout het voorgekom.",
+      "invalid_model": "Ongeldige of onbekende omsettermodel. Kies asseblief 'n model uit die lys.",
+      "serial_required": "Omsetter-reeksnommer word vereis.",
+      "model_required": "Kies asseblief 'n omsettermodel.",
+      "tcp_port_closed": "Niks aanvaar Modbus-verbindings op daardie adres en poort nie. Die toestel kan bereikbaar wees (dit antwoord op ping) maar bedien nie Modbus nie — kontroleer dat Modbus TCP op die datalogger geaktiveer is. Onlangse Solis-logger-firmware sluit bekend plaaslike poort 502; 'n RS485-na-TCP-brug is 'n omweg."
     },
     "abort": {
       "already_configured": "Hierdie toestel is reeds gekonfigureer."
@@ -94,7 +102,9 @@
           "connection": "Tipe Verbinding",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       }
     }
@@ -118,20 +128,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Lees register",
-      "description": "Lees 'n waarde van 'n houerregister",
-      "fields": {
-        "address": {
-          "name": "Adres",
-          "description": "Adres om te lees"
-        },
-        "host": {
-          "name": "Omsetter",
-          "description": "IP van die omsetter (slegs nodig as jy verskeie omsetters het)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Verander die tyd van 'n entiteit",
       "description": "Stel die tyd van die entiteit in op die gegewe een",
@@ -145,6 +141,40 @@
           "description": "Tyd in HH:MM of HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Lees register",
+      "description": "Lees een of meer registers en gee die rou waardes terug (registerontdekking / foutopsporing)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Forseer batterylaai",
+      "description": "Forseer die battery om te laai (hibriede omsetters); keer terug ná die uitteltyd"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Forseer batteryontlaai",
+      "description": "Forseer die battery om te ontlaai (hibriede omsetters); keer terug ná die uitteltyd"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Stop geforseerde laai/ontlaai",
+      "description": "Kanselleer 'n aktiewe geforseerde laai of ontlaai"
+    },
+    "solis_dispatch": {
+      "name": "Afstandversending",
+      "description": "Intydse omsetterversending: doelsoekende netwerk-/batterybeheer met omsetter-failsafe"
+    },
+    "solis_dispatch_stop": {
+      "name": "Stop afstandversending",
+      "description": "Stel versending vry — die omsetter keer dadelik terug na normale werking"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programmeer versendingskedule-periode",
+      "description": "Skryf een van ses omsetter-residente geskeduleerde periodes (oorleef HA-herbegin)"
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Solis datalogger onbereikbaar",
+      "description": "Geen suksesvolle Modbus-lesing vanaf {host} sedert {last_success} nie. Die WiFi-datalogger slaap dalk, is afgeskakel of in 'n half-oop toestand; die integrasie probeer aanhoudend weer met terugval. Skakel die datalogger se krag af en aan as dit voortduur."
     }
   }
 }

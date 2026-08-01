@@ -1,0 +1,31 @@
+{
+  "services": {
+    "solis_write_holding_register": {
+      "service": "mdi:pencil-box-outline"
+    },
+    "solis_write_time": {
+      "service": "mdi:clock-edit-outline"
+    },
+    "solis_read_register": {
+      "service": "mdi:magnify-scan"
+    },
+    "solis_force_battery_charge": {
+      "service": "mdi:battery-plus"
+    },
+    "solis_force_battery_discharge": {
+      "service": "mdi:battery-minus"
+    },
+    "solis_stop_force_charge_discharge": {
+      "service": "mdi:battery-off"
+    },
+    "solis_dispatch": {
+      "service": "mdi:transmission-tower-import"
+    },
+    "solis_dispatch_stop": {
+      "service": "mdi:transmission-tower-off"
+    },
+    "solis_dispatch_schedule": {
+      "service": "mdi:calendar-clock"
+    }
+  }
+}

@@ -7,6 +7,19 @@
 # See https://github.com/Pho3niX90/solis_modbus/issues/404.
 
 STATUS_MAPPING = {
+    # Ver3.4 additions (2026-02 protocol doc, Appendix 3)
+    0xF080: "PV inverter communication failure",
+    0xF081: "Meter 2 failure",
+    0xF082: "Parallel version mismatch",
+    0xF083: "Load cut-off",
+    0xF084: "Load cut-off locked",
+    0x2047: "Panel overcurrent",
+    0x2048: "Low battery",
+    0x204A: "Inverter hard limit",
+    0x204B: "G100 meter fault",
+    0x204C: "G100 CT fault",
+    0x2804: "Battery wiring error 1",
+    0x2805: "Battery wiring error 2",
     # Operating states
     0: "Normal operation",
     1: "Open loop operation",

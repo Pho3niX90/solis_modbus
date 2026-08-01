@@ -184,6 +184,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 self.base_sensor.controller._sw_version = protocol_version
                 ## self.base_sensor.controller._model = model_description
                 new_value = model_description + f"(Protocol {protocol_version})"
+                self._update_device_sw_version(protocol_version)
 
             if isinstance(new_value, (numbers.Number, decimal.Decimal, fractions.Fraction)) or isinstance(new_value, str):
                 self._attr_available = True
@@ -193,6 +194,26 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
             # Clear received values after update
             self._received_values.clear()
+
+    def _update_device_sw_version(self, protocol_version) -> None:
+        """Push the decoded protocol version into the device registry.
+
+        device_info is only read when entities register, at which point the
+        35000 register hasn't been polled yet — sw_version would stay "N/A"
+        forever without this.
+        """
+        import homeassistant.helpers.device_registry as dr
+
+        from custom_components.solis_modbus.const import DOMAIN
+
+        serial = self.base_sensor.controller.device_serial_number
+        if not serial:
+            return
+        dev_reg = dr.async_get(self.hass)
+        device = dev_reg.async_get_device(identifiers={(DOMAIN, serial)})
+        sw_version = f"Protocol {protocol_version}"
+        if device and device.sw_version != sw_version:
+            dev_reg.async_update_device(device.id, sw_version=sw_version)
 
     @property
     def device_info(self):

@@ -20,12 +20,18 @@ from custom_components.solis_modbus.helpers import (
     _any_in,
     cache_get,
     combine_u32,
+    combine_u32_le,
     extract_serial_number,
     split_s32,
+    split_s32_le,
     unique_id_generator,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Fallback ceiling for editable entities whose definition declares no "max" and whose
+# unit gives us nothing to derive one from.
+DEFAULT_MAX_VALUE = 3000
 
 
 class SolisBaseSensor:
@@ -84,7 +90,6 @@ class SolisBaseSensor:
         self.unit_of_measurement = unit_of_measurement
         self.hidden = hidden
         self.state_class = state_class
-        self.max_value = max_value
         self.adjust_max(max_value)
         self.step = self.get_step(step)
         self.enabled = enabled
@@ -117,18 +122,31 @@ class SolisBaseSensor:
                 self.multiplier = 0.01
 
     def adjust_max(self, max_default):
+        """Derive a sensible max for entities whose definition didn't declare one.
+
+        A declared ``"max"`` always wins. Deriving it from the inverter rating is only
+        a fallback for definitions that omit it: several registers are *grid*
+        constraints rather than inverter-output constraints — the export limit at
+        43074/43291 being the obvious case — so clamping them to the inverter's rated
+        wattage caps users below what their grid connection allows (issue #438).
+        """
+        if max_default is not None:
+            self.max_value = max_default
+            return
+
         try:
-            new_max = max_default
+            new_max = DEFAULT_MAX_VALUE
             if self.unit_of_measurement == UnitOfElectricCurrent.AMPERE:
                 new_max = round((self.controller.inverter_config.wattage_chosen / 44) / 10) * 20
             elif self.unit_of_measurement == UnitOfPower.WATT:
                 new_max = self.controller.inverter_config.wattage_chosen
             elif self.unit_of_measurement == UnitOfPower.KILO_WATT:
                 new_max = self.controller.inverter_config.wattage_chosen / 1000
-            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} set to {new_max} instead of {max_default}")
+            _LOGGER.debug(f"max value for {self.registrars} with UOM {self.unit_of_measurement} derived as {new_max} (no max declared)")
             self.max_value = new_max
         except Exception as e:
             _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s", self.controller.inverter_config.wattage_chosen, e)
+            self.max_value = DEFAULT_MAX_VALUE
 
     def get_step(self, wanted_step):
         if wanted_step is not None:
@@ -172,12 +190,17 @@ class SolisBaseSensor:
             values = values
             n_value = extract_serial_number(values)
         elif len(self.registrars) > 1:
-            # Default to signed 32-bit (historical behaviour — the many 2-register
-            # power/current registers are genuinely signed). Registers explicitly
-            # tagged U32 (e.g. lifetime energy totals) decode as unsigned so they
-            # never wrap negative.
+            # Default to signed 32-bit big-endian (historical behaviour — the many
+            # 2-register power/current registers are genuinely signed). Registers
+            # explicitly tagged U32 (e.g. lifetime energy totals) decode unsigned so
+            # they never wrap negative; *_LE variants are low-word-first (the
+            # string-inverter EPM block 36028-36057 is documented little-endian).
             if self.data_type == DataType.U32.value:
                 combined_value = combine_u32(values)
+            elif self.data_type == DataType.U32_LE.value:
+                combined_value = combine_u32_le(values)
+            elif self.data_type == DataType.S32_LE.value:
+                combined_value = split_s32_le(values)
             else:
                 combined_value = split_s32(values)
 
@@ -243,7 +266,7 @@ class SolisSensorGroup:
                     unit_of_measurement=entity.get("unit_of_measurement", None),
                     hidden=entity.get("hidden", False),
                     editable=entity.get("editable", False),
-                    max_value=entity.get("max", 3000),
+                    max_value=entity.get("max", None),
                     min_value=entity.get("min", 0),
                     step=entity.get("step", None),
                     identification=identification,

@@ -34,7 +34,9 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       },
       "reconfigure": {
@@ -62,13 +64,19 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       }
     },
     "error": {
       "cannot_connect": "Impossibile connettersi, controlla le impostazioni.",
-      "unknown": "Si è verificato un errore imprevisto."
+      "unknown": "Si è verificato un errore imprevisto.",
+      "invalid_model": "Modello di inverter non valido o sconosciuto. Selezionare un modello dall'elenco.",
+      "serial_required": "Il numero di serie dell'inverter è obbligatorio.",
+      "model_required": "Selezionare un modello di inverter.",
+      "tcp_port_closed": "Nessun servizio accetta connessioni Modbus su quell'indirizzo e porta. Il dispositivo potrebbe essere raggiungibile (risponde al ping) ma non fornisce Modbus — verificare che Modbus TCP sia abilitato sul datalogger. È noto che i firmware recenti dei logger Solis chiudono la porta locale 502; un bridge RS485-TCP è una soluzione alternativa."
     },
     "abort": {
       "already_configured": "Questo dispositivo è già configurato."
@@ -94,7 +102,9 @@
           "connection": "Tipo di Connessione",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       }
     }
@@ -118,20 +128,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Leggi registro",
-      "description": "Legge un valore da un registro",
-      "fields": {
-        "address": {
-          "name": "Indirizzo",
-          "description": "Indirizzo da leggere"
-        },
-        "host": {
-          "name": "Inverter",
-          "description": "IP Inverter (richiesto solo se hai più inverter)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Cambia l'ora di un'entità",
       "description": "Imposta l'ora dell'entità a quella fornita",
@@ -145,6 +141,40 @@
           "description": "Ora nel formato HH:MM o HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Leggi registro",
+      "description": "Legge uno o più registri e restituisce i valori grezzi (scoperta registri / debug)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Forza carica batteria",
+      "description": "Forza la carica della batteria (inverter ibridi); si annulla dopo il timeout"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Forza scarica batteria",
+      "description": "Forza la scarica della batteria (inverter ibridi); si annulla dopo il timeout"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Ferma carica/scarica forzata",
+      "description": "Annulla una carica o scarica forzata attiva"
+    },
+    "solis_dispatch": {
+      "name": "Dispacciamento remoto",
+      "description": "Dispacciamento in tempo reale: controllo rete/batteria con failsafe lato inverter"
+    },
+    "solis_dispatch_stop": {
+      "name": "Ferma dispacciamento",
+      "description": "Rilascia il dispacciamento — l'inverter torna subito al funzionamento normale"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Programma periodo di dispacciamento",
+      "description": "Scrive uno dei sei periodi pianificati residenti nell'inverter (sopravvive ai riavvii di HA)"
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Datalogger Solis irraggiungibile",
+      "description": "Nessuna lettura Modbus riuscita da {host} da {last_success}. Il datalogger WiFi potrebbe essere in sospensione, spento o in uno stato semiaperto; l'integrazione continua a riprovare con backoff. Riavviare l'alimentazione del datalogger se il problema persiste."
     }
   }
 }

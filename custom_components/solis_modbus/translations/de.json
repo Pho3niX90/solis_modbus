@@ -34,7 +34,9 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       },
       "reconfigure": {
@@ -62,13 +64,19 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
-          "has_generator": "Has Generator"
+          "has_generator": "Has Generator",
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       }
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen, bitte überprüfen Sie Ihre Einstellungen.",
-      "unknown": "Unerwarteter Fehler aufgetreten."
+      "unknown": "Unerwarteter Fehler aufgetreten.",
+      "invalid_model": "Ungültiges oder unbekanntes Wechselrichtermodell. Bitte ein Modell aus der Liste wählen.",
+      "serial_required": "Die Seriennummer des Wechselrichters ist erforderlich.",
+      "model_required": "Bitte ein Wechselrichtermodell auswählen.",
+      "tcp_port_closed": "Auf dieser Adresse und diesem Port nimmt nichts Modbus-Verbindungen an. Das Gerät ist möglicherweise erreichbar (es antwortet auf Ping), stellt aber kein Modbus bereit — prüfen Sie, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe."
     },
     "abort": {
       "already_configured": "Dieses Gerät ist bereits konfiguriert."
@@ -94,7 +102,9 @@
           "connection": "Verbindungstyp",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
-          "has_parallel": "Parallel inverter operation (multiple units)"
+          "has_parallel": "Parallel inverter operation (multiple units)",
+          "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       }
     }
@@ -118,20 +128,6 @@
         }
       }
     },
-    "solis_read_register": {
-      "name": "Register lesen",
-      "description": "Liest einen Wert aus einem Register",
-      "fields": {
-        "address": {
-          "name": "Adresse",
-          "description": "Adresse zum Lesen"
-        },
-        "host": {
-          "name": "Wechselrichter",
-          "description": "IP-Adresse des Wechselrichters (nur erforderlich, wenn mehrere Wechselrichter vorhanden sind)"
-        }
-      }
-    },
     "solis_write_time": {
       "name": "Zeit einer Entität ändern",
       "description": "Setzt die Zeit der Entität auf die angegebene",
@@ -145,6 +141,40 @@
           "description": "Zeit im Format HH:MM oder HH:MM:SS"
         }
       }
+    },
+    "solis_read_register": {
+      "name": "Register lesen",
+      "description": "Liest ein oder mehrere Register und gibt die Rohwerte zurück (Register-Erkundung / Debugging)"
+    },
+    "solis_force_battery_charge": {
+      "name": "Batterieladung erzwingen",
+      "description": "Erzwingt das Laden der Batterie (Hybrid-Wechselrichter); endet nach dem Timeout"
+    },
+    "solis_force_battery_discharge": {
+      "name": "Batterieentladung erzwingen",
+      "description": "Erzwingt das Entladen der Batterie (Hybrid-Wechselrichter); endet nach dem Timeout"
+    },
+    "solis_stop_force_charge_discharge": {
+      "name": "Erzwungenes Laden/Entladen stoppen",
+      "description": "Bricht ein aktives erzwungenes Laden oder Entladen ab"
+    },
+    "solis_dispatch": {
+      "name": "Fern-Dispatch",
+      "description": "Echtzeit-Dispatch: zielverfolgende Netz-/Batteriesteuerung mit wechselrichterseitigem Failsafe"
+    },
+    "solis_dispatch_stop": {
+      "name": "Fern-Dispatch stoppen",
+      "description": "Dispatch freigeben — der Wechselrichter kehrt sofort zum Normalbetrieb zurück"
+    },
+    "solis_dispatch_schedule": {
+      "name": "Dispatch-Zeitplanperiode programmieren",
+      "description": "Schreibt eine von sechs im Wechselrichter gespeicherten Zeitplanperioden (übersteht HA-Neustarts)"
+    }
+  },
+  "issues": {
+    "datalogger_unreachable": {
+      "title": "Solis-Datenlogger nicht erreichbar",
+      "description": "Kein erfolgreicher Modbus-Lesevorgang von {host} seit {last_success}. Der WiFi-Datenlogger schläft möglicherweise, ist ausgeschaltet oder in einem halboffenen Zustand; die Integration versucht es weiterhin mit Backoff. Bei anhaltendem Problem den Datenlogger stromlos machen."
     }
   }
 }

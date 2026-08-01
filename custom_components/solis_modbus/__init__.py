@@ -8,8 +8,8 @@ import voluptuous as vol
 from homeassistant.components.persistent_notification import async_create as pn_create
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryError
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import ConfigEntryError, HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
@@ -23,20 +23,24 @@ from .const import (
     CONF_STOPBITS,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
-    CONTROLLER,
     DEFAULT_BAUDRATE,
     DEFAULT_BYTESIZE,
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
-    NUMBER_ENTITIES,
-    SENSOR_DERIVED_ENTITIES,
-    SENSOR_ENTITIES,
-    TIME_ENTITIES,
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
-from .helpers import _iter_entities, get_controller, set_controller, unique_id_generator
+from .helpers import (
+    combine_u32,
+    combine_u32_le,
+    get_controller,
+    iter_controllers,
+    iter_platform_entities,
+    set_controller,
+    split_s32,
+    unique_id_generator,
+)
 from .modbus_controller import ModbusController
 from .sensors.solis_base_sensor import SolisBaseSensor, SolisSensorGroup
 
@@ -49,9 +53,131 @@ SCHEME_HOLDING_REGISTER = vol.Schema(
         vol.Required("address"): vol.Coerce(int),
         vol.Required("value"): vol.Coerce(int),
         vol.Optional("host"): vol.Coerce(str),
+        # services.yaml documents `slave` and the handler reads it, so it has to
+        # be declared here -- voluptuous rejects undeclared keys, which made any
+        # call passing a slave fail validation before it reached the handler.
+        # Deliberately no default: an omitted slave still means "all controllers".
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_TIME_SET = vol.Schema({vol.Required("entity_id"): vol.Coerce(str), vol.Required("time"): vol.Coerce(str)})
+SCHEME_READ_REGISTER = vol.Schema(
+    {
+        vol.Required("address"): vol.Coerce(int),
+        vol.Optional("count", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
+        vol.Optional("register_type", default="input"): vol.In(["input", "holding"]),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+SCHEME_FORCE_CHARGE = vol.Schema(
+    {
+        vol.Optional("power_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=60000)),
+        vol.Optional("duration_minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+SCHEME_STOP_FORCE = vol.Schema(
+    {
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+
+# RC (remote control) force charge/discharge registers — the #352 latch combo:
+# Solis firmware requires 43135 to be enabled BEFORE the setpoints and timeout
+# are written, otherwise they do not stick.
+RC_FORCE_MODE_REG = 43135  # 0 = none, 1 = force charge, 2 = force discharge
+RC_CHARGE_POWER_REG = 43136  # raw = watts / 10
+RC_DISCHARGE_POWER_REG = 43129  # raw = watts / 10
+RC_TIMEOUT_REG = 43282  # minutes (1-30); command self-reverts after this
+RC_POWER_MULTIPLIER = 10
+
+# Remote Dispatch (protocol Ver3.4, 44100-44199; capability gate: input 34502
+# reads 0xAA55). RAM-only registers with an inverter-side failsafe (44101):
+# if the controller goes silent the inverter reverts on its own. Live-verified
+# write order: failsafe -> master on -> power/function/SOC -> control mode LAST
+# (the function field is re-initialized by the inverter unless dispatch is on).
+DISPATCH_CAPABILITY_REG = 34502
+DISPATCH_CAPABLE_MAGIC = 0xAA55
+DISPATCH_MASTER_REG = 44100
+DISPATCH_FAILSAFE_REG = 44101
+DISPATCH_MODE_REG = 44105
+DISPATCH_POWER_REG = 44106  # S32 pair 44106/44107, x10 W
+DISPATCH_FUNCTION_REG = 44108
+DISPATCH_SOC_LOW_REG = 44109
+DISPATCH_SOC_HIGH_REG = 44110
+DISPATCH_SCHEDULE_BASE = 44116  # 6 periods x 14 registers
+DISPATCH_SCHEDULE_STRIDE = 14
+
+# mode -> (44105 value, sign applied to power_watts); modes 3/4: +export/-import
+DISPATCH_MODES = {
+    "battery_hold": (1, 0),
+    "battery_charge": (2, 1),
+    "battery_discharge": (2, -1),
+    "grid_import": (3, -1),
+    "grid_export": (3, 1),
+    "grid_port_import": (4, -1),
+    "grid_port_export": (4, 1),
+    "self_consumption": (5, 0),
+    "feed_in_priority": (6, 0),
+}
+
+SCHEME_DISPATCH = vol.Schema(
+    {
+        vol.Required("mode"): vol.In(sorted(DISPATCH_MODES)),
+        vol.Optional("power_watts", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
+        vol.Optional("pv_shutdown"): vol.Coerce(bool),
+        vol.Optional("allow_grid_charge"): vol.Coerce(bool),
+        vol.Optional("disable_discharge"): vol.Coerce(bool),
+        vol.Optional("soc_min"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("soc_max"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("failsafe_minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+SCHEME_DISPATCH_SCHEDULE = vol.Schema(
+    {
+        vol.Required("period"): vol.All(vol.Coerce(int), vol.Range(min=1, max=6)),
+        vol.Required("enabled"): vol.Coerce(bool),
+        vol.Optional("start_time", default="00:00"): vol.Coerce(str),
+        vol.Optional("end_time", default="00:00"): vol.Coerce(str),
+        vol.Optional("mode", default="battery_hold"): vol.In(sorted(DISPATCH_MODES)),
+        vol.Optional("power_watts", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
+        vol.Optional("pv_shutdown"): vol.Coerce(bool),
+        vol.Optional("allow_grid_charge"): vol.Coerce(bool),
+        vol.Optional("disable_discharge"): vol.Coerce(bool),
+        vol.Optional("soc_min", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("soc_max", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("failsafe_minutes", default=1440): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+        vol.Optional("host"): vol.Coerce(str),
+        vol.Optional("slave", default=1): vol.Coerce(int),
+    }
+)
+
+
+def _dispatch_function_value(pv_shutdown, allow_grid_charge, disable_discharge) -> int:
+    """Build the 44108 function bitfield. Each 2-bit pair: 0 = leave unchanged
+    ("invalid"), then per-field semantics (PV shutdown: 1 off / 2 on;
+    grid-charge: 1 allowed / 2 not allowed; discharge-disable: 1 off / 2 on)."""
+
+    def pair(value, true_code, false_code):
+        if value is None:
+            return 0
+        return true_code if value else false_code
+
+    return (
+        pair(pv_shutdown, 2, 1)  # bits 0-1
+        | (pair(allow_grid_charge, 1, 2) << 4)  # bits 4-5
+        | (pair(disable_discharge, 2, 1) << 10)  # bits 10-11
+    )
+
+
+def _s32_words(value: int) -> list[int]:
+    raw = value & 0xFFFFFFFF
+    return [(raw >> 16) & 0xFFFF, raw & 0xFFFF]
 
 
 async def async_remove_config_entry_device(hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
@@ -66,13 +192,20 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         address = call.data.get("address")
         value = call.data.get("value")
         host = call.data.get("host")
-        slave = call.data.get("slave", 1)
+        slave = call.data.get("slave")
 
         if host:
-            controller = get_controller(hass, host, slave)
+            controller = get_controller(hass, host, slave if slave is not None else 1)
+            if controller is None:
+                raise ServiceValidationError(f"No Solis inverter configured for host {host} (slave {slave if slave is not None else 1})")
             hass.create_task(controller.async_write_holding_register(int(address), int(value)))
         else:
-            for controller in hass.data[DOMAIN][CONTROLLER].values():
+            # Without a host we write to every controller, unless a slave was
+            # given explicitly -- in which case only matching devices are written.
+            targets = [controller for controller in iter_controllers(hass) if slave is None or getattr(controller, "device_id", 1) == slave]
+            if not targets:
+                raise ServiceValidationError(f"No Solis inverter configured with slave {slave}")
+            for controller in targets:
                 hass.create_task(controller.async_write_holding_register(int(address), int(value)))
 
     async def service_set_time(call: ServiceCall) -> None:
@@ -94,17 +227,186 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             _LOGGER.error("❌ Failed to parse time string '%s': %s", time_str, e)
             return
 
-        # Look through the registered time entities (per-entry buckets) for a match
-        for entity in _iter_entities(call.hass.data.get(DOMAIN, {}).get(TIME_ENTITIES)):
+        # Look through the registered time entities (per-entry runtime data) for a match
+        for entity in iter_platform_entities(call.hass, "time"):
             if entity.entity_id == entity_id:
                 await entity.async_set_value(new_time)
                 _LOGGER.debug("Set time for %s to %s", entity_id, new_time)
                 return
 
-        _LOGGER.error("⚠️ Entity with id %s not found in solis_modbus TIME_ENTITIES", entity_id)
+        raise ServiceValidationError(f"Entity {entity_id} is not a solis_modbus time entity")
+
+    def _resolve_controller(call: ServiceCall):
+        """Resolve the target controller from optional host/slave service fields."""
+        host = call.data.get("host")
+        slave = call.data.get("slave", 1)
+        if host:
+            controller = get_controller(hass, host, slave)
+            if controller is None:
+                raise ServiceValidationError(f"No Solis inverter found for host {host} (slave {slave})")
+            return controller
+        controllers = list(iter_controllers(hass))
+        if not controllers:
+            raise ServiceValidationError("No Solis inverter is configured")
+        if len(controllers) > 1:
+            raise ServiceValidationError("Multiple Solis inverters configured — specify the 'host' field")
+        return controllers[0]
+
+    async def service_read_register(call: ServiceCall) -> dict:
+        """Read arbitrary registers and return the values (register discovery / debugging)."""
+        address = int(call.data["address"])
+        count = int(call.data.get("count", 1))
+        register_type = call.data.get("register_type", "input")
+        controller = _resolve_controller(call)
+
+        if register_type == "holding":
+            values = await controller.async_read_holding_register(address, count)
+        else:
+            values = await controller.async_read_input_register(address, count)
+
+        if values is None:
+            raise HomeAssistantError(f"Read of {register_type} register {address} (count {count}) failed — see logs")
+
+        response = {
+            "address": address,
+            "count": count,
+            "register_type": register_type,
+            "values": list(values),
+            "hex": [f"0x{v:04X}" for v in values],
+        }
+        if count == 2:
+            # Convenience decodes for 32-bit probing
+            response["u32_be"] = combine_u32(list(values))
+            response["s32_be"] = split_s32(list(values))
+            response["u32_le"] = combine_u32_le(list(values))
+        return response
+
+    def _require_hybrid(controller):
+        if controller.inverter_config.type not in (InverterType.HYBRID, InverterType.ENERGY):
+            raise ServiceValidationError("Force charge/discharge is only supported on hybrid/energy-storage inverters")
+
+    async def _force_battery(call: ServiceCall, mode: int, power_register: int) -> None:
+        """Write the #352 RC combo: enable 43135 first, then setpoint + timeout."""
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+
+        await controller.async_write_holding_register(RC_FORCE_MODE_REG, mode)
+
+        power_watts = call.data.get("power_watts")
+        if power_watts is not None:
+            max_watts = getattr(controller.inverter_config, "wattage_chosen", 60000) or 60000
+            watts = min(int(power_watts), int(max_watts))
+            await controller.async_write_holding_register(power_register, round(watts / RC_POWER_MULTIPLIER))
+
+        duration = call.data.get("duration_minutes")
+        if duration is not None:
+            await controller.async_write_holding_register(RC_TIMEOUT_REG, int(duration))
+
+    async def service_force_battery_charge(call: ServiceCall) -> None:
+        await _force_battery(call, 1, RC_CHARGE_POWER_REG)
+
+    async def service_force_battery_discharge(call: ServiceCall) -> None:
+        await _force_battery(call, 2, RC_DISCHARGE_POWER_REG)
+
+    async def service_stop_force_charge_discharge(call: ServiceCall) -> None:
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await controller.async_write_holding_register(RC_FORCE_MODE_REG, 0)
+
+    async def _ensure_dispatch_capable(controller) -> None:
+        from .helpers import cache_get
+
+        capability = cache_get(hass, controller, DISPATCH_CAPABILITY_REG)
+        if capability is None:
+            values = await controller.async_read_input_register(DISPATCH_CAPABILITY_REG, 1)
+            capability = values[0] if values else None
+        if capability != DISPATCH_CAPABLE_MAGIC:
+            raise ServiceValidationError(f"This inverter does not support Remote Dispatch (register 34502 reads {capability}, expected 0xAA55)")
+
+    async def service_dispatch(call: ServiceCall) -> None:
+        """Real-time Remote Dispatch: goal-seeking grid/battery control with failsafe."""
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await _ensure_dispatch_capable(controller)
+
+        mode_value, sign = DISPATCH_MODES[call.data["mode"]]
+        power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
+        function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
+        soc_low = int(call.data["soc_min"]) if call.data.get("soc_min") is not None else 0
+        soc_high = int(call.data["soc_max"]) if call.data.get("soc_max") is not None else 100
+
+        # The dispatch block must be written as contiguous chunks (Ver3.4 doc):
+        # scattered single-register writes get silently dropped/re-initialized,
+        # especially under write-queue contention. Two atomic FC16 blocks:
+        #   global 44100-44104  = master, failsafe, no system caps (0xFFFF = default)
+        #   realtime 44105-44112 = mode, power(S32), function, SOC window
+        # Global first so dispatch is active before the realtime block lands
+        # (the function field is re-initialized unless the master is already on).
+        await controller.async_write_holding_registers(DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), 0, 0xFFFF, 0xFFFF])
+        await controller.async_write_holding_registers(DISPATCH_MODE_REG, [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, 0, 0])
+
+    async def service_dispatch_stop(call: ServiceCall) -> None:
+        """Release Remote Dispatch (live-verified revert sequence)."""
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await controller.async_write_holding_register(DISPATCH_MODE_REG, 1)
+        await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, 1)
+        await controller.async_write_holding_register(DISPATCH_MASTER_REG, 0)
+
+    async def service_dispatch_schedule(call: ServiceCall) -> None:
+        """Program one of the six inverter-resident scheduled dispatch periods.
+
+        The schedule executes on the inverter itself — it keeps running even if
+        Home Assistant dies (until the failsafe interval expires unrefreshed).
+        """
+        controller = _resolve_controller(call)
+        _require_hybrid(controller)
+        await _ensure_dispatch_capable(controller)
+
+        def packed_time(value: str) -> int:
+            parsed = datetime.strptime(value, "%H:%M")
+            return (parsed.hour << 8) | parsed.minute
+
+        try:
+            start_packed = packed_time(call.data.get("start_time", "00:00"))
+            end_packed = packed_time(call.data.get("end_time", "00:00"))
+        except ValueError as err:
+            raise ServiceValidationError(f"Invalid time (expected HH:MM): {err}") from err
+
+        mode_value, sign = DISPATCH_MODES[call.data.get("mode", "battery_hold")]
+        power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
+        function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
+
+        base = DISPATCH_SCHEDULE_BASE + (int(call.data["period"]) - 1) * DISPATCH_SCHEDULE_STRIDE
+        block = [
+            1 if call.data["enabled"] else 0,
+            start_packed,
+            end_packed,
+            mode_value,
+            *_s32_words(power_raw),
+            function_value,
+            int(call.data.get("soc_min", 0)),
+            int(call.data.get("soc_max", 100)),
+            0,  # battery reserve SOC (unused here)
+            0,  # PV power-limit percentage (unused here)
+        ]
+        await controller.async_write_holding_registers(base, block)
+
+        if call.data["enabled"]:
+            # Schedules need the dispatch master on; long failsafe by default so
+            # the plan survives HA restarts (re-push daily to keep it alive).
+            await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 1440)))
+            await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
 
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)
+    hass.services.async_register(DOMAIN, "solis_read_register", service_read_register, schema=SCHEME_READ_REGISTER, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, "solis_force_battery_charge", service_force_battery_charge, schema=SCHEME_FORCE_CHARGE)
+    hass.services.async_register(DOMAIN, "solis_force_battery_discharge", service_force_battery_discharge, schema=SCHEME_FORCE_CHARGE)
+    hass.services.async_register(DOMAIN, "solis_stop_force_charge_discharge", service_stop_force_charge_discharge, schema=SCHEME_STOP_FORCE)
+    hass.services.async_register(DOMAIN, "solis_dispatch", service_dispatch, schema=SCHEME_DISPATCH)
+    hass.services.async_register(DOMAIN, "solis_dispatch_stop", service_dispatch_stop, schema=SCHEME_STOP_FORCE)
+    hass.services.async_register(DOMAIN, "solis_dispatch_schedule", service_dispatch_schedule, schema=SCHEME_DISPATCH_SCHEDULE)
 
     return True
 
@@ -159,12 +461,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _LOGGER.debug(config)
 
-    # Initialize storage for controllers
+    # Shared cross-entry storage (register cache); per-entry state lives on
+    # entry.runtime_data (see runtime.SolisRuntimeData).
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(CONTROLLER, {})
 
     # Stagger additional config entries on the same Modbus link so two inverters do not hammer the logger at once.
-    existing_same_link = sum(1 for c in hass.data[DOMAIN][CONTROLLER].values() if getattr(c, "connection_id", None) == connection_id)
+    existing_same_link = sum(1 for c in iter_controllers(hass) if getattr(c, "connection_id", None) == connection_id)
     if existing_same_link:
         delay_s = min(1.5 * existing_same_link, 5.0)
         _LOGGER.debug(
@@ -282,7 +584,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             for entity in sensors_derived
         ]
 
-
         set_controller(hass, controller, entry)
 
         _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
@@ -291,11 +592,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # which already unloads [Platform.SENSOR, *PLATFORMS] together.
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
-        hass.data[DOMAIN].setdefault("data_retrieval", {})
-        hass.data[DOMAIN]["data_retrieval"][entry.entry_id] = DataRetrieval(hass, controller)
+        entry.runtime_data.data_retrieval = DataRetrieval(hass, controller, entry.entry_id)
     except Exception:
         controller.close_connection()
-        hass.data[DOMAIN].get(CONTROLLER, {}).pop(entry.entry_id, None)
+        entry.runtime_data = None
         raise
 
     # Apply option changes automatically (see _async_reload_on_update).
@@ -470,25 +770,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # fails with "config entry for solis_modbus.sensor has already been setup!".
     unload_ok = all(await asyncio.gather(*(hass.config_entries.async_forward_entry_unload(entry, platform) for platform in [Platform.SENSOR, *PLATFORMS])))
 
-    # Clean up resources
+    # Clean up resources (per-entry state lives on entry.runtime_data, which HA
+    # clears after unload; the shared register cache in hass.data survives on purpose)
     if unload_ok:
-        # 1. Stop Data Retrieval
-        if "data_retrieval" in hass.data[DOMAIN]:
-            data_retrieval = hass.data[DOMAIN]["data_retrieval"].pop(entry.entry_id, None)
-            if data_retrieval:
-                await data_retrieval.async_stop()
-
-        # 2. Close and REMOVE the specific controller for this entry
-        if CONTROLLER in hass.data[DOMAIN]:
-            controller = hass.data[DOMAIN][CONTROLLER].pop(entry.entry_id, None)
-            if controller:
-                _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
-                controller.close_connection()
-
-        # 3. Drop this entry's per-entry entity buckets so they don't leak on reload.
-        for bucket in (SENSOR_ENTITIES, SENSOR_DERIVED_ENTITIES, NUMBER_ENTITIES, TIME_ENTITIES):
-            bucket_data = hass.data[DOMAIN].get(bucket)
-            if isinstance(bucket_data, dict):
-                bucket_data.pop(entry.entry_id, None)
+        runtime = getattr(entry, "runtime_data", None)
+        if runtime is not None:
+            if runtime.data_retrieval is not None:
+                await runtime.data_retrieval.async_stop()
+            _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
+            runtime.controller.close_connection()
 
     return unload_ok

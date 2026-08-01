@@ -11,7 +11,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
-from custom_components.solis_modbus.data.enums import DataType, PollSpeed
+from custom_components.solis_modbus.data.enums import DataType, InverterFeature, PollSpeed
 
 # base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [
@@ -82,6 +82,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3008", "3009"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy This Month",
@@ -91,6 +92,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3010", "3011"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy Last Month",
@@ -100,6 +102,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3012", "3013"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy Today",
@@ -127,6 +130,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3016", "3017"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {
                 "name": "Energy Last Year",
@@ -136,6 +140,7 @@ string_sensors = [
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "register": ["3018", "3019"],
                 "multiplier": 1,
+                "data_type": DataType.U32,
             },
             {"type": "reserve", "register": ["3020"]},
             {
@@ -345,14 +350,15 @@ string_sensors = [
                 "multiplier": 0.01,
             },
             {
+                # READ-ONLY on purpose: with editable=True and no write_register this
+                # fell back to writing wire 3051 = doc-3052 POWER LIMITATION with a
+                # 0.001 scale — "setting PF 1.0" capped the inverter at 10% output.
+                # The PF *setting* is doc-3053 (wire 3052) and needs enable 3071=0xA1.
                 "name": "Actual Power Factor Adjustment",
                 "unique": "solis_modbus_inverter_actual_power_factor_adjustment",
                 "state_class": SensorStateClass.MEASUREMENT,
                 "register": ["3051"],
                 "multiplier": 0.001,
-                "editable": True,
-                "min": 0,
-                "max": 110,
             },
         ],
     },
@@ -493,7 +499,57 @@ string_sensors = [
         ],
     },
     {
+        # Direct-meter grid energy counters (issue #410, field-verified on S5-GR3P +
+        # Acrel DTSD1352-C against the meter's own display). Protocol §5.3: doc regs
+        # 3281-3286 → wire 3280-3285. These come from the attached meter itself, unlike
+        # the 36050 block which only exists on EPM-equipped inverters (exception code 2
+        # otherwise). On meter-less models this group auto-disables via exc-2 recovery.
+        "register_start": 3280,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "Meter Power Factor",
+                "unique": "solis_modbus_meter_power_factor",
+                "state_class": SensorStateClass.MEASUREMENT,
+                "device_class": SensorDeviceClass.POWER_FACTOR,
+                "register": ["3280"],
+                "multiplier": 0.001,
+                "data_type": DataType.S16,
+            },
+            {
+                "name": "Meter Grid Frequency",
+                "unique": "solis_modbus_meter_grid_frequency",
+                "unit_of_measurement": UnitOfFrequency.HERTZ,
+                "device_class": SensorDeviceClass.FREQUENCY,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "register": ["3281"],
+                "multiplier": 0.01,
+            },
+            {
+                "name": "Meter Grid Import Total Energy",
+                "unique": "solis_modbus_meter_grid_import_total_energy",
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                "device_class": SensorDeviceClass.ENERGY,
+                "state_class": SensorStateClass.TOTAL_INCREASING,
+                "register": ["3282", "3283"],
+                "multiplier": 0.01,
+                "data_type": DataType.U32,
+            },
+            {
+                "name": "Meter Grid Export Total Energy",
+                "unique": "solis_modbus_meter_grid_export_total_energy",
+                "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                "device_class": SensorDeviceClass.ENERGY,
+                "state_class": SensorStateClass.TOTAL_INCREASING,
+                "register": ["3284", "3285"],
+                "multiplier": 0.01,
+                "data_type": DataType.U32,
+            },
+        ],
+    },
+    {
         "register_start": 36013,
+        "feature_requirement": [InverterFeature.EPM],
         "essential": True,
         "scan_interval": 0,
         "entities": [
@@ -508,6 +564,7 @@ string_sensors = [
     },
     {
         "register_start": 36022,
+        "feature_requirement": [InverterFeature.EPM],
         "scan_interval": 60,
         "entities": [
             {
@@ -538,6 +595,7 @@ string_sensors = [
     },
     {
         "register_start": 36028,
+        "feature_requirement": [InverterFeature.EPM],
         "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [
@@ -549,11 +607,13 @@ string_sensors = [
                 "multiplier": 100,
                 "unit_of_measurement": UnitOfPower.WATT,
                 "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S32_LE,
             }
         ],
     },
     {
         "register_start": 36050,
+        "feature_requirement": [InverterFeature.EPM],
         "essential": True,
         "poll_speed": PollSpeed.SLOW,
         "entities": [
@@ -565,6 +625,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
             {
                 "name": "Load Total Consumption Energy",
@@ -574,6 +635,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
             {
                 "name": "Grid Import Total Active Energy",
@@ -583,6 +645,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
             {
                 "name": "Grid Export Total Active Energy",
@@ -592,6 +655,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
+                "data_type": DataType.U32_LE,
             },
         ],
     },

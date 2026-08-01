@@ -49,6 +49,37 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 **Poll Interval**:
 - Customize how frequently sensors update. Faster polling provides more real-time data but increases Modbus load.
 
+### What's new in 4.2.0
+
+**New features**
+- **Remote Dispatch** (dispatch-capable firmware, register 34502 = 0xAA55): `solis_modbus.solis_dispatch` commands real-time goal-seeking control — *"hold grid import at 6 kW"*, *"charge battery at 3 kW"*, PV shutdown, per-dispatch SOC windows — with an **inverter-side failsafe** (the inverter reverts by itself if HA goes silent). `solis_dispatch_schedule` programs up to six **inverter-resident** daily periods that keep executing even if Home Assistant dies. Dispatch state is exposed as sensors (44100-44112).
+- **New telemetry**: fault/status bitfield words (33116-33123), battery/backup settings mirrors + fast (<1 s) battery current (33200-33217), EPM live state (33246-33250), inverting/rectifying bridge power (33157), remote-dispatch capability flags (34502/34503).
+- **Instant output clamp** (GrugBus-verified 43081 + 43070 gate): watt-level AC output limiting — number entity is registry-disabled by default; enable it to use.
+- **Storage Mode select** (renamed from "Work Mode", issue #413): mode changes now clear all conflicting mode bits — switching Self-Use ↔ Peak Shaving ↔ Feed-in writes exactly the values SolisCloud uses (grid-charge and wakeup bits are preserved). New *Reserve / Backup* options. The raw register value is exposed as a state attribute for debugging.
+- **Dual-meter support** (issue #425): enable *"Second smart meter installed"* to poll the Meter 2 block (33300-33337) on "Grid + PV Inverter" installs — per-phase V/A/W, total power, PF, frequency and lifetime import/export counters.
+- **Direct-meter grid energy for string inverters** (issue #410): grid import/export lifetime counters read from the attached meter (registers 3283-3286), for S5-GR3P-style installs without an EPM.
+- **Read-only mode completed** (issue #149): with *"Essential sensors only"* enabled, control entities (numbers/switches/selects/times) are no longer created.
+- **Diagnostics**: download a redacted support dump from the integration's menu.
+- **Repairs**: a repair issue is raised when the datalogger is unreachable for a sustained period, and auto-clears on reconnect.
+- New AC-grid-port lifetime energy sensors (registers 33186-33189, protocol Ver3.4).
+
+**Fixes** (highlights)
+- "Solis Modbus Enabled" switch actually enables/disables polling again.
+- Leaving a "+ TOU" work mode via the select is possible again.
+- Options changes now apply immediately (no restart needed).
+- Reduced Modbus retry storms on S2-WL sticks (issues #395/#406) — pymodbus retries lowered; the integration's own watchdog handles recovery.
+- Lifetime energy counters decode as unsigned (can no longer wrap negative and corrupt the Energy dashboard).
+- Grid-TOU time entities are no longer created for grid/string inverters.
+
+**Monthly grid energy** (issue #400): the inverter's Modbus map has no monthly grid import/export registers (SolisCloud computes those server-side). Use a [utility meter helper](https://www.home-assistant.io/integrations/utility_meter/) instead:
+
+```yaml
+utility_meter:
+  monthly_grid_import:
+    source: sensor.solis_inverter_today_energy_imported_from_grid
+    cycle: monthly
+```
+
 ### Version 4.0+ Migration (Important)
 As of version 4.0+, the integration uses the **Inverter Serial Number** to generate unique IDs for all entities.
 - **New Installs**: Will use Serial Number automatically.
@@ -279,6 +310,37 @@ Solis and equivalent Axitec, Zonneplan inverters
 - Waveshare
 
 ## Troubleshooting
+
+### ⚠️ "Cannot connect" — datalogger firmware closing local port 502
+
+Several Solis dataloggers (**S5-WiFi-ST**, and reports on **S2-WL-ST** too) have stopped
+serving Modbus TCP after a firmware/OTA update. SolisCloud keeps working, so the inverter
+looks perfectly healthy while Home Assistant can no longer reach it.
+
+Check it from any PC on the same LAN — **no Home Assistant involved**:
+
+```powershell
+Test-NetConnection 192.168.1.50 -Port 502
+```
+```bash
+nc -vz 192.168.1.50 502
+```
+
+If ping succeeds but the TCP test fails, the port is closed on the device and **no
+integration setting will fix it** — nothing can reopen a port the logger has shut. Port 80
+(the logger's own web UI) is usually dead too, which is a good confirmation.
+
+Known workarounds:
+
+* Raise it with Solis support — the more reports the better. Note that the S2-WL-ST
+  product page does advertise Modbus TCP support, which gives you something to point at.
+* Use an RS485-to-TCP bridge on the inverter's RS485 port instead of the logger's WiFi
+  stick — an **Elfin EW11** and a **Waveshare RS485-to-Ethernet** have both been confirmed
+  working by users who hit this. The integration then works normally.
+* A direct USB RS485 adapter with the **serial** connection type also bypasses the logger.
+
+See [issue #432](https://github.com/Pho3niX90/solis_modbus/issues/432) for the thread.
+
 ### Restoring Sensor History
 If a sensor's entity ID changes (e.g., during migration) and you lose its history, you can manually restore it using Home Assistant's statistics tool:
 
