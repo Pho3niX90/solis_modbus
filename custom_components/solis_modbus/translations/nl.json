@@ -75,7 +75,8 @@
       "unknown": "Onverwachte fout opgetreden.",
       "invalid_model": "Ongeldig of onbekend omvormermodel. Selecteer een model uit de lijst.",
       "serial_required": "Het serienummer van de omvormer is verplicht.",
-      "model_required": "Selecteer een omvormermodel."
+      "model_required": "Selecteer een omvormermodel.",
+      "tcp_port_closed": "Er accepteert niets Modbus-verbindingen op dat adres en die poort. Het apparaat is mogelijk bereikbaar (het antwoordt op ping) maar biedt geen Modbus aan — controleer of Modbus TCP is ingeschakeld op de datalogger. Van recente Solis-loggerfirmware is bekend dat deze lokale poort 502 sluit; een RS485-naar-TCP-bridge is een tijdelijke oplossing."
     },
     "abort": {
       "already_configured": "Dit apparaat is al geconfigureerd."

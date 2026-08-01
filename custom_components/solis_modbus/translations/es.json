@@ -75,7 +75,8 @@
       "unknown": "Ocurrió un error inesperado.",
       "invalid_model": "Modelo de inversor no válido o desconocido. Seleccione un modelo de la lista.",
       "serial_required": "Se requiere el número de serie del inversor.",
-      "model_required": "Seleccione un modelo de inversor."
+      "model_required": "Seleccione un modelo de inversor.",
+      "tcp_port_closed": "Nada acepta conexiones Modbus en esa dirección y puerto. El dispositivo puede ser accesible (responde al ping) pero no está sirviendo Modbus — compruebe que Modbus TCP esté habilitado en el registrador. Se sabe que el firmware reciente del registrador Solis cierra el puerto local 502; un puente RS485 a TCP es una solución alternativa."
     },
     "abort": {
       "already_configured": "Este dispositivo ya está configurado."

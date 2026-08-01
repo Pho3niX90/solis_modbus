@@ -75,7 +75,8 @@
       "unknown": "Si è verificato un errore imprevisto.",
       "invalid_model": "Modello di inverter non valido o sconosciuto. Selezionare un modello dall'elenco.",
       "serial_required": "Il numero di serie dell'inverter è obbligatorio.",
-      "model_required": "Selezionare un modello di inverter."
+      "model_required": "Selezionare un modello di inverter.",
+      "tcp_port_closed": "Nessun servizio accetta connessioni Modbus su quell'indirizzo e porta. Il dispositivo potrebbe essere raggiungibile (risponde al ping) ma non fornisce Modbus — verificare che Modbus TCP sia abilitato sul datalogger. È noto che i firmware recenti dei logger Solis chiudono la porta locale 502; un bridge RS485-TCP è una soluzione alternativa."
     },
     "abort": {
       "already_configured": "Questo dispositivo è già configurato."

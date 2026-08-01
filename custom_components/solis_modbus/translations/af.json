@@ -75,7 +75,8 @@
       "unknown": "Onverwagte fout het voorgekom.",
       "invalid_model": "Ongeldige of onbekende omsettermodel. Kies asseblief 'n model uit die lys.",
       "serial_required": "Omsetter-reeksnommer word vereis.",
-      "model_required": "Kies asseblief 'n omsettermodel."
+      "model_required": "Kies asseblief 'n omsettermodel.",
+      "tcp_port_closed": "Niks aanvaar Modbus-verbindings op daardie adres en poort nie. Die toestel kan bereikbaar wees (dit antwoord op ping) maar bedien nie Modbus nie — kontroleer dat Modbus TCP op die datalogger geaktiveer is. Onlangse Solis-logger-firmware sluit bekend plaaslike poort 502; 'n RS485-na-TCP-brug is 'n omweg."
     },
     "abort": {
       "already_configured": "Hierdie toestel is reeds gekonfigureer."
