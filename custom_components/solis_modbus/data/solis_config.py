@@ -119,7 +119,7 @@ SOLIS_INVERTERS = [
     ),
     InverterConfig(
         model="S6-EH3P",
-        wattage=[8000, 10000, 12000, 15000, 29900, 30000, 40000, 49000, 50000, 60000],
+        wattage=[8000, 10000, 12000, 15000, 20000, 29900, 30000, 40000, 49000, 50000, 60000],
         phases=3,
         type=InverterType.HYBRID,
         features=[InverterFeature.SMART_PORT],
