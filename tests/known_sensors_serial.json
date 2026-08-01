@@ -303,6 +303,7 @@
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_remote_active_power_control_command",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_remote_dispatch_capability",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_remote_dispatch_function_map",
+  "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_remote_dispatch_running_status",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_serial_number",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_smartport_a_active_power",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_smartport_a_phase_current",

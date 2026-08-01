@@ -342,12 +342,8 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         #   realtime 44105-44112 = mode, power(S32), function, SOC window
         # Global first so dispatch is active before the realtime block lands
         # (the function field is re-initialized unless the master is already on).
-        await controller.async_write_holding_registers(
-            DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), 0, 0xFFFF, 0xFFFF]
-        )
-        await controller.async_write_holding_registers(
-            DISPATCH_MODE_REG, [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, 0, 0]
-        )
+        await controller.async_write_holding_registers(DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), 0, 0xFFFF, 0xFFFF])
+        await controller.async_write_holding_registers(DISPATCH_MODE_REG, [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, 0, 0])
 
     async def service_dispatch_stop(call: ServiceCall) -> None:
         """Release Remote Dispatch (live-verified revert sequence)."""

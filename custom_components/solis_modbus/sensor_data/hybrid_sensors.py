@@ -4157,6 +4157,26 @@ hybrid_sensors = [
         ],
     },
     {
+        # Remote Dispatch running status (input 34504). Deliberately its own group:
+        # 34502/34503 above are fixed for a given firmware and polled ONCE, but this
+        # one changes whenever an external controller starts or stops dispatching.
+        # Useful on its own even without write support — it answers "is something
+        # currently steering this inverter?". SLOW to match the 44100 dispatch-state
+        # group rather than add a fast poll to an already-busy datalogger.
+        "register_start": 34504,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "Remote Dispatch Running Status",
+                "category": Category.REMOTE_DISPATCH_SETTING,
+                "unique": "solis_modbus_inverter_remote_dispatch_running_status",
+                "register": ["34504"],
+                "multiplier": 0,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
+        ],
+    },
+    {
         # Remote Dispatch real-time state (holding 44100-44112) — read-only view
         # of the dispatch the solis_dispatch* services command. RAM-side registers.
         "register_start": 44100,
