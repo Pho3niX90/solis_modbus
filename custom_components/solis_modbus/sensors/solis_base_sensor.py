@@ -157,6 +157,8 @@ class SolisBaseSensor:
             return 0.1
         if self.unit_of_measurement == UnitOfPower.WATT:
             return 1
+        # Anything else has no sensible derived step; callers must cope with None.
+        return None
 
     @property
     def entity_category(self) -> EntityCategory | None:
