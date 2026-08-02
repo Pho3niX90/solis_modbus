@@ -109,7 +109,7 @@ class SolisBaseSensor:
             hv_battery_sensitive_regs = {33205, 33206, 33207, 43013, 43117}
             if _any_in(self.registrars, hv_battery_sensitive_regs):
                 self.min_value = 0
-                self.step = min(self.step, 0.1)
+                self.step = 0.1 if self.step is None else min(self.step, 0.1)
 
         # RHI/RAI models: 1 <--> 1W (range: 0–30000)
         if inv_model in {"RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"} and 43074 in self.registrars:
