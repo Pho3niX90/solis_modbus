@@ -276,9 +276,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
                     f"The inverter has no {register_type} register at {address} (count {count}). "
                     f'If you are probing a documented address, try register_type: "{other}".'
                 )
-            raise HomeAssistantError(
-                f"Read of {register_type} register {address} (count {count}) failed — see logs"
-            )
+            raise HomeAssistantError(f"Read of {register_type} register {address} (count {count}) failed — see logs")
 
         response = {
             "address": address,

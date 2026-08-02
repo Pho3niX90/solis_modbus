@@ -134,15 +134,16 @@ async def test_read_register_rejects_a_bad_address_without_a_server_error(hass: 
 
     from custom_components.solis_modbus.const import MODBUS_ILLEGAL_DATA_ADDRESS
 
-    controller.async_read_input_registers_with_exception = AsyncMock(
-        return_value=(None, MODBUS_ILLEGAL_DATA_ADDRESS)
-    )
+    controller.async_read_input_registers_with_exception = AsyncMock(return_value=(None, MODBUS_ILLEGAL_DATA_ADDRESS))
     await setup_services(hass, controller)
 
     with pytest.raises(ServiceValidationError) as err:
         await hass.services.async_call(
-            DOMAIN, "solis_read_register",
-            {"address": 44100, "count": 2}, blocking=True, return_response=True,
+            DOMAIN,
+            "solis_read_register",
+            {"address": 44100, "count": 2},
+            blocking=True,
+            return_response=True,
         )
 
     assert "44100" in str(err.value)
@@ -159,8 +160,11 @@ async def test_read_register_still_errors_when_the_read_simply_fails(hass: HomeA
 
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
-            DOMAIN, "solis_read_register",
-            {"address": 33169, "count": 2}, blocking=True, return_response=True,
+            DOMAIN,
+            "solis_read_register",
+            {"address": 33169, "count": 2},
+            blocking=True,
+            return_response=True,
         )
 
 
