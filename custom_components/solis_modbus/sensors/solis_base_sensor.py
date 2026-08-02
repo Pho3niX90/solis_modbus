@@ -109,10 +109,6 @@ class SolisBaseSensor:
             hv_battery_sensitive_regs = {33205, 33206, 33207, 43013, 43117}
             if _any_in(self.registrars, hv_battery_sensitive_regs):
                 self.min_value = 0
-                # get_step() only derives a step for %, kW and W, so anything else
-                # arrives as None. These registers include amp-denominated ones
-                # (33206/33207), where min(None, 0.1) raised and took the whole
-                # entry down on HV-battery inverters (#445, #446, #447).
                 self.step = 0.1 if self.step is None else min(self.step, 0.1)
 
         # RHI/RAI models: 1 <--> 1W (range: 0–30000)
