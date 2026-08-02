@@ -85,6 +85,8 @@ def controller():
     c.inverter_config.wattage_chosen = 8000
     c.async_read_input_register = AsyncMock(return_value=[0x0001, 0x86A0])
     c.async_read_holding_register = AsyncMock(return_value=[33])
+    c.async_read_input_registers_with_exception = AsyncMock(return_value=([0x0001, 0x86A0], None))
+    c.async_read_holding_registers_with_exception = AsyncMock(return_value=([33], None))
     c.async_write_holding_register = AsyncMock()
     return c
 
@@ -103,7 +105,7 @@ async def setup_services(hass, controller):
 async def test_read_register_service_returns_values(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
     response = await hass.services.async_call(DOMAIN, "solis_read_register", {"address": 33169, "count": 2}, blocking=True, return_response=True)
-    controller.async_read_input_register.assert_awaited_once_with(33169, 2)
+    controller.async_read_input_registers_with_exception.assert_awaited_once_with(33169, 2)
     assert response["values"] == [1, 0x86A0]
     assert response["hex"] == ["0x0001", "0x86A0"]
     assert response["u32_be"] == 100000
@@ -116,8 +118,54 @@ async def test_read_register_holding(hass: HomeAssistant, controller):
     response = await hass.services.async_call(
         DOMAIN, "solis_read_register", {"address": 43110, "register_type": "holding"}, blocking=True, return_response=True
     )
-    controller.async_read_holding_register.assert_awaited_once_with(43110, 1)
+    controller.async_read_holding_registers_with_exception.assert_awaited_once_with(43110, 1)
     assert response["values"] == [33]
+
+
+@pytest.mark.asyncio
+async def test_read_register_rejects_a_bad_address_without_a_server_error(hass: HomeAssistant, controller):
+    """Probing the wrong register type is a caller mistake, not a crash (#447).
+
+    Reading a holding register as "input" made the inverter reject the address,
+    which surfaced as an unhandled HTTP 500. It should be a validation error
+    naming the other register type instead.
+    """
+    from homeassistant.exceptions import ServiceValidationError
+
+    from custom_components.solis_modbus.const import MODBUS_ILLEGAL_DATA_ADDRESS
+
+    controller.async_read_input_registers_with_exception = AsyncMock(return_value=(None, MODBUS_ILLEGAL_DATA_ADDRESS))
+    await setup_services(hass, controller)
+
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(
+            DOMAIN,
+            "solis_read_register",
+            {"address": 44100, "count": 2},
+            blocking=True,
+            return_response=True,
+        )
+
+    assert "44100" in str(err.value)
+    assert "holding" in str(err.value), "should point the user at the other register type"
+
+
+@pytest.mark.asyncio
+async def test_read_register_still_errors_when_the_read_simply_fails(hass: HomeAssistant, controller):
+    """No exception code means a transport failure, which is not the caller's fault."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    controller.async_read_input_registers_with_exception = AsyncMock(return_value=(None, None))
+    await setup_services(hass, controller)
+
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            DOMAIN,
+            "solis_read_register",
+            {"address": 33169, "count": 2},
+            blocking=True,
+            return_response=True,
+        )
 
 
 @pytest.mark.asyncio

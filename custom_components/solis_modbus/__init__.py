@@ -28,6 +28,7 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
+    MODBUS_ILLEGAL_DATA_ADDRESS,
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
@@ -259,12 +260,22 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         register_type = call.data.get("register_type", "input")
         controller = _resolve_controller(call)
 
+        # Use the detailed variants so a Modbus exception code survives: an
+        # inverter rejecting the address is the caller's mistake (usually asking
+        # for a holding register as "input"), not a failure of the integration,
+        # and should not surface as an unhandled 500 (#447).
         if register_type == "holding":
-            values = await controller.async_read_holding_register(address, count)
+            values, exception_code = await controller.async_read_holding_registers_with_exception(address, count)
         else:
-            values = await controller.async_read_input_register(address, count)
+            values, exception_code = await controller.async_read_input_registers_with_exception(address, count)
 
         if values is None:
+            if exception_code == MODBUS_ILLEGAL_DATA_ADDRESS:
+                other = "input" if register_type == "holding" else "holding"
+                raise ServiceValidationError(
+                    f"The inverter has no {register_type} register at {address} (count {count}). "
+                    f'If you are probing a documented address, try register_type: "{other}".'
+                )
             raise HomeAssistantError(f"Read of {register_type} register {address} (count {count}) failed — see logs")
 
         response = {
