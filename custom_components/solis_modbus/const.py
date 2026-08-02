@@ -33,3 +33,7 @@ DEFAULT_BAUDRATE = 9600
 DEFAULT_BYTESIZE = 8
 DEFAULT_PARITY = "N"
 DEFAULT_STOPBITS = 1
+
+# Modbus exception code 2: the slave has no register at the requested address.
+# Distinguishes "you asked for the wrong thing" from "the read failed".
+MODBUS_ILLEGAL_DATA_ADDRESS = 2
