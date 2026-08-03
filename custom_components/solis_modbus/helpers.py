@@ -256,6 +256,31 @@ def group_in_poll_profile(group: dict, profile: str, include_battery: bool = Fal
     return True
 
 
+def registers_declared_by(groups) -> set[int]:
+    """Every register the given sensor groups actually poll."""
+    registers: set[int] = set()
+    for group in groups:
+        for entity in group.get("entities", []):
+            registers.update(int(r) for r in entity.get("register", []))
+    return registers
+
+
+def derived_sensor_is_supported(entity: dict, polled_registers: set[int], known_registers: set[int]) -> bool:
+    """True when every real source register of a derived sensor is being polled.
+
+    Derived entities are computed from other registers, so under a reduced profile
+    one whose sources are no longer polled would be created and then never receive
+    a value — the "created but permanently unknown" state profiles exist to avoid.
+
+    Their `register` lists mix real registers with synthetic ids (90006/90007) and
+    literal arguments (the 0/1 battery-direction flag), and neither is a register
+    any group declares. Intersecting with the known set is what separates them,
+    rather than guessing at numeric ranges.
+    """
+    sources = {int(r) for r in entity.get("register", [])} & known_registers
+    return sources <= polled_registers
+
+
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):
     """Attach a fresh SolisRuntimeData holding this controller to the entry."""
     from custom_components.solis_modbus.runtime import SolisRuntimeData

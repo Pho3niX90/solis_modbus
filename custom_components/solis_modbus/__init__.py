@@ -39,12 +39,14 @@ from .data_retrieval import DataRetrieval
 from .helpers import (
     combine_u32,
     combine_u32_le,
+    derived_sensor_is_supported,
     extreme_includes_battery,
     get_controller,
     get_poll_profile,
     group_in_poll_profile,
     iter_controllers,
     iter_platform_entities,
+    registers_declared_by,
     set_controller,
     split_s32,
     unique_id_generator,
@@ -574,6 +576,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             poll_profile = POLL_PROFILE_ESSENTIAL
 
         skipped_by_profile = 0
+        selected_groups = []
         for group in sensors:
             feature_requirement = group.get("feature_requirement", [])
             if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
@@ -585,6 +588,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 skipped_by_profile += 1
                 continue
 
+            selected_groups.append(group)
             controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
         if poll_profile != POLL_PROFILE_FULL:
@@ -593,6 +597,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 poll_profile,
                 skipped_by_profile,
                 len(controller._sensor_groups),
+            )
+
+        # Derived sensors are computed from registers other groups poll, so a
+        # reduced profile has to filter them too — otherwise e.g. Power Factor
+        # (33079-33082) survives into extreme mode and never receives a value.
+        polled_registers = registers_declared_by(selected_groups)
+        known_registers = registers_declared_by(sensors)
+        supported_derived = [entity for entity in sensors_derived if derived_sensor_is_supported(entity, polled_registers, known_registers)]
+
+        if poll_profile != POLL_PROFILE_FULL and len(supported_derived) != len(sensors_derived):
+            _LOGGER.info(
+                "Poll profile '%s': %d derived sensor(s) skipped, their source registers are not polled",
+                poll_profile,
+                len(sensors_derived) - len(supported_derived),
             )
 
         controller._derived_sensors = [
@@ -611,7 +629,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 category=entity.get("category", None),
                 unique_id=unique_id_generator(controller, entity.get("unique", "reserve")),
             )
-            for entity in sensors_derived
+            for entity in supported_derived
         ]
 
         set_controller(hass, controller, entry)
@@ -944,18 +962,26 @@ def _migrate_essential_only_to_poll_profile(hass: HomeAssistant, config_entry: C
     leftover `essential_only` in options would shadow a migrated data key and
     quietly keep the old behaviour.
     """
-    if CONF_POLL_PROFILE in {**config_entry.data, **config_entry.options}:
+    merged = {**config_entry.data, **config_entry.options}
+    existing = merged.get(CONF_POLL_PROFILE)
+    had_legacy_key = "essential_only" in config_entry.data or "essential_only" in config_entry.options
+
+    if existing is not None and not had_legacy_key:
         return
 
-    essential = {**config_entry.data, **config_entry.options}.get("essential_only", False)
-    profile = POLL_PROFILE_ESSENTIAL if essential else POLL_PROFILE_FULL
+    if existing is not None:
+        # Already on a profile, but a stale boolean is still present. Keep the
+        # chosen profile and drop the dead key rather than letting it linger.
+        profile = existing
+    else:
+        profile = POLL_PROFILE_ESSENTIAL if merged.get("essential_only", False) else POLL_PROFILE_FULL
 
     data = {k: v for k, v in config_entry.data.items() if k != "essential_only"}
     options = {k: v for k, v in config_entry.options.items() if k != "essential_only"}
     data[CONF_POLL_PROFILE] = profile
 
     hass.config_entries.async_update_entry(config_entry, data=data, options=options)
-    _LOGGER.info("Migrated essential_only=%s to poll_profile='%s'", essential, profile)
+    _LOGGER.info("Migrated essential_only=%s to poll_profile='%s'", merged.get("essential_only", False), profile)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

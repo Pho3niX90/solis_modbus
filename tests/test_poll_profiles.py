@@ -33,12 +33,14 @@ from custom_components.solis_modbus.const import (
     POLL_PROFILES,
 )
 from custom_components.solis_modbus.helpers import (
+    derived_sensor_is_supported,
     extreme_includes_battery,
     get_poll_profile,
     group_in_poll_profile,
     is_essential_only,
+    registers_declared_by,
 )
-from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
+from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors, hybrid_sensors_derived
 
 # Registers the extreme profile is specified to poll (#457): live PV, live
 # meter/CT, and the ONCE identity groups so the device still identifies itself.
@@ -158,6 +160,52 @@ class TestPollIntervalFloor:
             base({**common, "poll_interval_fast": 1})
 
 
+class TestDerivedSensorFiltering:
+    """Derived sensors are computed from other groups' registers.
+
+    Under a reduced profile they have to be filtered too, or they are created and
+    then never receive a value — the exact "created but permanently unknown" state
+    the profiles exist to avoid.
+    """
+
+    def _supported(self, profile, include_battery=False):
+        selected = [g for g in hybrid_sensors if group_in_poll_profile(g, profile, include_battery)]
+        polled = registers_declared_by(selected)
+        known = registers_declared_by(hybrid_sensors)
+        return {e["name"] for e in hybrid_sensors_derived if derived_sensor_is_supported(e, polled, known)}
+
+    def test_full_profile_keeps_every_derived_sensor(self):
+        assert self._supported(POLL_PROFILE_FULL) == {e["name"] for e in hybrid_sensors_derived}
+
+    def test_extreme_drops_derived_sensors_whose_sources_are_not_polled(self):
+        supported = self._supported(POLL_PROFILE_EXTREME)
+        # Power Factor reads 33079-33082 (group 33070), which extreme does not poll.
+        assert "Power Factor" not in supported
+        assert "Grid Power Net" not in supported  # 33263/33264, group 33251
+
+    def test_extreme_keeps_derived_sensors_built_on_polled_registers(self):
+        supported = self._supported(POLL_PROFILE_EXTREME)
+        # PV Power 1 reads 33049/33050 — squarely inside the live PV group.
+        assert "PV Power 1" in supported
+
+    def test_synthetic_and_literal_registers_do_not_block_a_derived_sensor(self):
+        # "Last Modbus Success" reads 90006, which no group declares; literal
+        # direction flags (0/1) are the same shape. Neither is a real source, so
+        # neither should exclude the entity.
+        assert "Last Modbus Success" in self._supported(POLL_PROFILE_EXTREME)
+
+    def test_battery_derived_sensors_follow_the_battery_opt_in(self):
+        without = self._supported(POLL_PROFILE_EXTREME, include_battery=False)
+        with_batt = self._supported(POLL_PROFILE_EXTREME, include_battery=True)
+        assert "Battery Power Net" not in without
+        assert "Battery Power Net" in with_batt
+
+    def test_reduced_profiles_never_keep_more_than_full(self):
+        full = self._supported(POLL_PROFILE_FULL)
+        for profile in (POLL_PROFILE_ESSENTIAL, POLL_PROFILE_EXTREME):
+            assert self._supported(profile) <= full
+
+
 class TestMigrationFromEssentialOnly:
     """v4 -> v5 folds the `essential_only` boolean into the profile select."""
 
@@ -242,3 +290,25 @@ class TestSchemaOptions:
         common = {"connection_type": "tcp", "inverter_serial": "T1", "slave": 1, "model": next(iter(SOLIS_MODELS))}
         with pytest.raises(vol.Invalid):
             schema({**common, CONF_POLL_PROFILE: "turbo"})
+
+
+def test_migration_strips_a_stale_boolean_from_an_already_migrated_entry():
+    """A v4 entry can hold both keys; the dead one must not survive.
+
+    Setup merges {**data, **options}, so leaving `essential_only` behind is the
+    same shadowing hazard the migration exists to remove.
+    """
+    from custom_components.solis_modbus import _migrate_essential_only_to_poll_profile
+
+    hass = MagicMock()
+    entry = _entry(data={CONF_POLL_PROFILE: POLL_PROFILE_EXTREME, "essential_only": True})
+
+    def update(target, **kwargs):
+        target.data = kwargs.get("data", target.data)
+        target.options = kwargs.get("options", target.options)
+
+    hass.config_entries.async_update_entry.side_effect = update
+    _migrate_essential_only_to_poll_profile(hass, entry)
+
+    assert entry.data[CONF_POLL_PROFILE] == POLL_PROFILE_EXTREME  # chosen profile preserved
+    assert "essential_only" not in entry.data
