@@ -205,6 +205,26 @@ class TestDerivedSensorFiltering:
         for profile in (POLL_PROFILE_ESSENTIAL, POLL_PROFILE_EXTREME):
             assert self._supported(profile) <= full
 
+    def test_derived_definitions_stay_disjoint_from_polled_groups(self):
+        """The filter's load-bearing assumption, pinned.
+
+        `registers_declared_by` walks polled groups only, so a derived entity's
+        own inputs can never be mistaken for evidence that its sources are being
+        read. That holds because the derived list is separate from the group list
+        — if a derived entity were ever moved into a group, the filter would start
+        silently keeping entities whose sources are not polled.
+        """
+        group_entity_names = {e.get("name") for g in hybrid_sensors for e in g.get("entities", [])}
+        derived_names = {d.get("name") for d in hybrid_sensors_derived}
+        assert not (group_entity_names & derived_names)
+
+        # Synthetic ids (90006/90007) and literal arguments (0/1) must stay absent
+        # from the group-declared set, or they would gate creation as if real.
+        known = registers_declared_by(hybrid_sensors)
+        derived_regs = {int(r) for d in hybrid_sensors_derived for r in d.get("register", [])}
+        assert not ({r for r in derived_regs if r >= 90000} & known)
+        assert not ({r for r in derived_regs if r < 1000} & known)
+
 
 class TestMigrationFromEssentialOnly:
     """v4 -> v5 folds the `essential_only` boolean into the profile select."""
