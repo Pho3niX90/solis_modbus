@@ -52,7 +52,6 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._attr_native_value = sensor.default
         self._attr_mode = NumberMode.AUTO
         self._attr_native_min_value = sensor.min_value
-        self._attr_native_max_value = sensor.max_value
 
         self._attr_native_step = sensor.step
         self._attr_step = sensor.step
@@ -74,8 +73,39 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
                     self.handle_modbus_update,
                 )
             )
+
+        # Battery-current setpoints take their ceiling from a BMS mirror register that
+        # this entity doesn't otherwise read; follow it so the advertised max refreshes
+        # when the battery reports a new limit.
+        mirror = getattr(self.base_sensor, "battery_current_mirror_register", None)
+        if isinstance(mirror, int):
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    self._hass,
+                    register_update_signal(self.base_sensor.controller, mirror),
+                    self.handle_max_mirror_update,
+                )
+            )
+
         if not self.base_sensor.enabled:
             self._attr_available = False
+
+    @property
+    def native_max_value(self) -> float:
+        """Read the ceiling from the base sensor on every access.
+
+        ``RestoreNumber`` restores the *value*, not the bounds, and the BMS mirrors that
+        bound the battery-current setpoints land long after ``__init__`` — so the max
+        can't be a value frozen at construction.
+        """
+        return self.base_sensor.max_value
+
+    @callback
+    def handle_max_mirror_update(self, data):
+        """The BMS reported a new current limit — re-publish the bounds."""
+        if not is_correct_controller(self.base_sensor.controller, str(data.get(CONTROLLER)), int(data.get(SLAVE))):
+            return
+        self.schedule_update_ha_state()
 
     def adjust_min_max_step(self, min_wanted: float | None, max_wanted: float | None, step_wanted: float | None):
         # float(43016) & equalization(43017) voltages, and rated capacity(43019)
