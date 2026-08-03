@@ -68,3 +68,5 @@ dmypy.json
 # Ruff
 .ruff_cache/
 /.idea/
+/docs/proprietary_solis/
+/docs/proprietary_solis/

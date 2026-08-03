@@ -49,6 +49,15 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 **Poll Interval**:
 - Customize how frequently sensors update. Faster polling provides more real-time data but increases Modbus load.
 
+### What's new in 4.2.3
+
+**Fix for [#452](https://github.com/Pho3niX90/solis_modbus/issues/452)** — v4.2.0 could create duplicate entities (original `Unavailable`, new live copy often with a location prefix in the `entity_id`) when sensor definition dicts changed.
+
+- **4.1.6 → 4.2.3**: no duplicates; `entity_id`s stay the same; only internal `unique_id`s are rewritten.
+- **4.2.0–4.2.2 → 4.2.3**: original `entity_id`s restored; orphan duplicates removed. Recorder history from the live duplicate is *intended* to follow via Home Assistant’s entity rename (see caveats in the [Migration Guide](https://solis-modbus.readthedocs.io/en/latest/migration.html)).
+- Sensors that only existed from v4.2.0 onward (no pre-duplicate twin) keep their current `entity_id`, including any location prefix from the device name at first registration.
+- If Energy dashboard was pointed at a location-prefixed duplicate, re-select the restored original once.
+
 ### What's new in 4.2.0
 
 **New features**
@@ -87,6 +96,8 @@ As of version 4.0+, the integration uses the **Inverter Serial Number** to gener
     - The integration will attempt to migrate your existing entities (which might use Host ID or the deprecated "Identification" string) to the new Serial Number format automatically on startup.
     - If your configuration is missing the Serial Number, migration will be **deferred**, and a persistent notification will ask you to Reconfigure the integration to add it.
     - **No history is lost** during this migration.
+
+See also **v4.2.3** above and the full [Migration Guide](https://solis-modbus.readthedocs.io/en/latest/migration.html) for the [#452](https://github.com/Pho3niX90/solis_modbus/issues/452) duplicate-entity fix.
 
 **Deprecated Settings**:
 - **Identification**: This field has been removed from the setup form. If you previously used it, the integration will still read it internally to migrate your old entities, but it is no longer user-configurable.
