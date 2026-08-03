@@ -157,35 +157,56 @@ class TestDictUniqueIdMigration:
 
     @patch("homeassistant.helpers.entity_registry.async_entries_for_config_entry")
     @patch("homeassistant.helpers.entity_registry.async_get")
-    async def test_single_broken_rewrites_unique_id_keeps_entity_id(self, mock_get_reg, mock_entries):
-        """4.1.6-style: one dict UID → stable; entity_id unchanged."""
+    async def test_upgrade_416_to_423_rewrites_unique_id_keeps_entity_id(self, mock_get_reg, mock_entries):
+        """4.1.6 → 4.2.3: one entity; rewrite unique_id only; no rename, no duplicates.
+
+        Pre-4.2.0 installs have a single dict-stringified unique_id per sensor.
+        Migration must keep that entity_id so dashboards/automations keep working.
+        """
         mock_get_reg.return_value = self.registry
+        original_entity_id = "sensor.solis_s6_eh1p_backup_load_total_energy"
         broken = _broken_uid("SN123456", with_data_type=False)
-        ent = _make_registry_entry("sensor.solis_s6_eh1p_backup_load_total_energy", broken)
+        ent = _make_registry_entry(original_entity_id, broken)
         self.live[ent.entity_id] = ent
         mock_entries.return_value = [ent]
 
         await async_migrate_dict_unique_ids(self.hass, self.entry)
 
-        assert "sensor.solis_s6_eh1p_backup_load_total_energy" in self.live
-        assert self.live["sensor.solis_s6_eh1p_backup_load_total_energy"].unique_id == (
-            f"{DOMAIN}_SN123456_{UNIQUE_KEY}"
+        assert list(self.live.keys()) == [original_entity_id], "must not create a second entity"
+        survivor = self.live[original_entity_id]
+        assert survivor.entity_id == original_entity_id
+        assert survivor.unique_id == f"{DOMAIN}_SN123456_{UNIQUE_KEY}"
+        self.registry.async_remove.assert_not_called()
+        self.registry.async_update_entity.assert_called_once_with(
+            original_entity_id,
+            new_unique_id=f"{DOMAIN}_SN123456_{UNIQUE_KEY}",
         )
+        assert "new_entity_id" not in self.registry.async_update_entity.call_args.kwargs
 
     @patch("homeassistant.helpers.entity_registry.async_entries_for_config_entry")
     @patch("homeassistant.helpers.entity_registry.async_get")
-    async def test_duplicate_renames_newest_onto_original(self, mock_get_reg, mock_entries):
-        """4.2.x duplicate: remove oldest, rename newest onto original entity_id."""
+    async def test_upgrade_422_to_423_restores_original_removes_location_prefixed_ghost(
+        self, mock_get_reg, mock_entries
+    ):
+        """4.2.2 → 4.2.3: restore original entity_id; remove location-prefixed duplicate.
+
+        After v4.2.0, the pre-dupe (oldest) entity_id is unavailable and a
+        location-prefixed duplicate holds live values. Migration frees the
+        original entity_id, renames the live row onto it (recorder follows),
+        and leaves exactly one entity with the stable unique_id.
+        """
         mock_get_reg.return_value = self.registry
+        original_entity_id = "sensor.solis_s6_eh1p_backup_load_total_energy"
+        location_prefixed_id = "sensor.kallare_solis_s6_eh1p_backup_load_total_energy"
         old_uid = _broken_uid("SN123456", with_data_type=False)
         new_uid = _broken_uid("SN123456", with_data_type=True)
         oldest = _make_registry_entry(
-            "sensor.solis_s6_eh1p_backup_load_total_energy",
+            original_entity_id,
             old_uid,
             created_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
         newest = _make_registry_entry(
-            "sensor.kallare_solis_s6_eh1p_backup_load_total_energy",
+            location_prefixed_id,
             new_uid,
             created_at=datetime(2026, 8, 1, tzinfo=UTC),
         )
@@ -195,15 +216,16 @@ class TestDictUniqueIdMigration:
 
         await async_migrate_dict_unique_ids(self.hass, self.entry)
 
-        assert "sensor.kallare_solis_s6_eh1p_backup_load_total_energy" not in self.live
-        assert "sensor.solis_s6_eh1p_backup_load_total_energy" in self.live
-        survivor = self.live["sensor.solis_s6_eh1p_backup_load_total_energy"]
+        assert location_prefixed_id not in self.live, "location-prefixed ghost must be gone"
+        assert list(self.live.keys()) == [original_entity_id], "original entity_id must be restored as sole survivor"
+        survivor = self.live[original_entity_id]
+        assert survivor.entity_id == original_entity_id
         assert survivor.unique_id == f"{DOMAIN}_SN123456_{UNIQUE_KEY}"
-        self.registry.async_remove.assert_called_once_with("sensor.solis_s6_eh1p_backup_load_total_energy")
+        self.registry.async_remove.assert_called_once_with(original_entity_id)
         self.registry.async_update_entity.assert_called_once_with(
-            "sensor.kallare_solis_s6_eh1p_backup_load_total_energy",
+            location_prefixed_id,
             new_unique_id=f"{DOMAIN}_SN123456_{UNIQUE_KEY}",
-            new_entity_id="sensor.solis_s6_eh1p_backup_load_total_energy",
+            new_entity_id=original_entity_id,
         )
 
     @patch("homeassistant.helpers.entity_registry.async_entries_for_config_entry")
