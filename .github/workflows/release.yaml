@@ -2,6 +2,15 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: Release type
+        required: true
+        type: choice
+        default: release
+        options:
+          - release
+          - prerelease
 
 env:
   COMPONENT_NAME: solis_modbus
@@ -48,6 +57,7 @@ jobs:
 
           echo "Current version: $current"
           echo "Latest tag: $latest"
+          echo "Release type: ${{ inputs.release_type }}"
 
           # Check if latest tag is a valid SemVer string
           if ! python -c "import semver; semver.VersionInfo.parse('$latest')" > /dev/null 2>&1; then
@@ -92,7 +102,9 @@ jobs:
           name: v${{ env.version }}
           token: ${{ secrets.PAT }}
           generate_release_notes: true
+          prerelease: ${{ inputs.release_type == 'prerelease' }}
+          make_latest: ${{ inputs.release_type == 'release' }}
 
       - name: 🏷️ Update latest tag
-        if: env.is_higher_version == 'true'
+        if: env.is_higher_version == 'true' && inputs.release_type == 'release'
         uses: EndBug/latest-tag@latest
