@@ -9,9 +9,15 @@ from homeassistant.util import dt as dt_utils
 
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import (
+    CONF_EXTREME_INCLUDE_BATTERY,
+    CONF_POLL_PROFILE,
     CONN_TYPE_TCP,
     CONTROLLER,
     DRIFT_COUNTER,
+    POLL_PROFILE_ESSENTIAL,
+    POLL_PROFILE_EXTREME,
+    POLL_PROFILE_FULL,
+    POLL_PROFILES,
     REGISTER,
     SLAVE,
     VALUE,
@@ -205,14 +211,49 @@ def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, dis
             ent.schedule_update_ha_state()
 
 
-def is_essential_only(config_entry: ConfigEntry) -> bool:
-    """True when the entry runs in essential-only (read-only) polling mode.
+def get_poll_profile(config_entry: ConfigEntry) -> str:
+    """Resolve the entry's poll profile, honouring the pre-#457 boolean.
 
-    In that mode the 43xxx holding groups are never polled, so writable entities
+    Entries migrate to `poll_profile` on load, but options are merged over data at
+    read time and a stale `essential_only: True` option could otherwise be silently
+    dropped. Falling back to the boolean keeps a half-migrated entry polling the
+    subset the user actually chose.
+    """
+    config = {**config_entry.data, **config_entry.options}
+    profile = config.get(CONF_POLL_PROFILE)
+    if profile in POLL_PROFILES:
+        return profile
+    return POLL_PROFILE_ESSENTIAL if config.get("essential_only", False) else POLL_PROFILE_FULL
+
+
+def is_essential_only(config_entry: ConfigEntry) -> bool:
+    """True when the entry polls a reduced set, i.e. any profile but full.
+
+    Neither reduced profile polls the 43xxx holding groups, so writable entities
     would sit permanently unknown — the write platforms skip creating them
     (issue #149: a switch to expose only read-only entities).
     """
-    return {**config_entry.data, **config_entry.options}.get("essential_only", False)
+    return get_poll_profile(config_entry) != POLL_PROFILE_FULL
+
+
+def extreme_includes_battery(config_entry: ConfigEntry) -> bool:
+    """True when extreme mode should also poll the battery/load group.
+
+    Opt-in because it costs a third Modbus frame: worth it for battery-aware
+    export automations, wasted for pure meter-vs-voltage control loops.
+    """
+    return {**config_entry.data, **config_entry.options}.get(CONF_EXTREME_INCLUDE_BATTERY, False)
+
+
+def group_in_poll_profile(group: dict, profile: str, include_battery: bool = False) -> bool:
+    """True when a sensor group should be polled under the given profile."""
+    if profile == POLL_PROFILE_ESSENTIAL:
+        return bool(group.get("essential", False))
+    if profile == POLL_PROFILE_EXTREME:
+        if group.get("extreme", False):
+            return True
+        return include_battery and bool(group.get("extreme_battery", False))
+    return True
 
 
 def set_controller(hass: HomeAssistant, controller, config_entry: ConfigEntry):

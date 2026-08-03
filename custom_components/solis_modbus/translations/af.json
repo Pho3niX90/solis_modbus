@@ -25,7 +25,8 @@
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
-          "essential_only": "Slegs noodsaaklike sensors (verminder datalogger-las)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "identification": "Identifikasie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -55,7 +56,8 @@
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
-          "essential_only": "Slegs noodsaaklike sensors (verminder datalogger-las)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "identification": "Identifikasie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -76,7 +78,8 @@
       "invalid_model": "Ongeldige of onbekende omsettermodel. Kies asseblief 'n model uit die lys.",
       "serial_required": "Omsetter-reeksnommer word vereis.",
       "model_required": "Kies asseblief 'n omsettermodel.",
-      "tcp_port_closed": "Niks aanvaar Modbus-verbindings op daardie adres en poort nie. Die toestel kan bereikbaar wees (dit antwoord op ping) maar bedien nie Modbus nie — kontroleer dat Modbus TCP op die datalogger geaktiveer is. Onlangse Solis-logger-firmware sluit bekend plaaslike poort 502; 'n RS485-na-TCP-brug is 'n omweg."
+      "tcp_port_closed": "Niks aanvaar Modbus-verbindings op daardie adres en poort nie. Die toestel kan bereikbaar wees (dit antwoord op ping) maar bedien nie Modbus nie — kontroleer dat Modbus TCP op die datalogger geaktiveer is. Onlangse Solis-logger-firmware sluit bekend plaaslike poort 502; 'n RS485-na-TCP-brug is 'n omweg.",
+      "poll_interval_below_floor": "Vinnige peilinterval is onder die minimum vir die gekose peilprofiel. Slegs die uiterste profiel laat intervalle onder 10s toe (minimum 2s)."
     },
     "abort": {
       "already_configured": "Hierdie toestel is reeds gekonfigureer."
@@ -91,7 +94,8 @@
           "poll_interval_fast": "Vinnige polsinterval (sekondes)",
           "poll_interval_normal": "Normale polsinterval (sekondes)",
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
-          "essential_only": "Slegs noodsaaklike sensors (verminder datalogger-las)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "model": "Omsettermodel",
           "has_v2": "Opgedateer na V2-firmware",
           "has_pv": "Het sonkrag (PV)",
@@ -107,6 +111,9 @@
           "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
       }
+    },
+    "error": {
+      "poll_interval_below_floor": "Vinnige peilinterval is onder die minimum vir die gekose peilprofiel. Slegs die uiterste profiel laat intervalle onder 10s toe (minimum 2s)."
     }
   },
   "services": {

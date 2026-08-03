@@ -25,7 +25,8 @@
           "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
           "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
           "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
-          "essential_only": "Solo sensores esenciales (reduce la carga del datalogger)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "identification": "Nombre de identificación",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -55,7 +56,8 @@
           "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
           "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
           "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
-          "essential_only": "Solo sensores esenciales (reduce la carga del datalogger)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "identification": "Nombre de identificación",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -76,7 +78,8 @@
       "invalid_model": "Modelo de inversor no válido o desconocido. Seleccione un modelo de la lista.",
       "serial_required": "Se requiere el número de serie del inversor.",
       "model_required": "Seleccione un modelo de inversor.",
-      "tcp_port_closed": "Nada acepta conexiones Modbus en esa dirección y puerto. El dispositivo puede ser accesible (responde al ping) pero no está sirviendo Modbus — compruebe que Modbus TCP esté habilitado en el registrador. Se sabe que el firmware reciente del registrador Solis cierra el puerto local 502; un puente RS485 a TCP es una solución alternativa."
+      "tcp_port_closed": "Nada acepta conexiones Modbus en esa dirección y puerto. El dispositivo puede ser accesible (responde al ping) pero no está sirviendo Modbus — compruebe que Modbus TCP esté habilitado en el registrador. Se sabe que el firmware reciente del registrador Solis cierra el puerto local 502; un puente RS485 a TCP es una solución alternativa.",
+      "poll_interval_below_floor": "El intervalo de sondeo rápido está por debajo del mínimo para el perfil seleccionado. Solo el perfil extremo permite intervalos inferiores a 10s (mínimo 2s)."
     },
     "abort": {
       "already_configured": "Este dispositivo ya está configurado."
@@ -91,7 +94,8 @@
           "poll_interval_fast": "Intervalo de sondeo rápido (segundos)",
           "poll_interval_normal": "Intervalo de sondeo normal (segundos)",
           "poll_interval_slow": "Intervalo de sondeo lento (segundos)",
-          "essential_only": "Solo sensores esenciales (reduce la carga del datalogger)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "model": "Modelo del inversor",
           "has_v2": "Actualizado al Firmware V2",
           "has_pv": "Tiene energía solar (PV)",
@@ -107,6 +111,9 @@
           "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)"
         }
       }
+    },
+    "error": {
+      "poll_interval_below_floor": "El intervalo de sondeo rápido está por debajo del mínimo para el perfil seleccionado. Solo el perfil extremo permite intervalos inferiores a 10s (mínimo 2s)."
     }
   },
   "services": {

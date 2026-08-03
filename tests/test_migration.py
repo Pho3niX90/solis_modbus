@@ -59,7 +59,7 @@ class TestMigration:
         result = await async_migrate_entry(self.hass, self.entry)
 
         assert result is True
-        assert self.entry.version == 4
+        assert self.entry.version == 5
         self.hass.config_entries.async_update_entry.assert_any_call(self.entry, version=3)
         self.hass.config_entries.async_update_entry.assert_any_call(self.entry, version=4)
 
@@ -83,7 +83,7 @@ class TestMigration:
         result = await async_migrate_entry(self.hass, self.entry)
 
         assert result is True
-        assert self.entry.version == 4
+        assert self.entry.version == 5
 
     @patch("homeassistant.helpers.entity_registry.async_get")
     async def test_missing_serial(self, mock_get_registry):
@@ -296,7 +296,7 @@ class TestDictUniqueIdMigration:
         result = await async_migrate_entry(self.hass, self.entry)
 
         assert result is True
-        assert self.entry.version == 4
+        assert self.entry.version == 5
 
 
 class TestUniqueIdCallSite:

@@ -18,6 +18,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_INVERTER_SERIAL,
     CONF_PARITY,
+    CONF_POLL_PROFILE,
     CONF_SERIAL_PORT,
     CONF_SLAVE,
     CONF_STOPBITS,
@@ -29,13 +30,19 @@ from .const import (
     DEFAULT_STOPBITS,
     DOMAIN,
     MODBUS_ILLEGAL_DATA_ADDRESS,
+    POLL_PROFILE_ESSENTIAL,
+    POLL_PROFILE_EXTREME,
+    POLL_PROFILE_FULL,
 )
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
 from .helpers import (
     combine_u32,
     combine_u32_le,
+    extreme_includes_battery,
     get_controller,
+    get_poll_profile,
+    group_in_poll_profile,
     iter_controllers,
     iter_platform_entities,
     set_controller,
@@ -554,8 +561,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # call async_unload_entry when async_setup_entry raises).
     try:
         controller._sensor_groups = []
-        essential_only = config.get("essential_only", False)
-        skipped_essential = 0
+        poll_profile = get_poll_profile(entry)
+        include_battery = extreme_includes_battery(entry)
+
+        # A profile that matches nothing would set the entry up with no sensors at
+        # all, which reads as a broken integration. Extreme currently only maps the
+        # hybrid groups, so fall back rather than silently produce an empty entry.
+        if poll_profile == POLL_PROFILE_EXTREME and not any(group.get("extreme") for group in sensors):
+            _LOGGER.warning(
+                "Extreme poll profile is not mapped for this inverter type yet; falling back to essential-only polling",
+            )
+            poll_profile = POLL_PROFILE_ESSENTIAL
+
+        skipped_by_profile = 0
         for group in sensors:
             feature_requirement = group.get("feature_requirement", [])
             if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
@@ -563,16 +581,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
                 continue
 
-            if essential_only and not group.get("essential", False):
-                skipped_essential += 1
+            if not group_in_poll_profile(group, poll_profile, include_battery):
+                skipped_by_profile += 1
                 continue
 
             controller._sensor_groups.append(SolisSensorGroup(hass=hass, definition=group, controller=controller, identification=identification))
 
-        if essential_only:
+        if poll_profile != POLL_PROFILE_FULL:
             _LOGGER.info(
-                "Essential-only polling enabled: %d sensor group(s) skipped, %d remaining (reduces datalogger load)",
-                skipped_essential,
+                "Poll profile '%s' active: %d sensor group(s) skipped, %d remaining (reduces datalogger load)",
+                poll_profile,
+                skipped_by_profile,
                 len(controller._sensor_groups),
             )
 
@@ -910,8 +929,33 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         await async_migrate_dict_unique_ids(hass, config_entry)
         hass.config_entries.async_update_entry(config_entry, version=4)
 
+    if config_entry.version == 4:
+        _migrate_essential_only_to_poll_profile(hass, config_entry)
+        hass.config_entries.async_update_entry(config_entry, version=5)
+
     _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
+
+
+def _migrate_essential_only_to_poll_profile(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Fold the `essential_only` boolean into the `poll_profile` select (#457).
+
+    Both data and options are rewritten: setup merges {**data, **options}, so a
+    leftover `essential_only` in options would shadow a migrated data key and
+    quietly keep the old behaviour.
+    """
+    if CONF_POLL_PROFILE in {**config_entry.data, **config_entry.options}:
+        return
+
+    essential = {**config_entry.data, **config_entry.options}.get("essential_only", False)
+    profile = POLL_PROFILE_ESSENTIAL if essential else POLL_PROFILE_FULL
+
+    data = {k: v for k, v in config_entry.data.items() if k != "essential_only"}
+    options = {k: v for k, v in config_entry.options.items() if k != "essential_only"}
+    data[CONF_POLL_PROFILE] = profile
+
+    hass.config_entries.async_update_entry(config_entry, data=data, options=options)
+    _LOGGER.info("Migrated essential_only=%s to poll_profile='%s'", essential, profile)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

@@ -25,7 +25,8 @@
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
-          "essential_only": "Capteurs essentiels uniquement (réduit la charge du datalogger)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "identification": "Nom d'identification",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -55,7 +56,8 @@
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
-          "essential_only": "Capteurs essentiels uniquement (réduit la charge du datalogger)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "identification": "Nom d'identification",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -76,7 +78,8 @@
       "invalid_model": "Modèle d'onduleur invalide ou inconnu. Veuillez sélectionner un modèle dans la liste.",
       "serial_required": "Le numéro de série de l'onduleur est requis.",
       "model_required": "Veuillez sélectionner un modèle d'onduleur.",
-      "tcp_port_closed": "Rien n'accepte les connexions Modbus sur cette adresse et ce port. L'appareil est peut-être joignable (il répond au ping) mais ne sert pas Modbus — vérifiez que Modbus TCP est activé sur l'enregistreur. Les firmwares récents des enregistreurs Solis sont connus pour fermer le port local 502 ; un pont RS485 vers TCP est une solution de contournement."
+      "tcp_port_closed": "Rien n'accepte les connexions Modbus sur cette adresse et ce port. L'appareil est peut-être joignable (il répond au ping) mais ne sert pas Modbus — vérifiez que Modbus TCP est activé sur l'enregistreur. Les firmwares récents des enregistreurs Solis sont connus pour fermer le port local 502 ; un pont RS485 vers TCP est une solution de contournement.",
+      "poll_interval_below_floor": "L'intervalle d'interrogation rapide est inférieur au minimum pour le profil sélectionné. Seul le profil extrême autorise des intervalles inférieurs à 10s (minimum 2s)."
     },
     "abort": {
       "already_configured": "Cet appareil est déjà configuré."
@@ -91,7 +94,8 @@
           "poll_interval_fast": "Intervalle d'interrogation rapide (secondes)",
           "poll_interval_normal": "Intervalle d'interrogation normal (secondes)",
           "poll_interval_slow": "Intervalle d'interrogation lent (secondes)",
-          "essential_only": "Capteurs essentiels uniquement (réduit la charge du datalogger)",
+          "poll_profile": "Poll profile (how much of the register map is polled)",
+          "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
           "model": "Modèle d'onduleur",
           "has_v2": "Mise à jour vers le firmware V2",
           "has_pv": "Possède un panneau solaire (PV)",
@@ -107,6 +111,9 @@
           "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }
       }
+    },
+    "error": {
+      "poll_interval_below_floor": "L'intervalle d'interrogation rapide est inférieur au minimum pour le profil sélectionné. Seul le profil extrême autorise des intervalles inférieurs à 10s (minimum 2s)."
     }
   },
   "services": {
