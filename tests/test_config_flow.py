@@ -156,7 +156,7 @@ async def test_options_flow_suggestions_use_merged_data_and_options(hass: HomeAs
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="SNOPT1",
-        version=3,
+        version=4,
         data={
             "connection_type": CONN_TYPE_TCP,
             "inverter_serial": "SNOPT1",

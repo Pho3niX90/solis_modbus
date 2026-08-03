@@ -137,7 +137,7 @@ def clean_identification(iden: str | None) -> str | None:
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
-    VERSION = 3
+    VERSION = 4
     MINOR_VERSION = 0
 
     def __init__(self):

@@ -42,7 +42,7 @@ def make_entry(controller):
     entry = MagicMock()
     entry.data = {"host": "1.2.3.4", "inverter_serial": "SN1234567890", "model": "S6-EH1P"}
     entry.options = {}
-    entry.version = 3
+    entry.version = 4
     entry.minor_version = 0
     entry.unique_id = "SN1234567890"
     entry.runtime_data = SolisRuntimeData(controller=controller)
