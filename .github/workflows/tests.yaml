@@ -10,12 +10,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      # Write only on trusted pushes so auto-commit can push format fixes.
+      # Pull requests stay read-only.
+      contents: ${{ github.event_name == 'push' && 'write' || 'read' }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
         with:
+          # Branch ref required for auto-commit on push; PR uses head ref for the PR branch.
           ref: ${{ github.head_ref || github.ref_name }}
+          # Do not persist a write-capable token on pull_request jobs.
+          persist-credentials: ${{ github.event_name == 'push' }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -33,10 +38,16 @@ jobs:
       - name: Run linter
         run: uv run ruff check
 
+      - name: Check formatting
+        if: github.event_name == 'pull_request'
+        run: uv run ruff format --check
+
       - name: Format
+        if: github.event_name == 'push'
         run: uv run ruff format
 
       - name: Commit formatting fixes
+        if: github.event_name == 'push'
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_message: "style: apply ruff format"
