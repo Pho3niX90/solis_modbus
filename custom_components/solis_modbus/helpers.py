@@ -36,7 +36,16 @@ def hex_to_ascii(hex_value):
 
 
 def unique_id_generator(controller, third_value, fourth_value=None):
-    # new method to generate unique id
+    """Build a stable unique id from serial/identification/host + key parts.
+
+    ``third_value`` must be a string key (or register). Passing a full entity
+    definition dict was a historical bug that embedded ``str(dict)`` in the id;
+    dicts are accepted only as a safety net and reduced to their ``unique`` key.
+    """
+    if isinstance(third_value, dict):
+        _LOGGER.warning("unique_id_generator received an entity dict; use entity.get('unique') instead")
+        third_value = third_value.get("unique", "reserve")
+
     if fourth_value is None:
         if controller.device_serial_number is not None:
             return f"{DOMAIN}_{controller.device_serial_number}_{third_value}"

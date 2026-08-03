@@ -50,6 +50,28 @@ class TestUniqueIdGenerator(unittest.TestCase):
         expected_id = f"{DOMAIN}_SN123456_test_sensor"
         self.assertEqual(unique_id, expected_id, "Serial Number should take precedence over Identification")
 
+    def test_dict_argument_extracts_unique_key(self):
+        """#452 safety net: dict args must not stringify the whole definition."""
+        self.controller.device_serial_number = "SN123456"
+        entity = {
+            "name": "Backup Load Total Energy",
+            "unique": "solis_modbus_inverter_backup_total_energy",
+            "register": ["33590", "33591"],
+            "data_type": "U32",
+        }
+        unique_id = unique_id_generator(self.controller, entity)
+        self.assertEqual(unique_id, f"{DOMAIN}_SN123456_solis_modbus_inverter_backup_total_energy")
+        self.assertNotIn("{", unique_id)
+        self.assertNotIn("data_type", unique_id)
+
+    def test_dict_argument_stable_when_keys_added(self):
+        """Adding definition keys must not change the generated unique_id."""
+        self.controller.device_serial_number = "SN123456"
+        key = "solis_modbus_inverter_backup_total_energy"
+        before = unique_id_generator(self.controller, {"unique": key})
+        after = unique_id_generator(self.controller, {"unique": key, "data_type": "U32", "category": "LOAD"})
+        self.assertEqual(before, after)
+
 
 class TestRegisterCacheKey(unittest.TestCase):
     def test_parallel_slaves_distinct(self):

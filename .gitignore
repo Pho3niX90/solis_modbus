@@ -67,3 +67,4 @@ dmypy.json
 
 # Ruff
 .ruff_cache/
+/.idea/

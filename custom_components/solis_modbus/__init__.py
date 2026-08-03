@@ -754,6 +754,145 @@ async def async_migrate_to_serial_ids(hass: HomeAssistant, entry: ConfigEntry) -
     return True
 
 
+def _broken_dict_unique_id_matches(unique_id: str, unique_key: str) -> bool:
+    """True when unique_id is a dict-stringified form for this unique key (#452)."""
+    return f"'unique': '{unique_key}'" in unique_id
+
+
+def _entity_sort_key(entry):
+    """Oldest first; UIDs without data_type sort before those that embed it."""
+    created = getattr(entry, "created_at", None)
+    uid = entry.unique_id or ""
+    has_data_type = "'data_type'" in uid
+    return (created is None, created, has_data_type, entry.entity_id)
+
+
+def _iter_sensor_unique_keys(sensors) -> list[str]:
+    keys: list[str] = []
+    for group in sensors:
+        for entity in group.get("entities", []):
+            if entity.get("type") == "reserve":
+                continue
+            uid_key = entity.get("unique")
+            if uid_key:
+                keys.append(uid_key)
+    return keys
+
+
+async def async_migrate_dict_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Rewrite dict-stringified unique_ids to stable keys; restore original entity_ids.
+
+    Issue #452: SolisSensorGroup passed the whole entity dict into unique_id_generator,
+    so definition changes (e.g. data_type=U32 in v4.2.0) created duplicate entities.
+    For duplicates we remove the oldest registry row (frees the original entity_id,
+    recorder history for that id remains) then rename the newest onto that entity_id
+    with the stable unique_id so HA's rename migration carries post-upgrade history.
+    """
+    import homeassistant.helpers.entity_registry as er
+
+    config = {**entry.data, **entry.options}
+    inverter_serial = config.get(CONF_INVERTER_SERIAL)
+    host = config.get("host")
+    identification = config.get("identification")
+
+    from types import SimpleNamespace
+
+    controller = SimpleNamespace()
+    controller.device_serial_number = inverter_serial
+    controller.identification = identification
+    controller.host = host
+
+    inverter_model = config.get("model")
+    if inverter_model is None:
+        old_type = config.get("type", "hybrid")
+        inverter_model = "S6-EH3P" if old_type == "hybrid" else ("WAVESHARE" if old_type == "hybrid-waveshare" else "S6-GR1P")
+
+    inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
+    if inverter_template is None:
+        _LOGGER.warning("Dict unique_id migration skipped: unknown model %s", inverter_model)
+        return True
+
+    user_options = inverter_options_from_config(config, inverter_template)
+    inverter_config = inverter_template.clone_with_options(user_options, config.get("connection", "S2_WL_ST"))
+    if inverter_config.type in [InverterType.STRING, InverterType.GRID]:
+        from .sensor_data.string_sensors import string_sensors as sensors
+    else:
+        from .sensor_data.hybrid_sensors import hybrid_sensors as sensors
+
+    unique_keys = _iter_sensor_unique_keys(sensors)
+    ent_reg = er.async_get(hass)
+    platforms = (Platform.SENSOR, Platform.NUMBER)
+
+    # Index this config entry's entities once per platform.
+    by_platform: dict[str, list] = {p: [] for p in platforms}
+    for ent in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+        if ent.domain in by_platform:
+            by_platform[ent.domain].append(ent)
+
+    for platform in platforms:
+        entries = by_platform[platform]
+        for unique_key in unique_keys:
+            correct_uid = unique_id_generator(controller, unique_key)
+            matches = [e for e in entries if e.unique_id == correct_uid or _broken_dict_unique_id_matches(e.unique_id or "", unique_key)]
+            if not matches:
+                continue
+
+            # Drop stale refs after removals within this loop
+            matches = [e for e in matches if ent_reg.async_get(e.entity_id) is not None]
+            if not matches:
+                continue
+
+            if len(matches) == 1:
+                sole = matches[0]
+                if sole.unique_id != correct_uid:
+                    try:
+                        _LOGGER.info(
+                            "Migrating dict unique_id for %s -> %s",
+                            sole.entity_id,
+                            correct_uid,
+                        )
+                        ent_reg.async_update_entity(sole.entity_id, new_unique_id=correct_uid)
+                    except ValueError as err:
+                        _LOGGER.error("Dict unique_id migration failed for %s: %s", sole.entity_id, err)
+                continue
+
+            matches_sorted = sorted(matches, key=_entity_sort_key)
+            oldest = matches_sorted[0]
+            newest = matches_sorted[-1]
+            original_entity_id = oldest.entity_id
+            newest_entity_id = newest.entity_id
+
+            # Remove oldest and any middle ghosts to free original entity_id.
+            for ghost in matches_sorted[:-1]:
+                _LOGGER.info(
+                    "Removing duplicate/orphan entity %s (unique_id=%s) to restore %s",
+                    ghost.entity_id,
+                    ghost.unique_id,
+                    original_entity_id,
+                )
+                ent_reg.async_remove(ghost.entity_id)
+
+            try:
+                _LOGGER.info(
+                    "Restoring %s onto original entity_id %s with stable unique_id",
+                    newest_entity_id,
+                    original_entity_id,
+                )
+                update_kwargs = {"new_unique_id": correct_uid}
+                if newest_entity_id != original_entity_id:
+                    update_kwargs["new_entity_id"] = original_entity_id
+                ent_reg.async_update_entity(newest_entity_id, **update_kwargs)
+            except ValueError as err:
+                _LOGGER.error(
+                    "Failed to restore %s -> %s: %s",
+                    newest_entity_id,
+                    original_entity_id,
+                    err,
+                )
+
+    return True
+
+
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
@@ -766,6 +905,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             return False
 
         hass.config_entries.async_update_entry(config_entry, version=3)
+
+    if config_entry.version == 3:
+        await async_migrate_dict_unique_ids(hass, config_entry)
+        hass.config_entries.async_update_entry(config_entry, version=4)
 
     _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
