@@ -9,9 +9,13 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -29,8 +33,14 @@ jobs:
       - name: Run linter
         run: uv run ruff check
 
-      - name: Check formatting
-        run: uv run ruff format --check
+      - name: Format
+        run: uv run ruff format
+
+      - name: Commit formatting fixes
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          commit_message: "style: apply ruff format"
+          file_pattern: "*.py"
 
       - name: Run all tests
         run: uv run pytest
