@@ -33,6 +33,26 @@ _LOGGER = logging.getLogger(__name__)
 # unit gives us nothing to derive one from.
 DEFAULT_MAX_VALUE = 3000
 
+# Battery-current setpoints, mapped to the BMS mirror register that publishes the real
+# ceiling for each. The mirrors are what the battery itself reports, so they beat
+# anything derivable from the inverter's rating: an LV bank at 51.2 V or two packs in
+# parallel legitimately sits far above any fixed literal, and an install whose BMS
+# reports less must not be widened past it.
+BATTERY_CURRENT_MIRROR_REGISTERS = {
+    43012: 33206,  # Max Charge Current            <- Battery Max Charge Current Mirror
+    43117: 33206,  # Battery Max Charge Current    <- Battery Max Charge Current Mirror
+    43013: 33207,  # Max Discharge Current         <- Battery Max Discharge Current Mirror
+    43118: 33207,  # Battery Max Discharge Current <- Battery Max Discharge Current Mirror
+}
+
+# The mirrors are U16 on a 0.1 A scale, same as the setpoints they bound.
+BATTERY_CURRENT_MIRROR_MULTIPLIER = 0.1
+
+# Floor for a battery-current setpoint whose ceiling had to be derived: never advertise
+# less than the value that shipped as the literal, so a small rating can't strand an
+# install below what it used to be able to set.
+BATTERY_CURRENT_FLOOR = 200
+
 
 class SolisBaseSensor:
     """Base class for all Solis sensors."""
@@ -129,6 +149,9 @@ class SolisBaseSensor:
         constraints rather than inverter-output constraints — the export limit at
         43074/43291 being the obvious case — so clamping them to the inverter's rated
         wattage caps users below what their grid connection allows (issue #438).
+
+        This only sets the *static* ceiling. Battery-current setpoints prefer the BMS
+        mirror when one has been polled — see the ``max_value`` property.
         """
         if max_default is not None:
             self.max_value = max_default
@@ -147,6 +170,46 @@ class SolisBaseSensor:
         except Exception as e:
             _LOGGER.error("❌ Dynamic UOM set failed, wanted = %s : %s", self.controller.inverter_config.wattage_chosen, e)
             self.max_value = DEFAULT_MAX_VALUE
+
+        if self.battery_current_mirror_register is not None and self._max_value < BATTERY_CURRENT_FLOOR:
+            self._max_value = BATTERY_CURRENT_FLOOR
+
+    @property
+    def battery_current_mirror_register(self) -> int | None:
+        """The BMS mirror register bounding this setpoint, or None if it isn't one."""
+        for reg in self.registrars:
+            mirror = BATTERY_CURRENT_MIRROR_REGISTERS.get(reg)
+            if mirror is not None:
+                return mirror
+        return None
+
+    @property
+    def max_value(self):
+        """The ceiling to advertise, preferring what the BMS reports.
+
+        Resolved live rather than once at construction: the mirrors arrive
+        asynchronously via the poll loop, long after the entity was built.
+        """
+        mirror = self.battery_current_mirror_register
+        if mirror is not None:
+            reported = self._bms_reported_max(mirror)
+            if reported is not None:
+                return reported
+        return self._max_value
+
+    @max_value.setter
+    def max_value(self, value):
+        self._max_value = value
+
+    def _bms_reported_max(self, mirror_register: int) -> float | None:
+        """The mirror's value in amps, or None while it is absent/zero/unreadable."""
+        try:
+            raw = cache_get(self.hass, self.controller, mirror_register)
+        except Exception:  # no cache yet (tests, early setup) — fall back to the static max
+            return None
+        if not isinstance(raw, (int, float)) or isinstance(raw, bool) or raw <= 0:
+            return None
+        return round(raw * BATTERY_CURRENT_MIRROR_MULTIPLIER, 1)
 
     def get_step(self, wanted_step):
         if wanted_step is not None:

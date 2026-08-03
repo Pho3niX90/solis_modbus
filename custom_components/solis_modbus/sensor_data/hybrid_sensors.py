@@ -2061,7 +2061,6 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                "max": 200,
                 "step": 0.1,
             },
             {
@@ -2075,7 +2074,6 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                "max": 200,
                 "step": 0.1,
             },
             {"type": "reserve", "register": ["43014", "43015"]},
@@ -3968,7 +3966,6 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                "max": 200,
                 "step": 0.1,
             },
             {
@@ -3982,7 +3979,6 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                "max": 200,
                 "step": 0.1,
             },
         ],
