@@ -339,6 +339,7 @@ string_sensors = [
                 "multiplier": 0.01,
                 "editable": True,
                 "min": 0,
+                # Grid code: 110% allows the over-100% setpoint some codes require.
                 "max": 110,
             },
             {
@@ -398,6 +399,7 @@ string_sensors = [
                 "multiplier": 1,
                 "editable": True,
                 "min": 10,
+                # Guess: 10-180 min shading-scan interval. Unsourced.
                 "max": 180,
             },
         ],

@@ -52,6 +52,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._attr_native_value = sensor.default
         self._attr_mode = NumberMode.AUTO
         self._attr_native_min_value = sensor.min_value
+        # No _attr_native_max_value: the max is a property reading the base sensor live.
 
         self._attr_native_step = sensor.step
         self._attr_step = sensor.step
