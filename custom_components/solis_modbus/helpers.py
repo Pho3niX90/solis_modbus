@@ -43,9 +43,7 @@ def unique_id_generator(controller, third_value, fourth_value=None):
     dicts are accepted only as a safety net and reduced to their ``unique`` key.
     """
     if isinstance(third_value, dict):
-        _LOGGER.warning(
-            "unique_id_generator received an entity dict; use entity.get('unique') instead"
-        )
+        _LOGGER.warning("unique_id_generator received an entity dict; use entity.get('unique') instead")
         third_value = third_value.get("unique", "reserve")
 
     if fourth_value is None:

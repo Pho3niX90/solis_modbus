@@ -833,11 +833,7 @@ async def async_migrate_dict_unique_ids(hass: HomeAssistant, entry: ConfigEntry)
         entries = by_platform[platform]
         for unique_key in unique_keys:
             correct_uid = unique_id_generator(controller, unique_key)
-            matches = [
-                e
-                for e in entries
-                if e.unique_id == correct_uid or _broken_dict_unique_id_matches(e.unique_id or "", unique_key)
-            ]
+            matches = [e for e in entries if e.unique_id == correct_uid or _broken_dict_unique_id_matches(e.unique_id or "", unique_key)]
             if not matches:
                 continue
 

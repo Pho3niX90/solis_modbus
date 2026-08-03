@@ -185,9 +185,7 @@ class TestDictUniqueIdMigration:
 
     @patch("homeassistant.helpers.entity_registry.async_entries_for_config_entry")
     @patch("homeassistant.helpers.entity_registry.async_get")
-    async def test_upgrade_422_to_423_restores_original_removes_location_prefixed_ghost(
-        self, mock_get_reg, mock_entries
-    ):
+    async def test_upgrade_422_to_423_restores_original_removes_location_prefixed_ghost(self, mock_get_reg, mock_entries):
         """4.2.2 → 4.2.3: restore original entity_id; remove location-prefixed duplicate.
 
         After v4.2.0, the pre-dupe (oldest) entity_id is unavailable and a
@@ -235,10 +233,7 @@ class TestDictUniqueIdMigration:
         # Use a key that exists on hybrid maps; number platform shares unique strings.
         key = "solis_modbus_inverter_overcharge_soc"
         old_uid = f"{DOMAIN}_SN123456_{{'name': 'Max Charge SOC', 'unique': '{key}', 'register': ['43010']}}"
-        new_uid = (
-            f"{DOMAIN}_SN123456_"
-            f"{{'name': 'Max Charge SOC', 'unique': '{key}', 'register': ['43010'], 'data_type': 'U32'}}"
-        )
+        new_uid = f"{DOMAIN}_SN123456_{{'name': 'Max Charge SOC', 'unique': '{key}', 'register': ['43010'], 'data_type': 'U32'}}"
         oldest = _make_registry_entry(
             "number.solis_max_charge_soc",
             old_uid,
@@ -287,9 +282,7 @@ class TestDictUniqueIdMigration:
         await async_migrate_dict_unique_ids(self.hass, self.entry)
 
         assert "sensor.kallare_solis_s6_eh1p_backup_load_total_energy" in self.live
-        assert self.live["sensor.kallare_solis_s6_eh1p_backup_load_total_energy"].unique_id == (
-            f"{DOMAIN}_SN123456_{UNIQUE_KEY}"
-        )
+        assert self.live["sensor.kallare_solis_s6_eh1p_backup_load_total_energy"].unique_id == (f"{DOMAIN}_SN123456_{UNIQUE_KEY}")
         # No rename when only one remains
         kwargs = self.registry.async_update_entity.call_args.kwargs
         assert "new_entity_id" not in kwargs
