@@ -85,6 +85,9 @@ BATTERY_CURRENT_MIRROR_REGISTERS = {
 # The mirrors are U16 on a 0.1 A scale, same as the setpoints they bound.
 BATTERY_CURRENT_MIRROR_MULTIPLIER = 0.1
 
+# Grid TOU cut-off voltage: charge slots 1-6, then discharge slots 1-6.
+_TOU_CUTOFF_VOLTAGE_REGISTERS = (43710, 43717, 43724, 43731, 43738, 43745, 43752, 43759, 43766, 43773, 43780, 43787)
+
 # Battery voltage setpoints. The protocol gives one range for LV banks and a much wider
 # one for HV: "Range:40—48 ... HV Series- Default:120; Range 100-999" (ESINV-33000ID, the
 # 33208-33211 read-side equivalents). The shipped literals cover the LV case only, which
@@ -94,8 +97,7 @@ HV_BATTERY_VOLTAGE_REGISTERS = {
     43017,  # Equalizing Charge Voltage
     43020,  # Overdischarge Voltage
     43021,  # Forcecharge Voltage
-    43710, 43717, 43724, 43731, 43738, 43745,  # Grid TOU Charge cut off voltage, slots 1-6
-    43752, 43759, 43766, 43773, 43780, 43787,  # Grid TOU Discharge cut off voltage, slots 1-6
+    *_TOU_CUTOFF_VOLTAGE_REGISTERS,
 }
 
 # The upper bound of that HV range. The lower bound (100 V) is deliberately not applied:
