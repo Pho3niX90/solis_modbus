@@ -17,12 +17,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from custom_components.solis_modbus.const import (
+    POLL_PROFILE_ESSENTIAL,
+    POLL_PROFILE_EXTREME,
+    POLL_PROFILE_FULL,
+)
 from custom_components.solis_modbus.data.enums import InverterType
 from custom_components.solis_modbus.data.solis_config import (
     SOLIS_INVERTERS,
     InverterConfig,
     InverterOptions,
 )
+from custom_components.solis_modbus.helpers import group_in_poll_profile
 from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
 from custom_components.solis_modbus.sensor_data.string_sensors import string_sensors
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
@@ -130,3 +136,27 @@ def test_no_sensor_ends_up_with_an_unusable_step():
                     bad.append(f"{sensor.name} (hv={hv}): step={sensor.step!r}")
 
     assert not bad, "sensors with an unusable step:\n  " + "\n  ".join(bad)
+
+
+@pytest.mark.parametrize("profile", [POLL_PROFILE_FULL, POLL_PROFILE_ESSENTIAL, POLL_PROFILE_EXTREME])
+@pytest.mark.parametrize("include_battery", [True, False], ids=["with-batt", "no-batt"])
+@pytest.mark.parametrize("hv_battery", [True, False], ids=["hv", "lv"])
+def test_every_poll_profile_builds_a_non_empty_group_set(profile, include_battery, hv_battery):
+    """Each profile must select groups that all build (#457).
+
+    A profile is just a filter over the same static definitions, so the failure
+    mode is the same class as the v4.2.0 crash: a group that only one profile
+    selects, on hardware only some users have. Selecting nothing at all is the
+    other failure — an entry with no sensors reads as a broken integration.
+    """
+    controller = _controller(hv_battery=hv_battery)
+    selected = [g for g in _all_groups() if group_in_poll_profile(g, profile, include_battery)]
+
+    assert selected, f"profile {profile!r} selected no groups"
+
+    for group in selected:
+        try:
+            _build(controller, group)
+        except Exception as error:  # noqa: BLE001
+            name = group.get("name", group.get("register_start", "?"))
+            pytest.fail(f"{profile} / {name} (hv={hv_battery}): {error!r}")

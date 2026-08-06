@@ -11,8 +11,10 @@ from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
     CONF_CONNECTION_TYPE,
+    CONF_EXTREME_INCLUDE_BATTERY,
     CONF_INVERTER_SERIAL,
     CONF_PARITY,
+    CONF_POLL_PROFILE,
     CONF_SERIAL_PORT,
     CONF_STOPBITS,
     CONN_TYPE_SERIAL,
@@ -22,6 +24,11 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
+    POLL_INTERVAL_FAST_MIN,
+    POLL_INTERVAL_FAST_MIN_EXTREME,
+    POLL_PROFILE_EXTREME,
+    POLL_PROFILE_FULL,
+    POLL_PROFILES,
 )
 from .data.enums import InverterType
 from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig, inverter_options_from_config
@@ -42,10 +49,14 @@ BASE_CONFIG_SCHEMA = {
     vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_TCP): vol.In(CONNECTION_TYPES),
     vol.Required(CONF_INVERTER_SERIAL): str,
     vol.Required("slave", default=1): int,
-    vol.Optional("poll_interval_fast", default=10): vol.All(int, vol.Range(min=10)),
+    # Floor is the extreme-profile minimum; _validate_poll_interval enforces the
+    # stricter default floor, which voluptuous can't do since the profile is
+    # chosen on this same form.
+    vol.Optional("poll_interval_fast", default=POLL_INTERVAL_FAST_MIN): vol.All(int, vol.Range(min=POLL_INTERVAL_FAST_MIN_EXTREME)),
     vol.Optional("poll_interval_normal", default=15): vol.All(int, vol.Range(min=15)),
     vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
-    vol.Required("essential_only", default=False): bool,
+    vol.Required(CONF_POLL_PROFILE, default=POLL_PROFILE_FULL): vol.In(POLL_PROFILES),
+    vol.Required(CONF_EXTREME_INCLUDE_BATTERY, default=False): bool,
     vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),
     # Boolean options (Yes/No toggle)
     vol.Required("has_v2", default=True): bool,
@@ -79,10 +90,11 @@ SERIAL_CONFIG_SCHEMA = {
 
 OPTIONS_SCHEMA = vol.Schema(
     {
-        vol.Required("poll_interval_fast"): vol.All(int, vol.Range(min=10)),
+        vol.Required("poll_interval_fast"): vol.All(int, vol.Range(min=POLL_INTERVAL_FAST_MIN_EXTREME)),
         vol.Required("poll_interval_normal"): vol.All(int, vol.Range(min=15)),
         vol.Required("poll_interval_slow"): vol.All(int, vol.Range(min=30)),
-        vol.Required("essential_only", default=False): bool,
+        vol.Required(CONF_POLL_PROFILE, default=POLL_PROFILE_FULL): vol.In(POLL_PROFILES),
+        vol.Required(CONF_EXTREME_INCLUDE_BATTERY, default=False): bool,
         vol.Required("model"): vol.In(SOLIS_MODELS),
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
         # Boolean options (Yes/No toggle)
@@ -97,6 +109,21 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_epm", default=True): bool,
     }
 )
+
+
+def _validate_poll_interval(config: dict) -> str | None:
+    """Enforce the fast-poll floor that applies to the chosen profile.
+
+    The schemas only declare the extreme floor, because the profile is picked on
+    the same form and voluptuous can't vary a field's range by another field's
+    value. Returns an error key, or None when the interval is acceptable.
+    """
+    profile = config.get(CONF_POLL_PROFILE, POLL_PROFILE_FULL)
+    floor = POLL_INTERVAL_FAST_MIN_EXTREME if profile == POLL_PROFILE_EXTREME else POLL_INTERVAL_FAST_MIN
+    interval = config.get("poll_interval_fast")
+    if interval is not None and int(interval) < floor:
+        return "poll_interval_below_floor"
+    return None
 
 
 async def _probe_tcp_port(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str | None]:
@@ -137,7 +164,7 @@ def clean_identification(iden: str | None) -> str | None:
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
-    VERSION = 4
+    VERSION = 5
     MINOR_VERSION = 0
 
     def __init__(self):
@@ -211,6 +238,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             elif any(other.unique_id == serial and other.entry_id != entry.entry_id for other in self.hass.config_entries.async_entries(DOMAIN)):
                 # Another entry already manages this inverter
                 return self.async_abort(reason="already_configured")
+            elif interval_error := _validate_poll_interval(data):
+                errors["base"] = interval_error
             else:
                 valid, err_key = await self._validate_config(data)
                 if valid:
@@ -243,7 +272,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).upper()
 
         # 2. Validate Connection
-        valid, err_key = await self._validate_config(data)
+        interval_error = _validate_poll_interval(data)
+        valid, err_key = (False, interval_error) if interval_error else await self._validate_config(data)
         if not valid:
             errors["base"] = err_key or "cannot_connect"
 
@@ -353,7 +383,10 @@ class ModbusOptionsFlowHandler(OptionsFlow):
 
         if user_input is not None:
             merged = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=merged)
+            interval_error = _validate_poll_interval(merged)
+            if interval_error is None:
+                return self.async_create_entry(title="", data=merged)
+            errors["base"] = interval_error
 
         current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(

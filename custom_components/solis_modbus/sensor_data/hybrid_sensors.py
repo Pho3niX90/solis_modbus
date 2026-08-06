@@ -18,6 +18,7 @@ from custom_components.solis_modbus.data.enums import Category, DataType, Invert
 hybrid_sensors = [
     {
         "register_start": 33000,
+        "extreme": True,  # identity: keeps device/serial detection working
         "essential": True,
         "poll_speed": PollSpeed.ONCE,
         "entities": [
@@ -77,6 +78,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 35000,
+        "extreme": True,  # identity: keeps device/serial detection working
         "essential": True,
         "poll_speed": PollSpeed.ONCE,
         "entities": [
@@ -261,6 +263,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33049,
+        "extreme": True,  # live PV
         "essential": True,
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.PV],
@@ -598,6 +601,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33126,
+        "extreme": True,  # live meter/CT — the signal export control loops need
         "poll_speed": PollSpeed.FAST,
         "entities": [
             {
@@ -645,6 +649,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 33132,
+        "extreme_battery": True,  # opt-in third frame: SOC, load, battery + grid power
         "essential": True,
         "poll_speed": PollSpeed.FAST,
         "entities": [

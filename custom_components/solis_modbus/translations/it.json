@@ -25,7 +25,8 @@
           "poll_interval_fast": "Intervallo di Aggiornamento Veloce (secondi)",
           "poll_interval_normal": "Intervallo di Aggiornamento Normale (secondi)",
           "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
-          "essential_only": "Solo sensori essenziali (riduce il carico del datalogger)",
+          "poll_profile": "Profilo di polling (quanta parte della mappa registri viene interrogata)",
+          "extreme_include_battery": "Estremo: interroga anche il gruppo batteria/carico (SOC, carico, potenza batteria)",
           "identification": "Nome Identificativo",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -55,7 +56,8 @@
           "poll_interval_fast": "Intervallo di Aggiornamento Veloce (secondi)",
           "poll_interval_normal": "Intervallo di Aggiornamento Normale (secondi)",
           "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
-          "essential_only": "Solo sensori essenziali (riduce il carico del datalogger)",
+          "poll_profile": "Profilo di polling (quanta parte della mappa registri viene interrogata)",
+          "extreme_include_battery": "Estremo: interroga anche il gruppo batteria/carico (SOC, carico, potenza batteria)",
           "identification": "Nome Identificativo",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -76,7 +78,8 @@
       "invalid_model": "Modello di inverter non valido o sconosciuto. Selezionare un modello dall'elenco.",
       "serial_required": "Il numero di serie dell'inverter è obbligatorio.",
       "model_required": "Selezionare un modello di inverter.",
-      "tcp_port_closed": "Nessun servizio accetta connessioni Modbus su quell'indirizzo e porta. Il dispositivo potrebbe essere raggiungibile (risponde al ping) ma non fornisce Modbus — verificare che Modbus TCP sia abilitato sul datalogger. È noto che i firmware recenti dei logger Solis chiudono la porta locale 502; un bridge RS485-TCP è una soluzione alternativa."
+      "tcp_port_closed": "Nessun servizio accetta connessioni Modbus su quell'indirizzo e porta. Il dispositivo potrebbe essere raggiungibile (risponde al ping) ma non fornisce Modbus — verificare che Modbus TCP sia abilitato sul datalogger. È noto che i firmware recenti dei logger Solis chiudono la porta locale 502; un bridge RS485-TCP è una soluzione alternativa.",
+      "poll_interval_below_floor": "L'intervallo di polling veloce è inferiore al minimo per il profilo selezionato. Solo il profilo estremo consente intervalli inferiori a 10s (minimo 2s)."
     },
     "abort": {
       "already_configured": "Questo dispositivo è già configurato."
@@ -91,7 +94,8 @@
           "poll_interval_fast": "Intervallo di Aggiornamento Veloce (secondi)",
           "poll_interval_normal": "Intervallo di Aggiornamento Normale (secondi)",
           "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
-          "essential_only": "Solo sensori essenziali (riduce il carico del datalogger)",
+          "poll_profile": "Profilo di polling (quanta parte della mappa registri viene interrogata)",
+          "extreme_include_battery": "Estremo: interroga anche il gruppo batteria/carico (SOC, carico, potenza batteria)",
           "model": "Modello Inverter",
           "has_v2": "Aggiornato al Firmware V2",
           "has_pv": "Ha Pannelli Solari (PV)",
@@ -107,6 +111,9 @@
           "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       }
+    },
+    "error": {
+      "poll_interval_below_floor": "L'intervallo di polling veloce è inferiore al minimo per il profilo selezionato. Solo il profilo estremo consente intervalli inferiori a 10s (minimo 2s)."
     }
   },
   "services": {
