@@ -7,15 +7,20 @@ on:
     branches: [master]
 
 jobs:
-  # Job-level permissions cannot use expressions; split by event instead.
   test:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # Write is required for auto-commit on push. Fork PRs still get a
+      # read-only token from GitHub; commit steps only run on push.
+      contents: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+        with:
+          # Branch ref required for auto-commit on push; PR uses head ref.
+          ref: ${{ github.head_ref || github.ref_name }}
+          # Only persist credentials when we may push format fixes.
+          persist-credentials: ${{ github.event_name == 'push' }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -34,40 +39,15 @@ jobs:
         run: uv run ruff check
 
       - name: Check formatting
+        if: github.event_name == 'pull_request'
         run: uv run ruff format --check
 
-      - name: Run all tests
-        run: uv run pytest
-
-  test-and-format:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version-file: "pyproject.toml"
-
-      - name: Install dependencies
-        run: uv sync --all-extras --dev
-
-      - name: Run linter
-        run: uv run ruff check
-
       - name: Format
+        if: github.event_name == 'push'
         run: uv run ruff format
 
       - name: Commit formatting fixes
+        if: github.event_name == 'push'
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_message: "style: apply ruff format"
