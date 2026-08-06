@@ -181,6 +181,7 @@ def build_select_rows(config) -> list[list[str]]:
 def build_sensor_rows(groups, derived, *, prefix: str = "") -> list[list[str]]:
     rows = [sensor_row(e, prefix=prefix) for e in iter_sensor_entities(groups)]
     rows.extend(sensor_row(e, prefix=prefix) for e in derived)
+
     # Sort by first register then name
     def sort_key(row):
         regs = row[4]
@@ -210,10 +211,7 @@ def main() -> None:
     existing = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
     waveshare, modes = extract_preserved_sections(existing)
     if not waveshare:
-        waveshare = (
-            "# Waveshare\n"
-            "This is only required if your values are higher than expected, if you aren't experiencing this, this should be disabled.\n"
-        )
+        waveshare = "# Waveshare\nThis is only required if your values are higher than expected, if you aren't experiencing this, this should be disabled.\n"
     if not modes:
         modes = "# Solar Inverter Modes in Solis Inverters\n"
 
@@ -226,9 +224,7 @@ def main() -> None:
     sensor_headers = ["Name", "Device Class", "Unit Of Measurement", "State Class", "Registers"]
 
     hybrid_switch_rows = build_switch_rows(hybrid_cfg)
-    string_switch_rows = [
-        r for r in build_switch_rows(string_cfg) if r[1] not in {row[1] for row in hybrid_switch_rows} or "power limit" in r[0].lower()
-    ]
+    string_switch_rows = [r for r in build_switch_rows(string_cfg) if r[1] not in {row[1] for row in hybrid_switch_rows} or "power limit" in r[0].lower()]
     # Avoid duplicating 90005 if present on both
     hybrid_names = {r[0] for r in hybrid_switch_rows}
     string_switch_rows = [r for r in string_switch_rows if r[0] not in hybrid_names]
