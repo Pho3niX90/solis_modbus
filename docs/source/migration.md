@@ -2,7 +2,7 @@
 
 ## Version 4.0+ — Serial-based unique IDs
 
-Version 4.0 introduces a significant change to how Entity Unique IDs are generated, transitioning from a **Host/Port** based system to a **Serial Number** based system. This ensures that your entities (sensors) remain consistent even if your inverter's IP address changes or if you move your database to a new Home Assistant instance.
+Version 4.0 introduces a significant change to how Entity Unique IDs are generated, transitioning from a **Host/Port-based** system to a **Serial Number-based** system. This ensures that your entities (sensors) remain consistent even if your inverter's IP address changes or if you move your database to a new Home Assistant instance.
 
 ### Why the change?
 Previously, unique IDs were generated using the Inverter's IP address (e.g., `solis_modbus_192.168.1.10_active_power`). If you changed your router or used DHCP, a new IP would cause Home Assistant to see all your sensors as "New" devices, breaking your history and dashboards.
@@ -59,7 +59,7 @@ v4.2.3 fixes generation to use the stable `"unique"` key and migrates the entity
 
 ### History / Energy dashboard caveats
 
-*   Home Assistant’s recorder is *supposed* to move post-upgrade history when an `entity_id` is renamed onto the original. If logs show something like `Cannot migrate history … already in use`, that rename merge failed and you may see a history gap. In that case use [Developer Tools → Statistics](https://www.home-assistant.io/docs/configuration/troubleshooting/) or [HA-Merge-Sensor-History](https://github.com/mayerwin/HA-Merge-Sensor-History).
+*   Home Assistant’s recorder is *supposed* to move post-upgrade history when an `entity_id` is renamed onto the original. If logs show something like `Cannot migrate history … already in use`, that rename merge failed and you may see a history gap. For recorder state-history gaps, use the [manual restore steps](#restoring-sensor-history-manual) below or [HA-Merge-Sensor-History](https://github.com/mayerwin/HA-Merge-Sensor-History) (which merges both state history and long-term statistics). Use [Developer Tools → Statistics](https://www.home-assistant.io/docs/tools/dev-tools/) only when long-term statistics are missing or marked invalid.
 *   If you already re-pointed the **Energy dashboard** at a location-prefixed duplicate, re-select the restored original once after upgrading.
 *   Dashboards and automations that still used the original `entity_id`s should work again without changes.
 
@@ -75,6 +75,7 @@ If a sensor's entity ID changes and you want to keep the old history:
 1. Navigate to **Developer Tools** -> **Statistics**.
 2. Search for the sensor name (e.g., "Today Battery Charge Energy").
 3. You will likely see multiple entries with similar names. Identify which is the **current** sensor and which is the **historic** one.
-4. Click on the **current** sensor, click the gear icon, and now rename the "Entity ID" to the old one
+4. If the **historic** sensor still owns the old `entity_id`, rename it to something temporary (or delete it) so that destination ID is free.
+5. Click on the **current** sensor, click the gear icon, and rename its "Entity ID" to the restored old one.
 
 Alternatively, this integration makes it much easier: https://github.com/mayerwin/HA-Merge-Sensor-History

@@ -95,7 +95,7 @@ def sensor_row(entity: dict, *, prefix: str = "") -> list[str]:
     ]
 
 
-def hybrid_config_all_features() -> InverterConfig:
+def hybrid_config_all_features(*, hv_battery: bool = True) -> InverterConfig:
     """Config that enables every optional hybrid feature for full docs coverage."""
     return InverterConfig(
         model="S6-EH3P",
@@ -105,7 +105,7 @@ def hybrid_config_all_features() -> InverterConfig:
         options=InverterOptions(
             pv=True,
             battery=True,
-            hv_battery=True,
+            hv_battery=hv_battery,
             generator=True,
             v2=True,
             ac_coupling=True,
@@ -170,11 +170,20 @@ def build_time_rows(config) -> list[list[str]]:
     return rows
 
 
-def build_select_rows(config) -> list[list[str]]:
+def build_hybrid_select_rows() -> list[list[str]]:
+    """Include both HV and LV Battery Model option sets."""
     rows = []
-    for group in get_select_sensors(config):
+    for group in get_select_sensors(hybrid_config_all_features(hv_battery=True)):
         options = ", ".join(e["name"] for e in group.get("entities", []))
-        rows.append([f"Solis {group['name']}", str(group["register"]), options])
+        name = f"Solis {group['name']}"
+        if group["name"] == "Battery Model":
+            name = f"{name} (HV)"
+        rows.append([name, str(group["register"]), options])
+    for group in get_select_sensors(hybrid_config_all_features(hv_battery=False)):
+        if group["name"] != "Battery Model":
+            continue
+        options = ", ".join(e["name"] for e in group.get("entities", []))
+        rows.append(["Solis Battery Model (LV)", str(group["register"]), options])
     return rows
 
 
@@ -273,7 +282,7 @@ def main() -> None:
         "",
         table(
             ["Name", "Register", "Options"],
-            build_select_rows(hybrid_cfg),
+            build_hybrid_select_rows(),
         ),
         "",
         "# Time Control Sensors",
@@ -307,12 +316,13 @@ def main() -> None:
     # Coverage report
     hybrid_count = len(hybrid_entities) + len(hybrid_sensors_derived)
     string_count = len(string_entities) + len(string_sensors_derived)
+    select_rows = build_hybrid_select_rows()
     print(f"Wrote {OUT}")
     print(f"Hybrid sensors+derived: {hybrid_count}")
     print(f"String sensors+derived: {string_count}")
     print(f"Input (editable): {len(build_input_rows(hybrid_entities))}")
     print(f"Switches: {len(hybrid_switch_rows) + len(string_switch_rows)}")
-    print(f"Selects: {len(build_select_rows(hybrid_cfg))}")
+    print(f"Selects: {len(select_rows)}")
     print(f"Times: {len(build_time_rows(hybrid_cfg))}")
 
 
