@@ -2032,6 +2032,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 90,
                 "min": 70,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
                 "step": 1,
             },
@@ -2047,6 +2048,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 5,
+                # Guess: the protocol allows the full 0-100% (33213, default 20%); 40 is a
+                # conservative sub-range, not a constraint. Widen if anyone reports it low.
                 "max": 40,
                 "step": 1,
             },
@@ -2061,6 +2064,9 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
+                # No "max": the ceiling comes from the BMS mirror (33206), falling back to
+                # the inverter rating. A literal here caps LV/multi-pack banks below their
+                # own rated current.
                 "step": 0.1,
             },
             {
@@ -2074,6 +2080,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
+                # No "max": bounded by the BMS mirror (33207) — see 43012.
                 "step": 0.1,
             },
             {"type": "reserve", "register": ["43014", "43015"]},
@@ -2089,6 +2096,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 53.5,
                 "min": 40.0,
+                # Datasheet: LV range 50-58 V (ESINV-33000ID, 33209). HV packs run 100-999 V
+                # and are widened in dynamic_adjustments rather than by this literal.
                 "max": 60.0,
                 "step": 0.1,
             },
@@ -2104,6 +2113,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 56.0,
                 "min": 40.0,
+                # Datasheet: LV range 54-60 V (33210). HV widened in dynamic_adjustments.
                 "max": 60.0,
                 "step": 0.1,
             },
@@ -2118,6 +2128,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 10,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
                 "step": 1,
             },
@@ -2131,6 +2142,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 200.0,
                 "min": 50.0,
+                # Guess: 4-digit cap, well under the 65535 Ah the register can hold. No source.
                 "max": 9999.0,
                 "step": 1,
             },
@@ -2146,6 +2158,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 56.0,
                 "min": 40,
+                # Datasheet: LV range 40-48 V (33208). HV widened in dynamic_adjustments.
                 "max": 60,
                 "step": 0.1,
             },
@@ -2161,6 +2174,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 48.0,
                 "min": 40,
+                # Datasheet: LV force-charge voltage; HV widened in dynamic_adjustments.
                 "max": 50,
                 "step": 0.1,
             },
@@ -2176,6 +2190,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 80.0,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
                 "step": 1,
             },
@@ -2192,7 +2207,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 3000.0,
                 "min": 0,
-                "max": 6000,
+                # Force-charge draws through the inverter, so its output rating governs.
+                "max_source": "inverter_rating",
             },
             {
                 "name": "Battery Force Charge Source",
@@ -2227,6 +2243,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 0,
                 "min": 0,
+                # Grid-connection limit, NOT the inverter rating: clamping it to wattage_chosen
+                # capped an S6-EH3P20K-H owner at 8000 W (#438). Raised to cover 20 kW sites.
                 "max": 20000,
                 "step": 1,
             },
@@ -2248,6 +2266,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 0,
                 "min": -1000,
+                # Guess: a calibration offset, +/-1000 W of trim. No source; ample in practice.
                 "max": 1000,
                 "step": 1,
             },
@@ -2266,8 +2285,12 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "data_type": DataType.S16,
+                # Bounded by the inverter's own AC output, not a literal: the shipped
+                # ±10000 was an unsourced round number and capped a 20 kW SKU at half its
+                # rating (#351). The negative min marks this symmetric, so the floor
+                # follows the derived ceiling; the literal is only the unresolved fallback.
                 "min": -10000,
-                "max": 10000,
+                "max_source": "inverter_rating",
                 "default": 0,
                 "register": ["43128"],
                 "multiplier": 10,
@@ -2282,7 +2305,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 6000,
+                # Battery discharge power is bounded by the inverter's AC output. The
+                # shipped 6000 was unsourced and capped a 20 kW SKU (#351).
+                "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43129"],
                 "multiplier": 10,
@@ -2296,7 +2321,8 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 6000,
+                # Bounded by the inverter's AC output — see 43129.
+                "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43130"],
                 "multiplier": 10,
@@ -2310,7 +2336,8 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 6000,
+                # Bounded by the inverter's AC output — see 43129.
+                "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43131"],
                 "multiplier": 10,
@@ -2333,8 +2360,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "data_type": DataType.S16,
+                # Symmetric grid-dispatch setpoint bounded by the inverter — see 43128.
                 "min": -10000,
-                "max": 10000,
+                "max_source": "inverter_rating",
                 "default": 0,
                 "register": ["43133"],
                 "multiplier": 10,
@@ -2349,8 +2377,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "data_type": DataType.S16,
+                # Reactive power, bounded by the apparent-power rating we hold for the
+                # inverter — approximate, but far closer than the unsourced ±10000.
                 "min": -10000,
-                "max": 10000,
+                "max_source": "inverter_rating",
                 "default": 0,
                 "register": ["43134"],
                 "multiplier": 10,
@@ -2374,7 +2404,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 10000,
+                # The register #351 was filed against: 10000 stopped an S6-EH3P20K owner
+                # force-charging above half their rating.
+                "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43136"],
                 "multiplier": 10,
@@ -2390,6 +2422,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 10,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
                 "default": 10,
             },
@@ -2410,7 +2443,8 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 135,
+                # No "max": bounded by the BMS mirror (33206). The old 135 A sat below the
+                # ~293 A a 15 kW LV bank draws at its own nameplate.
                 "step": 0.1,
                 "default": 50,
             },
@@ -2425,7 +2459,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 135,
+                # No "max": bounded by the BMS mirror (33207) — see 43141.
                 "step": 0.1,
                 "default": 50,
             },
@@ -2813,6 +2847,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 600,
+                # Guess: 600-10800 s (10 min - 3 h) scan interval. Plausible, unsourced.
                 "max": 10800,
             },
             {"type": "reserve", "register": ["43362"]},
@@ -2836,6 +2871,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Guess: 100 kW generator input. No source; far above any residential set.
                 "max": 100,
             },
             {
@@ -2863,6 +2899,7 @@ hybrid_sensors = [
                 "multiplier": 1,
                 "unit_of_measurement": PERCENTAGE,
                 "min": 0.01,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
                 "default": 100,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -2879,6 +2916,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Guess: 100 kW — see 43364.
                 "max": 100,
                 "default": 90,
             },
@@ -2893,6 +2931,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Guess: 100 kW — see 43364.
                 "max": 100,
             },
         ],
@@ -2917,6 +2956,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -2930,7 +2970,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge cut off voltage (Slot 1)",
@@ -2943,7 +2985,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge Start Hour (Slot 1)",
@@ -2991,6 +3036,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3004,7 +3050,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge cut off voltage (Slot 2)",
@@ -3017,7 +3065,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge Start Hour (Slot 2)",
@@ -3065,6 +3116,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3078,7 +3130,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge cut off voltage (Slot 3)",
@@ -3091,7 +3145,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge Start Hour (Slot 3)",
@@ -3139,6 +3196,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3152,7 +3210,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge cut off voltage (Slot 4)",
@@ -3165,7 +3225,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge Start Hour (Slot 4)",
@@ -3213,6 +3276,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3226,7 +3290,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge cut off voltage (Slot 5)",
@@ -3239,7 +3305,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge Start Hour (Slot 5)",
@@ -3287,6 +3356,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3300,7 +3370,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge cut off voltage (Slot 6)",
@@ -3313,7 +3385,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Charge Start Hour (Slot 6)",
@@ -3367,6 +3442,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3380,7 +3456,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge cut off voltage (Slot 1)",
@@ -3393,7 +3471,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge Start Hour (Slot 1)",
@@ -3441,6 +3522,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3454,7 +3536,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge cut off voltage (Slot 2)",
@@ -3467,7 +3551,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge Start Hour (Slot 2)",
@@ -3515,6 +3602,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3528,7 +3616,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge cut off voltage (Slot 3)",
@@ -3541,7 +3631,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge Start Hour (Slot 3)",
@@ -3589,6 +3682,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3602,7 +3696,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge cut off voltage (Slot 4)",
@@ -3615,7 +3711,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge Start Hour (Slot 4)",
@@ -3663,6 +3762,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3676,7 +3776,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge cut off voltage (Slot 5)",
@@ -3689,7 +3791,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge Start Hour (Slot 5)",
@@ -3737,6 +3842,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3750,7 +3856,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                "max": 300,
+                # No "max": bounded by the BMS mirror, like every other battery-current
+                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge cut off voltage (Slot 6)",
@@ -3763,7 +3871,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # 300 V covers an LV bank; HV_BATTERY installs are widened to the
+                # protocol's 999 V in dynamic_adjustments (a 480 V pack is ordinary).
                 "max": 300,
+                "step": 0.1,
             },
             {
                 "name": "Grid Time of Use Discharge Start Hour (Slot 6)",
@@ -3860,6 +3971,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 7,
+                # Spec: percentage register, "Range（0-100%）" (ESINV-33000ID, 33213/33214).
                 "max": 100,
             },
             {
@@ -3873,6 +3985,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
+                # SUSPECT: grid-side, so the inverter rating is the wrong bound by construction
+                # (#438) — yet 15000 would cap a 20 kW site. Same shape as 43074 before it was
+                # raised; no reporter yet. Revisit with 43291.
                 "max": 15000,
             },
         ],
@@ -3906,6 +4021,7 @@ hybrid_sensors = [
                 "unit_of_measurement": UnitOfPower.WATT,
                 "editable": True,
                 "min": 0,
+                # SUSPECT: grid-side export limit capped at 15000 — see 43488.
                 "max": 15000,
                 "default": 0,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -3966,6 +4082,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
+                # No "max": bounded by the BMS mirror (33206) — see 43012.
                 "step": 0.1,
             },
             {
@@ -3979,6 +4096,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
+                # No "max": bounded by the BMS mirror (33207) — see 43012.
                 "step": 0.1,
             },
         ],
@@ -3997,6 +4115,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 5,
                 "min": 1,
+                # Guess: 1-30 min dead-man timeout on remote control. Unsourced.
                 "max": 30,
                 "step": 1,
             },
@@ -4328,6 +4447,7 @@ hybrid_sensors = [
                 "editable": True,
                 "enabled": False,
                 "min": 0,
+                # Guess: 60 kW clamp, ample for every SKU in the catalogue. Unsourced.
                 "max": 60000,
                 "step": 10,
             },

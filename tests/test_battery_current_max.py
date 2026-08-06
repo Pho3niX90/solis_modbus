@@ -20,18 +20,24 @@ from homeassistant.const import UnitOfElectricCurrent, UnitOfPower
 from custom_components.solis_modbus.const import DOMAIN, VALUES
 from custom_components.solis_modbus.helpers import cache_save, notify_register_update
 from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
-from custom_components.solis_modbus.sensors.solis_base_sensor import (
-    BATTERY_CURRENT_FLOOR,
-    SolisBaseSensor,
-)
+from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 from custom_components.solis_modbus.sensors.solis_number_sensor import SolisNumberEntity
 
 CHARGE_REGISTERS = (43012, 43117)
 DISCHARGE_REGISTERS = (43013, 43118)
 BATTERY_CURRENT_REGISTERS = CHARGE_REGISTERS + DISCHARGE_REGISTERS
 
+# The time-charging and TOU slot currents, brought under the same mirror. Their old
+# literals (135 A / 300 A) sat below a 15 kW LV bank's ~293 A and the 580 A a parallel
+# pair reports.
+EXTENDED_CHARGE_REGISTERS = (43141, 43709, 43716, 43723, 43730, 43737, 43744)
+EXTENDED_DISCHARGE_REGISTERS = (43142, 43751, 43758, 43765, 43772, 43779, 43786)
+
 CHARGE_MIRROR = 33206
 DISCHARGE_MIRROR = 33207
+
+# U16 on a 0.1 A scale — the fallback once no rating-derived guess is allowed.
+PROTOCOL_CURRENT_MAX = 6553.5
 
 
 class _Hass:
@@ -138,37 +144,50 @@ class TestMirrorDerivedMax:
             cache_save(self.hass, self.controller, CHARGE_MIRROR, absent)
         sensor = _sensor(self.hass, self.controller, 43012)
 
-        assert sensor.max_value == round((15000 / 44) / 10) * 20
+        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
 
     def test_a_hass_without_a_cache_falls_back(self):
         """Construction paths that pass hass=None must not explode."""
         sensor = _sensor(None, self.controller, 43012)
 
-        assert sensor.max_value == round((15000 / 44) / 10) * 20
+        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
 
 
 class TestDerivedFallback:
-    """Without a mirror, the inverter-rating derivation applies — floored at 200 A."""
+    """Without a mirror the bound is the protocol ceiling, never the inverter rating.
+
+    A small AC rating says nothing about what a battery accepts, so it must not be able
+    to strand an install below what it could previously set.
+    """
 
     def setup_method(self):
         self.hass = _Hass()
+        self.controller = _controller(wattage_chosen=15000)
 
-    def test_a_15kw_rating_clears_the_reported_293a(self):
-        sensor = _sensor(self.hass, _controller(wattage_chosen=15000), 43117)
-
-        assert sensor.max_value >= 293
-
-    def test_a_small_rating_is_floored(self):
-        """round((3000/44)/10)*20 = 140 — below what 4.1.x allowed; don't regress."""
+    def test_a_small_rating_cannot_lower_the_bound(self):
+        """The old derivation gave round((3000/44)/10)*20 = 140 A here."""
         sensor = _sensor(self.hass, _controller(wattage_chosen=3000), 43012)
 
-        assert sensor.max_value == BATTERY_CURRENT_FLOOR
+        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
 
-    def test_the_floor_does_not_leak_to_other_current_entities(self):
-        """Only the four battery-current setpoints get the floor."""
-        sensor = _sensor(self.hass, _controller(wattage_chosen=3000), 43102)
+    def test_the_rating_is_irrelevant_to_a_current_setpoint(self):
+        small = _sensor(self.hass, _controller(wattage_chosen=3000), 43117)
+        large = _sensor(self.hass, _controller(wattage_chosen=20000), 43117)
 
-        assert sensor.max_value == round((3000 / 44) / 10) * 20
+        assert small.max_value == large.max_value
+
+    @pytest.mark.parametrize("register", EXTENDED_CHARGE_REGISTERS)
+    def test_time_and_tou_charge_currents_follow_the_charge_mirror(self, register):
+        """43141 and the six TOU charge slots are battery currents too (#351)."""
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 5800)  # 580.0 A
+
+        assert _sensor(self.hass, self.controller, register).max_value == 580.0
+
+    @pytest.mark.parametrize("register", EXTENDED_DISCHARGE_REGISTERS)
+    def test_time_and_tou_discharge_currents_follow_the_discharge_mirror(self, register):
+        cache_save(self.hass, self.controller, DISCHARGE_MIRROR, 5800)
+
+        assert _sensor(self.hass, self.controller, register).max_value == 580.0
 
 
 class TestIssue438DoesNotRegress:
