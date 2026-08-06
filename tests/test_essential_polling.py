@@ -9,6 +9,11 @@ power, status, battery SOC/power, energy totals).
 import voluptuous as vol
 
 from custom_components.solis_modbus.config_flow import BASE_CONFIG_SCHEMA, OPTIONS_SCHEMA, SOLIS_MODELS
+from custom_components.solis_modbus.const import (
+    CONF_EXTREME_INCLUDE_BATTERY,
+    CONF_POLL_PROFILE,
+    POLL_PROFILE_FULL,
+)
 from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
 from custom_components.solis_modbus.sensor_data.string_sensors import string_sensors
 
@@ -48,12 +53,12 @@ def test_string_essential_covers_core_power_flow():
     assert 36050 in regs  # Total generation energy
 
 
-def test_config_schemas_offer_essential_only():
+def test_config_schemas_offer_poll_profile():
     base_keys = {str(k.schema): k for k in BASE_CONFIG_SCHEMA}
     options_keys = {str(k.schema): k for k in OPTIONS_SCHEMA.schema}
-    assert "essential_only" in base_keys
-    assert "essential_only" in options_keys
-    assert base_keys["essential_only"].default() is False
+    assert CONF_POLL_PROFILE in base_keys
+    assert CONF_POLL_PROFILE in options_keys
+    assert base_keys[CONF_POLL_PROFILE].default() == POLL_PROFILE_FULL
 
     validated = vol.Schema(BASE_CONFIG_SCHEMA)(
         {
@@ -63,7 +68,10 @@ def test_config_schemas_offer_essential_only():
             "model": next(iter(SOLIS_MODELS)),
         }
     )
-    assert validated["essential_only"] is False
+    # Polling everything stays the default: the profile is opt-in, so an existing
+    # user who never touches the form sees no behaviour change.
+    assert validated[CONF_POLL_PROFILE] == POLL_PROFILE_FULL
+    assert validated[CONF_EXTREME_INCLUDE_BATTERY] is False
 
 
 def test_essential_only_helper_reads_data_and_options():

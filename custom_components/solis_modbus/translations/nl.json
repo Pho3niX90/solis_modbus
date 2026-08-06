@@ -25,7 +25,8 @@
           "poll_interval_fast": "Snel Poll Interval (seconden)",
           "poll_interval_normal": "Normaal Poll Interval (seconden)",
           "poll_interval_slow": "Langzaam Poll Interval (seconden)",
-          "essential_only": "Alleen essentiële sensoren (vermindert belasting datalogger)",
+          "poll_profile": "Pollprofiel (hoeveel van de registerkaart wordt gepolld)",
+          "extreme_include_battery": "Extreem: poll ook batterij-/belastingsgroep (SOC, belasting, batterijvermogen)",
           "identification": "Identificatie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -55,7 +56,8 @@
           "poll_interval_fast": "Snel Poll Interval (seconden)",
           "poll_interval_normal": "Normaal Poll Interval (seconden)",
           "poll_interval_slow": "Langzaam Poll Interval (seconden)",
-          "essential_only": "Alleen essentiële sensoren (vermindert belasting datalogger)",
+          "poll_profile": "Pollprofiel (hoeveel van de registerkaart wordt gepolld)",
+          "extreme_include_battery": "Extreem: poll ook batterij-/belastingsgroep (SOC, belasting, batterijvermogen)",
           "identification": "Identificatie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -76,7 +78,8 @@
       "invalid_model": "Ongeldig of onbekend omvormermodel. Selecteer een model uit de lijst.",
       "serial_required": "Het serienummer van de omvormer is verplicht.",
       "model_required": "Selecteer een omvormermodel.",
-      "tcp_port_closed": "Er accepteert niets Modbus-verbindingen op dat adres en die poort. Het apparaat is mogelijk bereikbaar (het antwoordt op ping) maar biedt geen Modbus aan — controleer of Modbus TCP is ingeschakeld op de datalogger. Van recente Solis-loggerfirmware is bekend dat deze lokale poort 502 sluit; een RS485-naar-TCP-bridge is een tijdelijke oplossing."
+      "tcp_port_closed": "Er accepteert niets Modbus-verbindingen op dat adres en die poort. Het apparaat is mogelijk bereikbaar (het antwoordt op ping) maar biedt geen Modbus aan — controleer of Modbus TCP is ingeschakeld op de datalogger. Van recente Solis-loggerfirmware is bekend dat deze lokale poort 502 sluit; een RS485-naar-TCP-bridge is een tijdelijke oplossing.",
+      "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s)."
     },
     "abort": {
       "already_configured": "Dit apparaat is al geconfigureerd."
@@ -91,7 +94,8 @@
           "poll_interval_fast": "Snel Poll Interval (seconden)",
           "poll_interval_normal": "Normaal Poll Interval (seconden)",
           "poll_interval_slow": "Langzaam Poll Interval (seconden)",
-          "essential_only": "Alleen essentiële sensoren (vermindert belasting datalogger)",
+          "poll_profile": "Pollprofiel (hoeveel van de registerkaart wordt gepolld)",
+          "extreme_include_battery": "Extreem: poll ook batterij-/belastingsgroep (SOC, belasting, batterijvermogen)",
           "model": "Omvormer Model",
           "has_v2": "Geüpdatet naar V2 Firmware",
           "has_pv": "Heeft Zonnepanelen (PV)",
@@ -107,6 +111,9 @@
           "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
         }
       }
+    },
+    "error": {
+      "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s)."
     }
   },
   "services": {

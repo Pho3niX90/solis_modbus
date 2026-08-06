@@ -25,7 +25,8 @@
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
-          "essential_only": "Nur essentielle Sensoren (Datenlogger entlasten)",
+          "poll_profile": "Abfrageprofil (wie viel der Registerkarte abgefragt wird)",
+          "extreme_include_battery": "Extrem: auch Batterie-/Lastgruppe abfragen (SOC, Last, Batterieleistung)",
           "identification": "Identifikationsname",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -55,7 +56,8 @@
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
-          "essential_only": "Nur essentielle Sensoren (Datenlogger entlasten)",
+          "poll_profile": "Abfrageprofil (wie viel der Registerkarte abgefragt wird)",
+          "extreme_include_battery": "Extrem: auch Batterie-/Lastgruppe abfragen (SOC, Last, Batterieleistung)",
           "identification": "Identifikationsname",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -76,7 +78,8 @@
       "invalid_model": "Ungültiges oder unbekanntes Wechselrichtermodell. Bitte ein Modell aus der Liste wählen.",
       "serial_required": "Die Seriennummer des Wechselrichters ist erforderlich.",
       "model_required": "Bitte ein Wechselrichtermodell auswählen.",
-      "tcp_port_closed": "Auf dieser Adresse und diesem Port nimmt nichts Modbus-Verbindungen an. Das Gerät ist möglicherweise erreichbar (es antwortet auf Ping), stellt aber kein Modbus bereit — prüfen Sie, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe."
+      "tcp_port_closed": "Auf dieser Adresse und diesem Port nimmt nichts Modbus-Verbindungen an. Das Gerät ist möglicherweise erreichbar (es antwortet auf Ping), stellt aber kein Modbus bereit — prüfen Sie, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe.",
+      "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s)."
     },
     "abort": {
       "already_configured": "Dieses Gerät ist bereits konfiguriert."
@@ -91,7 +94,8 @@
           "poll_interval_fast": "Schnelles Abfrageintervall (Sekunden)",
           "poll_interval_normal": "Normales Abfrageintervall (Sekunden)",
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
-          "essential_only": "Nur essentielle Sensoren (Datenlogger entlasten)",
+          "poll_profile": "Abfrageprofil (wie viel der Registerkarte abgefragt wird)",
+          "extreme_include_battery": "Extrem: auch Batterie-/Lastgruppe abfragen (SOC, Last, Batterieleistung)",
           "model": "Wechselrichtermodell",
           "has_v2": "Auf Firmware V2 aktualisiert",
           "has_pv": "Hat Photovoltaik (Solarpaneele)",
@@ -107,6 +111,9 @@
           "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       }
+    },
+    "error": {
+      "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s)."
     }
   },
   "services": {
