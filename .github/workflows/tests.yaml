@@ -10,16 +10,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     permissions:
-      # Write only on trusted pushes so auto-commit can push format fixes.
-      # Pull requests stay read-only.
-      contents: ${{ github.event_name == 'push' && 'write' || 'read' }}
+      # Write is required for auto-commit on push. Fork PRs still get a
+      # read-only token from GitHub; commit steps only run on push.
+      contents: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
         with:
-          # Branch ref required for auto-commit on push; PR uses head ref for the PR branch.
+          # Branch ref required for auto-commit on push; PR uses head ref.
           ref: ${{ github.head_ref || github.ref_name }}
-          # Do not persist a write-capable token on pull_request jobs.
+          # Only persist credentials when we may push format fixes.
           persist-credentials: ${{ github.event_name == 'push' }}
 
       - name: Set up uv
