@@ -59,7 +59,7 @@ v4.2.3 fixes generation to use the stable `"unique"` key and migrates the entity
 
 ### History / Energy dashboard caveats
 
-*   Home Assistant’s recorder is *supposed* to move post-upgrade history when an `entity_id` is renamed onto the original. If logs show something like `Cannot migrate history … already in use`, that rename merge failed and you may see a history gap. For recorder state-history gaps, use the [manual restore steps](#restoring-sensor-history-manual) below or [HA-Merge-Sensor-History](https://github.com/mayerwin/HA-Merge-Sensor-History) (which merges both state history and long-term statistics). Use [Developer Tools → Statistics](https://www.home-assistant.io/docs/tools/dev-tools/) only when long-term statistics are missing or marked invalid.
+*   Home Assistant's recorder is *supposed* to move post-upgrade history when an `entity_id` is renamed onto the original. If logs show something like `Cannot migrate history … already in use`, that rename merge failed and you may see a history gap. For recorder state-history gaps, use the [manual restore steps](#restoring-sensor-history-manual) below or [HA-Merge-Sensor-History](https://github.com/mayerwin/HA-Merge-Sensor-History) (which merges both state history and long-term statistics). Use [Developer Tools → Statistics](https://www.home-assistant.io/docs/tools/dev-tools/) only to fix missing or invalid long-term statistics (not for general history recovery).
 *   If you already re-pointed the **Energy dashboard** at a location-prefixed duplicate, re-select the restored original once after upgrading.
 *   Dashboards and automations that still used the original `entity_id`s should work again without changes.
 
@@ -72,10 +72,14 @@ Look for `Migrating dict unique_id`, `Restoring … onto original entity_id`, `R
 
 If a sensor's entity ID changes and you want to keep the old history:
 
-1. Navigate to **Developer Tools** -> **Statistics**.
+1. Navigate to **Settings** → **Devices & Services** → **Entities**.
 2. Search for the sensor name (e.g., "Today Battery Charge Energy").
-3. You will likely see multiple entries with similar names. Identify which is the **current** sensor and which is the **historic** one.
-4. If the **historic** sensor still owns the old `entity_id`, rename it to something temporary (or delete it) so that destination ID is free.
-5. Click on the **current** sensor, click the gear icon, and rename its "Entity ID" to the restored old one.
+3. You will likely see multiple entries with similar names. Identify which is the **current** sensor and which is the **stale** one (the stale entry typically shows as "Unavailable" or "Restored").
+4. Remove only the **stale** entity-registry entry (not the historic one with data). This frees up the desired `entity_id` without losing history.
+5. Restart Home Assistant if needed to allow the current sensor to claim the freed `entity_id`.
 
-Alternatively, this integration makes it much easier: https://github.com/mayerwin/HA-Merge-Sensor-History
+**Important**: Do not rename or delete the historic entry's data. Removing the stale entity-registry entry preserves all recorder history.
+
+If you need to merge history from multiple entities, use: https://github.com/mayerwin/HA-Merge-Sensor-History
+
+For fixing missing or invalid **long-term statistics** specifically, use [Developer Tools → Statistics](https://www.home-assistant.io/docs/tools/dev-tools/).
