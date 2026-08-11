@@ -159,12 +159,17 @@ class TestUndeclaredMaxUsesProtocolCeiling(unittest.TestCase):
 
 
 class TestInverterRatingIsOptIn(unittest.TestCase):
-    """``wattage_chosen`` is only reachable through an explicit "max_source"."""
+    """``wattage_chosen`` is only reachable through an explicit "max_source".
+
+    And even then it is the advisory ``device_limit``, never the advertised max:
+    a wrong-low rating as a bound would make HA reject legitimate dispatch writes —
+    the #464/#467 failure mode, on the RC path.
+    """
 
     def setUp(self):
         self.controller = MockController(wattage_chosen=20000)
 
-    def test_declared_source_uses_the_rating(self):
+    def test_declared_source_reports_the_rating_as_the_device_limit(self):
         sensor = _group(
             self.controller,
             {
@@ -177,10 +182,14 @@ class TestInverterRatingIsOptIn(unittest.TestCase):
                 "max_source": "inverter_rating",
             },
         ).sensors[0]
-        self.assertEqual(sensor.max_value, 20000)
+        self.assertEqual(sensor.device_limit, 20000)
+        self.assertEqual(sensor.device_limit_source, "inverter_rating")
+        # The advertised bound stays at the protocol ceiling.
+        self.assertEqual(sensor.max_value, 65535 * 10)
 
-    def test_a_signed_source_register_is_symmetric(self):
-        """43128 must be able to export as far as it can import."""
+    def test_a_signed_source_register_opens_the_full_signed_range(self):
+        """43128 must be able to export as far as it can import: the floor is the
+        protocol floor, resolved by the same rule as the ceiling."""
         sensor = _group(
             self.controller,
             {
@@ -194,11 +203,12 @@ class TestInverterRatingIsOptIn(unittest.TestCase):
                 "max_source": "inverter_rating",
             },
         ).sensors[0]
-        self.assertEqual(sensor.max_value, 20000)
-        self.assertEqual(sensor.min_value, -20000)
+        self.assertEqual(sensor.max_value, 32767 * 10)
+        self.assertEqual(sensor.min_value, -32768 * 10)
+        self.assertEqual(sensor.device_limit, 20000)
 
-    def test_an_unusable_rating_falls_back_to_the_protocol_ceiling(self):
-        """Never wrong-low: a missing rating must not collapse the bound."""
+    def test_an_unusable_rating_reports_no_device_limit(self):
+        """A missing rating must not invent an advisory limit."""
         sensor = _group(
             MockController(wattage_chosen=0),
             {
@@ -211,6 +221,7 @@ class TestInverterRatingIsOptIn(unittest.TestCase):
                 "max_source": "inverter_rating",
             },
         ).sensors[0]
+        self.assertIsNone(sensor.device_limit)
         self.assertEqual(sensor.max_value, 65535 * 10)
 
     def test_a_kilowatt_source_register_scales_the_rating(self):
@@ -225,7 +236,7 @@ class TestInverterRatingIsOptIn(unittest.TestCase):
                 "max_source": "inverter_rating",
             },
         ).sensors[0]
-        self.assertEqual(sensor.max_value, 20)
+        self.assertEqual(sensor.device_limit, 20)
 
 
 class TestInverterWattageCatalogue(unittest.TestCase):
