@@ -1643,8 +1643,6 @@ hybrid_sensors = [
         ],
     },
     {
-        # Meter 2 block, slow half: reactive/apparent power, PF, frequency and the
-        # lifetime energy counters (see the 33300 group note above).
         "register_start": 33316,
         "poll_speed": PollSpeed.SLOW,
         "feature_requirement": [InverterFeature.DUAL_METER],
@@ -1775,7 +1773,6 @@ hybrid_sensors = [
         ],
     },
     {
-            {
         "register_start": 33512,
         "poll_speed": PollSpeed.FAST,
         "entities": [
@@ -1804,6 +1801,7 @@ hybrid_sensors = [
             },
         ],
     },
+    {
         "register_start": 33530,
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.GENERATOR],
