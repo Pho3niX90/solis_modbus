@@ -43,22 +43,32 @@ DATA_TYPE_RAW_RANGES = {
     DataType.S32_LE.value: (-2147483648, 2147483647),
 }
 
-# Definitions opt into the inverter's rated output with "max_source": "inverter_rating".
-# Only for registers the AC rating genuinely governs — the remote-control dispatch and
-# battery-power setpoints. Never for grid-side registers (#438) and never inferred from
-# the unit, which is what made the old derivation retarget registers it never considered.
+# Definitions tag the limit the inverter's rated output governs with
+# "max_source": "inverter_rating" — the remote-control dispatch and battery-power
+# setpoints. The rating is surfaced as an advisory ``device_limit``, never as the
+# advertised max: HA rejects service calls above the advertised max, so a wrong-low
+# rating (misconfigured model, DC-side charging above the AC nameplate) would turn
+# into hard write failures — the same failure mode as #464/#467 on the BMS mirrors.
+# Never applied to grid-side registers (#438) and never inferred from the unit, which
+# is what made the old derivation retarget registers it never considered.
 MAX_SOURCE_INVERTER_RATING = "inverter_rating"
 
-# Battery-current setpoints, mapped to the BMS mirror register that publishes the real
-# ceiling for each. The mirrors are what the battery itself reports, so they beat
-# anything derivable from the inverter's rating: an LV bank at 51.2 V or two packs in
-# parallel legitimately sits far above any fixed literal, and an install whose BMS
-# reports less must not be widened past it.
+# Battery-current setpoints, mapped to the BMS mirror register that publishes the
+# battery's own current limit. The mirrors are surfaced as an advisory ``device_limit``
+# (entity attribute + warning on write), NOT as the advertised max. Two field reports
+# disqualified them as bounds on what may be *configured*:
 #
-# The TOU slot and time-charging currents belong here for the same reason the four
-# originals do (#455): a per-slot charge current cannot sensibly exceed what the battery
-# accepts, and their old literals (135 A / 300 A) sat below both a 15 kW LV bank's ~293 A
-# and the 580 A a parallel pair reports (#351).
+#   #467 — a real BMS (Dyness HV) derates the limit with SOC, so it moves through the
+#          day: the number's state ended up above its own max, TOU slots (scheduled
+#          config) were bounded by the instant the page was opened, and automation
+#          writes intermittently raised out_of_range.
+#   #464 — some firmware echoes the effective setpoint back on the mirror, so lowering
+#          the setpoint lowered the advertised max: a one-way ratchet (users stuck at
+#          1-2 A until they went through Solis Cloud).
+#
+# The TOU slot and time-charging currents are mapped for the same reason the four
+# originals are (#455): their old literals (135 A / 300 A) sat below both a 15 kW LV
+# bank's ~293 A and the 580 A a parallel pair reports (#351).
 BATTERY_CURRENT_MIRROR_REGISTERS = {
     # --- charge -> Battery Max Charge Current Mirror ---
     43012: 33206,  # Max Charge Current
@@ -162,10 +172,11 @@ class SolisBaseSensor:
         self.unit_of_measurement = unit_of_measurement
         self.hidden = hidden
         self.state_class = state_class
-        # min before max: a derived ceiling on a signed register mirrors itself onto the
-        # floor, so adjust_max needs the declared min already in place.
+        # min before max: adjust_max also resolves the floor of a signed register
+        # (marked by a negative declared min), so it needs the min already in place.
         self.min_value = min_value
-        self.adjust_max(max_value, max_source)
+        self.max_source = max_source
+        self.adjust_max(max_value)
         self.step = self.get_step(step)
         self.enabled = enabled
         self.poll_speed = poll_speed
@@ -201,44 +212,34 @@ class SolisBaseSensor:
             if _any_in(self.registrars, s6_registers):
                 self.multiplier = 0.01
 
-    def adjust_max(self, max_default, max_source=None):
-        """Resolve the static ceiling by authority, never by guessing from the unit.
+    def adjust_max(self, max_default):
+        """Resolve the static ceiling: a declared ``"max"``, else the protocol ceiling.
 
-        In order:
+        The advertised bound answers "what may be configured", so it is static and
+        never below what the register can carry:
 
         1. A declared ``"max"`` — a real protocol or datasheet constraint, audited.
-        2. ``"max_source": "inverter_rating"`` — the inverter's rated output, for the
-           registers it genuinely governs. Opted into per register: inferring it from the
-           unit is what capped the export limit at 43074 to the AC rating (#438), and
-           what put a 44 V battery bus behind every ampere setpoint (#455).
-        3. The protocol ceiling — what the register can physically carry.
+        2. The protocol ceiling — what the register can physically carry.
 
-        Rank 0 sits above all of these but is resolved live rather than here: a
-        battery-current setpoint prefers its BMS mirror once polled, see ``max_value``.
+        Live limits — the BMS mirror, the inverter's rated output — are deliberately
+        NOT in this chain. HA rejects ``number.set_value`` above the advertised max, so
+        a moving or wrong-low limit turns into hard write failures and out-of-range
+        states (#464, #467). They are advisory instead: see ``device_limit``.
         """
         if max_default is not None:
             self.max_value = max_default
             return
 
-        derived = None
-        if max_source == MAX_SOURCE_INVERTER_RATING:
-            derived = self._inverter_rating_max()
-
-        if derived is None:
-            derived = self.protocol_max
-
+        derived = self.protocol_max
         self.max_value = derived
-        _LOGGER.debug(
-            "max for %s resolved to %s (no declared max; source=%s)",
-            self.registrars,
-            derived,
-            max_source or "protocol",
-        )
+        _LOGGER.debug("max for %s resolved to protocol ceiling %s (no declared max)", self.registrars, derived)
 
-        # A signed dispatch register is symmetric about zero: raising only the ceiling
-        # would leave 43128/43133/43134 able to import further than they can export.
+        # A negative declared min marks a signed dispatch register (43128/43133/43134)
+        # as writable below zero; the floor then resolves by the same rule as the
+        # ceiling — what the register can physically carry — in the opposite direction.
+        # (A definition declaring its "max" keeps its declared min untouched above.)
         if self.min_value is not None and self.min_value < 0:
-            self.min_value = -derived
+            self.min_value = self.protocol_min
 
     def _inverter_rating_max(self) -> float | None:
         """The inverter's rated output in this entity's unit, or None if unusable."""
@@ -266,8 +267,13 @@ class SolisBaseSensor:
         return self.protocol_raw_range[1] * (self.multiplier or 1)
 
     @property
+    def protocol_min(self) -> float:
+        """The smallest value this register can physically hold, in its own unit."""
+        return self.protocol_raw_range[0] * (self.multiplier or 1)
+
+    @property
     def battery_current_mirror_register(self) -> int | None:
-        """The BMS mirror register bounding this setpoint, or None if it isn't one."""
+        """The BMS mirror register advising this setpoint, or None if it isn't one."""
         for reg in self.registrars:
             mirror = BATTERY_CURRENT_MIRROR_REGISTERS.get(reg)
             if mirror is not None:
@@ -275,28 +281,37 @@ class SolisBaseSensor:
         return None
 
     @property
-    def max_value(self):
-        """The ceiling to advertise, preferring what the BMS reports.
+    def device_limit(self) -> float | None:
+        """What the governing device reports it can do right now, or None.
 
-        Resolved live rather than once at construction: the mirrors arrive
-        asynchronously via the poll loop, long after the entity was built.
+        Advisory only: surfaced as an entity attribute and checked on write for a log
+        warning, never advertised as the number's max. The BMS mirror derates with SOC
+        through the day (#467) and on some firmware echoes the setpoint back (#464);
+        the inverter rating can sit below a legitimate DC-side setpoint — all of which
+        disqualify them as bounds on what may be *configured*. The device enforces its
+        real limit itself at runtime.
         """
         mirror = self.battery_current_mirror_register
         if mirror is not None:
-            reported = self._bms_reported_max(mirror)
-            if reported is not None:
-                return reported
-        return self._max_value
+            return self._bms_reported_max(mirror)
+        if self.max_source == MAX_SOURCE_INVERTER_RATING:
+            return self._inverter_rating_max()
+        return None
 
-    @max_value.setter
-    def max_value(self, value):
-        self._max_value = value
+    @property
+    def device_limit_source(self) -> str | None:
+        """The authority ``device_limit`` comes from, or None if this entity has none."""
+        if self.battery_current_mirror_register is not None:
+            return "bms"
+        if self.max_source == MAX_SOURCE_INVERTER_RATING:
+            return MAX_SOURCE_INVERTER_RATING
+        return None
 
     def _bms_reported_max(self, mirror_register: int) -> float | None:
         """The mirror's value in amps, or None while it is absent/zero/unreadable."""
         try:
             raw = cache_get(self.hass, self.controller, mirror_register)
-        except Exception:  # no cache yet (tests, early setup) — fall back to the static max
+        except Exception:  # no cache yet (tests, early setup) — no advisory limit
             return None
         if not isinstance(raw, (int, float)) or isinstance(raw, bool) or raw <= 0:
             return None

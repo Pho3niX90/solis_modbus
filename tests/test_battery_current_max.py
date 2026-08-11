@@ -1,17 +1,21 @@
-"""Battery-current setpoints must not be hard-capped at 200 A.
+"""Battery-current setpoints: static bounds, advisory BMS limit.
 
-The four battery-current numbers (43012/43013 and 43117/43118) declared ``"max": 200``.
-That literal was dead for the entire life of the AMPERE derivation in ``adjust_max`` —
-the derivation overwrote it unconditionally — until the #438 fix made a declared max
-win. 200 A then became the effective ceiling for the first time, and Home Assistant
-started rejecting ``number.set_value`` above it with ``ServiceValidationError``, which
-also aborts any caller batching writes.
+Two generations of regressions meet here:
 
-200 A is not a protocol limit (U16 at 0.1 A carries 6553.5 A) and not a hardware one: a
-15 kW LV hybrid at 51.2 V needs ~293 A to reach its own nameplate. The battery already
-publishes its real limit on the mirrors 33206/33207, so that is what bounds these now.
+* ``"max": 200`` (and 135/300 on the TOU/time-charging currents) rejected legitimate
+  writes — a 15 kW LV hybrid at 51.2 V needs ~293 A, a parallel pair reports 580 A
+  (#351, #455). No literal survives contact with the fleet.
+* Replacing the literal with the live BMS mirror (33206/33207) made the bound *move*:
+  a real BMS derates with SOC, so the state ended up above its own max and automation
+  writes intermittently raised out_of_range (#467); on some firmware the mirror echoes
+  the setpoint back, so lowering the value ratcheted the max down one-way (#464).
+
+The resolution: the advertised max is the *static* protocol ceiling (what the register
+can carry — never wrong-low), and the mirror is surfaced as an advisory
+``device_limit`` attribute plus a log warning on write, never enforced.
 """
 
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -36,7 +40,7 @@ EXTENDED_DISCHARGE_REGISTERS = (43142, 43751, 43758, 43765, 43772, 43779, 43786)
 CHARGE_MIRROR = 33206
 DISCHARGE_MIRROR = 33207
 
-# U16 on a 0.1 A scale — the fallback once no rating-derived guess is allowed.
+# U16 on a 0.1 A scale — the static ceiling for every battery-current setpoint.
 PROTOCOL_CURRENT_MAX = 6553.5
 
 
@@ -82,7 +86,7 @@ class TestDefinitions:
     def test_no_declared_max_on_battery_current(self, register):
         entity = next(e for g in hybrid_sensors for e in g["entities"] if e.get("register") == [str(register)])
 
-        assert "max" not in entity, f"{entity['name']} declares a max; it must be resolved from the BMS mirror"
+        assert "max" not in entity, f"{entity['name']} declares a max; no literal survives contact with the fleet"
 
     @pytest.mark.parametrize("register", BATTERY_CURRENT_REGISTERS)
     def test_still_editable_with_a_min(self, register):
@@ -94,104 +98,126 @@ class TestDefinitions:
         assert entity["step"] == 0.1
 
 
-class TestMirrorDerivedMax:
+class TestTheAdvertisedMaxIsStatic:
+    """#464/#467: the bound must not track the mirror, whatever the mirror does."""
+
     def setup_method(self):
         self.hass = _Hass()
         self.controller = _controller(wattage_chosen=15000)
 
+    @pytest.mark.parametrize("register", BATTERY_CURRENT_REGISTERS)
+    def test_the_max_is_the_protocol_ceiling(self, register):
+        assert _sensor(self.hass, self.controller, register).max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
+
     @pytest.mark.parametrize("register", CHARGE_REGISTERS)
-    def test_charge_registers_follow_the_charge_mirror(self, register):
+    def test_a_derated_mirror_cannot_lower_the_max(self, register):
+        """#467: a Dyness HV at 12% SOC reports ~18 A — the bound must not follow."""
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 184)  # 18.4 A
+        sensor = _sensor(self.hass, self.controller, register)
+
+        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
+
+    def test_a_setpoint_echo_cannot_ratchet_the_max(self):
+        """#464: firmware that mirrors the setpoint back must not shrink the range.
+
+        The reproduction: set 2 A, the mirror reports 2 A shortly after, and with the
+        old resolution the entity would never accept anything above 2 A again.
+        """
+        sensor = _sensor(self.hass, self.controller, 43117)
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 20)  # the echoed 2.0 A
+
+        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
+        assert sensor.min_value <= 50 <= sensor.max_value  # raising it back stays valid
+
+    def test_a_580a_parallel_pair_stays_writable(self):
+        """#351: the case the mirror bound was built for still fits under the ceiling."""
+        sensor = _sensor(self.hass, self.controller, 43012)
+
+        assert sensor.min_value <= 580 <= sensor.max_value
+
+    @pytest.mark.parametrize("register", EXTENDED_CHARGE_REGISTERS + EXTENDED_DISCHARGE_REGISTERS)
+    def test_time_and_tou_currents_share_the_static_ceiling(self, register):
+        """Scheduled config (#467 point 2): the range must not depend on when you look."""
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 184)
+        cache_save(self.hass, self.controller, DISCHARGE_MIRROR, 184)
+
+        assert _sensor(self.hass, self.controller, register).max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
+
+
+class TestAdvisoryDeviceLimit:
+    """The mirror survives as information: device_limit, live, per direction."""
+
+    def setup_method(self):
+        self.hass = _Hass()
+        self.controller = _controller(wattage_chosen=15000)
+
+    @pytest.mark.parametrize("register", CHARGE_REGISTERS + EXTENDED_CHARGE_REGISTERS)
+    def test_charge_registers_report_the_charge_mirror(self, register):
         cache_save(self.hass, self.controller, CHARGE_MIRROR, 4000)  # 400.0 A
         sensor = _sensor(self.hass, self.controller, register)
 
-        assert sensor.max_value == 400.0
+        assert sensor.device_limit == 400.0
+        assert sensor.device_limit_source == "bms"
 
-    @pytest.mark.parametrize("register", DISCHARGE_REGISTERS)
-    def test_discharge_registers_follow_the_discharge_mirror(self, register):
+    @pytest.mark.parametrize("register", DISCHARGE_REGISTERS + EXTENDED_DISCHARGE_REGISTERS)
+    def test_discharge_registers_report_the_discharge_mirror(self, register):
         cache_save(self.hass, self.controller, DISCHARGE_MIRROR, 3500)  # 350.0 A
         sensor = _sensor(self.hass, self.controller, register)
 
-        assert sensor.max_value == 350.0
+        assert sensor.device_limit == 350.0
+        assert sensor.device_limit_source == "bms"
 
     def test_charge_and_discharge_mirrors_are_not_crossed(self):
         cache_save(self.hass, self.controller, CHARGE_MIRROR, 4000)
         cache_save(self.hass, self.controller, DISCHARGE_MIRROR, 1000)
 
-        assert _sensor(self.hass, self.controller, 43012).max_value == 400.0
-        assert _sensor(self.hass, self.controller, 43013).max_value == 100.0
+        assert _sensor(self.hass, self.controller, 43012).device_limit == 400.0
+        assert _sensor(self.hass, self.controller, 43013).device_limit == 100.0
 
-    def test_a_mirror_below_the_floor_is_not_widened(self):
-        """A BMS that reports 150 A means 150 A — the floor must not override it."""
-        cache_save(self.hass, self.controller, CHARGE_MIRROR, 1500)
-        sensor = _sensor(self.hass, self.controller, 43117)
-
-        assert sensor.max_value == 150.0
-
-    def test_the_mirror_is_read_live_not_frozen_at_construction(self):
+    def test_the_limit_is_read_live_not_frozen_at_construction(self):
         """Mirrors arrive asynchronously, long after the sensor was built."""
         sensor = _sensor(self.hass, self.controller, 43012)
-        derived = sensor.max_value
+        assert sensor.device_limit is None
 
         cache_save(self.hass, self.controller, CHARGE_MIRROR, 2930)
 
-        assert derived != 293.0
-        assert sensor.max_value == 293.0
+        assert sensor.device_limit == 293.0
 
     @pytest.mark.parametrize("absent", [None, 0])
-    def test_an_absent_or_zero_mirror_falls_back(self, absent):
+    def test_an_absent_or_zero_mirror_reports_no_limit(self, absent):
         """0 is 'not reported yet', not 'this battery accepts no current'."""
         if absent is not None:
             cache_save(self.hass, self.controller, CHARGE_MIRROR, absent)
-        sensor = _sensor(self.hass, self.controller, 43012)
 
-        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
+        assert _sensor(self.hass, self.controller, 43012).device_limit is None
 
-    def test_a_hass_without_a_cache_falls_back(self):
+    def test_a_hass_without_a_cache_reports_no_limit(self):
         """Construction paths that pass hass=None must not explode."""
         sensor = _sensor(None, self.controller, 43012)
 
+        assert sensor.device_limit is None
         assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
 
+    def test_a_plain_register_has_no_limit_source(self):
+        sensor = SolisBaseSensor(
+            hass=self.hass,
+            controller=self.controller,
+            unique_id="u",
+            name="Backflow Power",
+            registrars=[43074],
+            write_register=43074,
+            multiplier=100,
+            unit_of_measurement=UnitOfPower.WATT,
+            editable=True,
+            max_value=20000,
+        )
 
-class TestDerivedFallback:
-    """Without a mirror the bound is the protocol ceiling, never the inverter rating.
-
-    A small AC rating says nothing about what a battery accepts, so it must not be able
-    to strand an install below what it could previously set.
-    """
-
-    def setup_method(self):
-        self.hass = _Hass()
-        self.controller = _controller(wattage_chosen=15000)
-
-    def test_a_small_rating_cannot_lower_the_bound(self):
-        """The old derivation gave round((3000/44)/10)*20 = 140 A here."""
-        sensor = _sensor(self.hass, _controller(wattage_chosen=3000), 43012)
-
-        assert sensor.max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
-
-    def test_the_rating_is_irrelevant_to_a_current_setpoint(self):
-        small = _sensor(self.hass, _controller(wattage_chosen=3000), 43117)
-        large = _sensor(self.hass, _controller(wattage_chosen=20000), 43117)
-
-        assert small.max_value == large.max_value
-
-    @pytest.mark.parametrize("register", EXTENDED_CHARGE_REGISTERS)
-    def test_time_and_tou_charge_currents_follow_the_charge_mirror(self, register):
-        """43141 and the six TOU charge slots are battery currents too (#351)."""
-        cache_save(self.hass, self.controller, CHARGE_MIRROR, 5800)  # 580.0 A
-
-        assert _sensor(self.hass, self.controller, register).max_value == 580.0
-
-    @pytest.mark.parametrize("register", EXTENDED_DISCHARGE_REGISTERS)
-    def test_time_and_tou_discharge_currents_follow_the_discharge_mirror(self, register):
-        cache_save(self.hass, self.controller, DISCHARGE_MIRROR, 5800)
-
-        assert _sensor(self.hass, self.controller, register).max_value == 580.0
+        assert sensor.device_limit is None
+        assert sensor.device_limit_source is None
 
 
 class TestIssue438DoesNotRegress:
-    """Declared maxima on grid registers still win over the inverter rating."""
+    """Declared maxima on grid registers still win over everything derived."""
 
     def setup_method(self):
         self.hass = _Hass()
@@ -214,35 +240,38 @@ class TestIssue438DoesNotRegress:
 
         assert sensor.max_value == declared
 
-    def test_a_declared_max_on_a_battery_register_still_loses_to_the_bms(self):
-        """The mirror is the authority for these four, declared or not."""
-        cache_save(self.hass, self.controller, CHARGE_MIRROR, 4000)
-        sensor = _sensor(self.hass, self.controller, 43012, max_value=200)
-
-        assert sensor.max_value == 400.0
-
 
 @pytest.mark.asyncio
-class TestNumberEntityAdvertisesTheLiveMax:
-    async def test_the_entity_reports_the_mirror(self, hass):
+class TestNumberEntity:
+    async def test_the_entity_advertises_the_static_ceiling(self, hass):
+        """#467: an 18.4 A mirror must not become the entity's max."""
+        hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
+        controller = _controller(wattage_chosen=15000)
+        cache_save(hass, controller, CHARGE_MIRROR, 184)
+        entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
+
+        assert entity.native_max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
+
+    async def test_the_entity_surfaces_the_limit_as_an_attribute(self, hass):
         hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
         controller = _controller(wattage_chosen=15000)
         cache_save(hass, controller, CHARGE_MIRROR, 2930)
         entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
 
-        assert entity.native_max_value == 293.0
+        assert entity.extra_state_attributes == {"device_limit": 293.0, "device_limit_source": "bms"}
 
-    async def test_the_entity_max_tracks_a_later_mirror_update(self, hass):
-        """The reported bound moves without the entity being rebuilt."""
+    async def test_the_attribute_tracks_a_later_mirror_update(self, hass):
+        """The advisory limit moves without the entity being rebuilt."""
         hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
         controller = _controller(wattage_chosen=15000)
         entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
+        assert entity.extra_state_attributes["device_limit"] is None
 
         cache_save(hass, controller, CHARGE_MIRROR, 2930)
 
-        assert entity.native_max_value == 293.0
+        assert entity.extra_state_attributes["device_limit"] == 293.0
 
-    async def test_a_mirror_arriving_republishes_the_bounds(self, hass):
+    async def test_a_mirror_arriving_republishes_the_attributes(self, hass):
         """The mirror isn't one of the entity's own registers — it must still wake it."""
         hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
         controller = _controller(wattage_chosen=15000)
@@ -258,7 +287,7 @@ class TestNumberEntityAdvertisesTheLiveMax:
         entity.schedule_update_ha_state.assert_called()
 
     async def test_another_inverters_mirror_is_ignored(self, hass):
-        """Two inverters on one logger must not rewrite each other's bounds."""
+        """Two inverters on one logger must not rewrite each other's attributes."""
         hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
         controller = _controller(wattage_chosen=15000)
         entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
@@ -280,7 +309,6 @@ class TestNumberEntityAdvertisesTheLiveMax:
         """RestoreNumber restores the value; a stale 200 A bound must not come back."""
         hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
         controller = _controller(wattage_chosen=15000)
-        cache_save(hass, controller, CHARGE_MIRROR, 2930)
         entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
         entity.hass = hass
         entity.entity_id = "number.battery_max_charge_current"
@@ -292,10 +320,10 @@ class TestNumberEntityAdvertisesTheLiveMax:
         await entity.async_added_to_hass()
 
         assert entity.native_value == 100.0
-        assert entity.native_max_value == 293.0
+        assert entity.native_max_value == pytest.approx(PROTOCOL_CURRENT_MAX)
 
     async def test_293a_is_writable_on_a_15kw_lv_hybrid(self, hass):
-        """The reproduction: set_value 293 used to raise before reaching us."""
+        """The #455 reproduction: set_value 293 used to raise before reaching us."""
         hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
         controller = _controller(wattage_chosen=15000)
         cache_save(hass, controller, CHARGE_MIRROR, 3000)
@@ -309,3 +337,34 @@ class TestNumberEntityAdvertisesTheLiveMax:
 
         # 0.1 A scale: 293 A on the wire is 2930.
         controller.async_write_holding_register.assert_called_with(43117, 2930)
+
+    async def test_a_write_above_a_derated_limit_goes_through_with_a_warning(self, hass, caplog):
+        """#467 (Valiante): 60 A into a momentarily derated pack must not raise."""
+        hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
+        controller = _controller(wattage_chosen=15000)
+        cache_save(hass, controller, CHARGE_MIRROR, 184)  # BMS says 18.4 A right now
+        entity = SolisNumberEntity(hass, _sensor(hass, controller, 43141))
+        entity.schedule_update_ha_state = MagicMock()
+
+        assert entity.native_min_value <= 60 <= entity.native_max_value
+
+        with caplog.at_level(logging.WARNING):
+            entity.set_native_value(60)
+        await hass.async_block_till_done()
+
+        controller.async_write_holding_register.assert_called_with(43141, 600)
+        assert any("18.4" in r.getMessage() for r in caplog.records)
+
+    async def test_a_write_within_the_limit_does_not_warn(self, hass, caplog):
+        hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
+        controller = _controller(wattage_chosen=15000)
+        cache_save(hass, controller, CHARGE_MIRROR, 3000)
+        entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
+        entity.schedule_update_ha_state = MagicMock()
+
+        with caplog.at_level(logging.WARNING):
+            entity.set_native_value(50)
+        await hass.async_block_till_done()
+
+        controller.async_write_holding_register.assert_called_with(43117, 500)
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]

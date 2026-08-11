@@ -2069,9 +2069,10 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": the ceiling comes from the BMS mirror (33206), falling back to
-                # the inverter rating. A literal here caps LV/multi-pack banks below their
-                # own rated current.
+                # No "max": protocol ceiling. A literal here caps LV/multi-pack banks below
+                # their own rated current, and the BMS mirror (33206) is advisory only —
+                # it derates with SOC (#467) and can echo the setpoint back (#464), so it
+                # is surfaced as the device_limit attribute, never as the bound.
                 "step": 0.1,
             },
             {
@@ -2085,7 +2086,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": bounded by the BMS mirror (33207) — see 43012.
+                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
                 "step": 0.1,
             },
             {"type": "reserve", "register": ["43014", "43015"]},
@@ -2212,7 +2213,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 3000.0,
                 "min": 0,
-                # Force-charge draws through the inverter, so its output rating governs.
+                # Force-charge draws through the inverter, so its output rating is the
+                # advisory device_limit; the bound itself is the protocol ceiling.
                 "max_source": "inverter_rating",
             },
             {
@@ -2290,10 +2292,15 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "data_type": DataType.S16,
-                # Bounded by the inverter's own AC output, not a literal: the shipped
-                # ±10000 was an unsourced round number and capped a 20 kW SKU at half its
-                # rating (#351). The negative min marks this symmetric, so the floor
-                # follows the derived ceiling; the literal is only the unresolved fallback.
+                # No "max": protocol ceiling. The shipped ±10000 literal was an unsourced
+                # round number that capped a 20 kW SKU at half its rating (#351); the
+                # inverter's AC rating is advisory (device_limit), not a bound — HA would
+                # reject dispatch writes above a wrong-low rating (#464/#467 pattern).
+                # The negative min marks this writable below zero; the floor resolves to
+                # the protocol floor, same rule as the ceiling in the opposite direction.
+                # The -10000 value itself is never the bound — only its sign is read
+                # (an undeclared min defaults to 0, so a negative literal is the only
+                # way to say "signed" without hard-coding derivable protocol math).
                 "min": -10000,
                 "max_source": "inverter_rating",
                 "default": 0,
@@ -2310,8 +2317,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # Battery discharge power is bounded by the inverter's AC output. The
-                # shipped 6000 was unsourced and capped a 20 kW SKU (#351).
+                # No "max": protocol ceiling. The shipped 6000 literal was unsourced and
+                # capped a 20 kW SKU (#351); the inverter's AC rating is advisory
+                # (device_limit) — see 43128.
                 "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43129"],
@@ -2326,7 +2334,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # Bounded by the inverter's AC output — see 43129.
+                # No "max": protocol ceiling; inverter rating advisory — see 43128.
                 "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43130"],
@@ -2341,7 +2349,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # Bounded by the inverter's AC output — see 43129.
+                # No "max": protocol ceiling; inverter rating advisory — see 43128.
                 "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43131"],
@@ -2365,7 +2373,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "data_type": DataType.S16,
-                # Symmetric grid-dispatch setpoint bounded by the inverter — see 43128.
+                # Symmetric grid-dispatch setpoint; inverter rating advisory — see 43128.
                 "min": -10000,
                 "max_source": "inverter_rating",
                 "default": 0,
@@ -2382,8 +2390,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "data_type": DataType.S16,
-                # Reactive power, bounded by the apparent-power rating we hold for the
-                # inverter — approximate, but far closer than the unsourced ±10000.
+                # Reactive power: the apparent-power rating we hold for the inverter is
+                # the advisory device_limit (approximate, but sourced, unlike the old
+                # ±10000 literal); the bound itself is the protocol ceiling — see 43128.
                 "min": -10000,
                 "max_source": "inverter_rating",
                 "default": 0,
@@ -2409,8 +2418,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # The register #351 was filed against: 10000 stopped an S6-EH3P20K owner
-                # force-charging above half their rating.
+                # The register #351 was filed against: a 10000 literal stopped an
+                # S6-EH3P20K owner force-charging above half their rating. Rating is
+                # advisory (device_limit); the bound is the protocol ceiling — see 43128.
                 "max_source": "inverter_rating",
                 "default": 1500,
                 "register": ["43136"],
@@ -2448,8 +2458,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror (33206). The old 135 A sat below the
-                # ~293 A a 15 kW LV bank draws at its own nameplate.
+                # No "max": protocol ceiling; BMS mirror (33206) advisory — see 43012. The
+                # old 135 A literal sat below the ~293 A a 15 kW LV bank draws at its own
+                # nameplate.
                 "step": 0.1,
                 "default": 50,
             },
@@ -2464,7 +2475,7 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror (33207) — see 43141.
+                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
                 "step": 0.1,
                 "default": 50,
             },
@@ -2975,8 +2986,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3055,8 +3068,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3135,8 +3150,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3215,8 +3232,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3295,8 +3314,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3375,8 +3396,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3461,8 +3484,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3541,8 +3566,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3621,8 +3648,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3701,8 +3730,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3781,8 +3812,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -3861,8 +3894,10 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": bounded by the BMS mirror, like every other battery-current
-                # setpoint. 300 A is under the 580 A a parallel pair reports (#351).
+                # No "max": protocol ceiling, like every other battery-current setpoint;
+                # the BMS mirror is an advisory device_limit attribute, not a bound
+                # (#464/#467). The removed 300 A literal sat under the 580 A a
+                # parallel pair reports (#351).
                 "step": 0.1,
             },
             {
@@ -4087,7 +4122,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": bounded by the BMS mirror (33206) — see 43012.
+                # No "max": protocol ceiling; BMS mirror (33206) advisory — see 43012.
                 "step": 0.1,
             },
             {
@@ -4101,7 +4136,7 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": bounded by the BMS mirror (33207) — see 43012.
+                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
                 "step": 0.1,
             },
         ],
