@@ -16,7 +16,7 @@ from custom_components.solis_modbus.helpers import (
 )
 
 from .const import DOMAIN
-from .data.enums import PollSpeed
+from .data.enums import InverterFeature, InverterType, PollSpeed
 from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
 
@@ -27,6 +27,35 @@ _MAX_REGISTER_RECOVERY_DEPTH = 24
 # Raise a repair issue once the reconnect loop has failed this many times
 # (~the datalogger has been gone for a while, not a single blip).
 _ISSUE_AFTER_FAILURES = 5
+
+# String/grid EPM operating info (protocol §5.4, function 0x04). Holding settings
+# start at 36500. Hybrid 360xx is a different "mapping" block — never treat it as EPM.
+_EPM_OPERATING_MIN = 36000
+_EPM_OPERATING_MAX = 36499
+# V19 marks these as Reserve. Illegal-address on them alone is not proof the EPM
+# is missing; a fitted EPM can still reject 36013-36014 while serving 36028/36050.
+_EPM_RESERVED_REGISTERS = frozenset(range(36013, 36015)) | frozenset(range(36030, 36050))
+
+
+def sensor_group_registers(group) -> set[int]:
+    """Every register a sensor group currently covers."""
+    regs: set[int] = set()
+    for sensor in getattr(group, "sensors", []) or []:
+        regs.update(getattr(sensor, "registrars", []) or [])
+    return regs
+
+
+def is_string_epm_operating_group(inverter_type, group) -> bool:
+    """True for grid/string EPM 36xxx groups (not hybrid mapping registers)."""
+    if inverter_type not in (InverterType.GRID, InverterType.STRING):
+        return False
+    regs = sensor_group_registers(group)
+    return bool(regs) and all(_EPM_OPERATING_MIN <= r <= _EPM_OPERATING_MAX for r in regs)
+
+
+def epm_group_is_absence_witness(group) -> bool:
+    """True when a failed group contains implemented EPM registers, not only reserved ones."""
+    return bool(sensor_group_registers(group) - _EPM_RESERVED_REGISTERS)
 
 
 class DataRetrieval:
@@ -50,6 +79,13 @@ class DataRetrieval:
         self._write_task = None  # process_write_queue task, cancelled on unload
         self._poll_task = None  # poll_controller task, cancelled on unload
         self._stopping = False  # set on async_stop so in-flight reconnect loops exit
+        self._epm_disabled = False
+        self._epm_persist_pending = False
+        self._epm_persist_started = False
+
+        features = getattr(controller.inverter_config, "features", [])
+        if entry_id and isinstance(features, (list, set, tuple, frozenset)) and InverterFeature.EPM in features:
+            ir.async_delete_issue(hass, DOMAIN, f"epm_absent_{entry_id}")
 
         if self.hass.is_running:
             self._poll_task = self.hass.async_create_task(self.poll_controller())
@@ -340,6 +376,9 @@ class DataRetrieval:
         )
 
         self._write_task = self.hass.async_create_task(self.controller.process_write_queue())
+        # First-poll EPM autodisable must persist *after* this setup task finishes,
+        # otherwise reload deadlocks waiting for poll_controller (issue #466).
+        self._start_persist_epm_disabled_if_needed()
 
     async def modbus_update_all(self):
         """Updates all sensor groups regardless of their poll speed.
@@ -431,6 +470,8 @@ class DataRetrieval:
                 marked_for_removal = []
 
                 for sensor_group in groups:
+                    if self._epm_disabled and is_string_epm_operating_group(self.controller.inverter_config.type, sensor_group):
+                        continue
                     start_register = sensor_group.start_register
                     count = sensor_group.registrar_count
                     end_register = start_register + count - 1
@@ -450,6 +491,8 @@ class DataRetrieval:
                             if recovered:
                                 for rg, block_values in recovered:
                                     self._apply_register_read_to_cache(rg, block_values, marked_for_removal)
+                            elif self._should_autodisable_epm(sensor_group):
+                                self._disable_epm_runtime(start_register)
                             else:
                                 _LOGGER.debug(
                                     f"⚠️ Received None for register {start_register} - {end_register}, "
@@ -479,6 +522,92 @@ class DataRetrieval:
             _LOGGER.warning("(%s.%s) Unexpected error during %s poll", self.controller.host, self.controller.slave, speed.name, exc_info=True)
         finally:
             del self.poll_updating[speed][group_hash]  # ✅ Reset only this group set
+            if not self.connection_check:
+                self._start_persist_epm_disabled_if_needed()
+
+    def _should_autodisable_epm(self, sensor_group: SolisSensorGroup) -> bool:
+        """True when a wholly unreadable group means the EPM hardware is absent."""
+        if self._epm_disabled:
+            return False
+        if not is_string_epm_operating_group(self.controller.inverter_config.type, sensor_group):
+            return False
+        return epm_group_is_absence_witness(sensor_group)
+
+    def _disable_epm_runtime(self, trigger_register: int) -> None:
+        """Stop polling every EPM group for this session and queue persisting has_epm=False."""
+        if self._epm_disabled:
+            return
+        self._epm_disabled = True
+        self.controller.inverter_config.disable_epm()
+
+        disabled_sensors = []
+        kept = []
+        for group in self.controller._sensor_groups:
+            if is_string_epm_operating_group(self.controller.inverter_config.type, group):
+                for sensor in group.sensors:
+                    sensor.enabled = False
+                    disabled_sensors.append(sensor)
+            else:
+                kept.append(group)
+        self.controller._sensor_groups = kept
+        mark_platform_entities_unavailable_for_base_sensors(self.hass, disabled_sensors)
+
+        _LOGGER.warning(
+            "(%s.%s) No EPM at register %s (illegal data address); disabled EPM polling. "
+            "Re-enable 'EPM / export power manager' in options if one is installed.",
+            self.controller.host,
+            self.controller.slave,
+            trigger_register,
+        )
+        self._create_epm_absent_issue(trigger_register)
+        self._epm_persist_pending = True
+
+    def _create_epm_absent_issue(self, trigger_register: int) -> None:
+        if self._entry_id is None:
+            return
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            f"epm_absent_{self._entry_id}",
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="epm_absent",
+            translation_placeholders={
+                "host": str(self.controller.host),
+                "register": str(trigger_register),
+            },
+        )
+
+    def _start_persist_epm_disabled_if_needed(self) -> None:
+        """Persist has_epm=False after the current poll/setup task has finished.
+
+        Must not run inside poll_controller: reloading the entry would deadlock
+        waiting for that task (issue #466).
+        """
+        if not self._epm_persist_pending or self._epm_persist_started or self._entry_id is None:
+            return
+        if self.connection_check:
+            return
+        self._epm_persist_started = True
+
+        def _start() -> None:
+            self.hass.async_create_task(self._async_persist_epm_disabled())
+
+        loop = getattr(self.hass, "loop", None)
+        if loop is not None and hasattr(loop, "call_soon"):
+            loop.call_soon(_start)
+            return
+        _start()
+
+    async def _async_persist_epm_disabled(self) -> None:
+        """Write has_epm=False so the next load skips 36xxx groups (options win over data)."""
+        entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        if entry is None:
+            return
+        merged = {**entry.data, **entry.options}
+        if merged.get("has_epm") is False:
+            return
+        self.hass.config_entries.async_update_entry(entry, options={**entry.options, "has_epm": False})
 
     # https://github.com/Pho3niX90/solis_modbus/issues/138
     def spike_filtering(self, register: int, value: int):

@@ -182,6 +182,10 @@
     "datalogger_unreachable": {
       "title": "Solis-datalogger onbereikbaar",
       "description": "Geen geslaagde Modbus-uitlezing van {host} sinds {last_success}. De WiFi-datalogger slaapt mogelijk, is uitgeschakeld of half-open; de integratie blijft het met backoff proberen. Herstart de voeding van de datalogger als dit aanhoudt."
+    },
+    "epm_absent": {
+      "title": "Geen exportvermogensbeheerder (EPM) gedetecteerd",
+      "description": "Modbus-register {register} op {host} gaf een ongeldig data-adres terug. Het 36xxx-blok bestaat alleen met een EPM, dus EPM-polling is uitgeschakeld. Schakel 'EPM / exportvermogensbeheerder geïnstalleerd' weer in via de opties als u er later een toevoegt."
     }
   }
 }

@@ -182,6 +182,10 @@
     "datalogger_unreachable": {
       "title": "Solis datalogger onbereikbaar",
       "description": "Geen suksesvolle Modbus-lesing vanaf {host} sedert {last_success} nie. Die WiFi-datalogger slaap dalk, is afgeskakel of in 'n half-oop toestand; die integrasie probeer aanhoudend weer met terugval. Skakel die datalogger se krag af en aan as dit voortduur."
+    },
+    "epm_absent": {
+      "title": "Geen uitvoerkragbestuurder (EPM) bespeur nie",
+      "description": "Modbus-register {register} op {host} het 'n ongeldige data-adres teruggestuur. Die 36xxx-blok bestaan slegs as 'n EPM geïnstalleer is, so EPM-peiling is afgeskakel. Skakel 'EPM / uitvoerkragbestuurder geïnstalleer' weer in die opsies aan as jy later een byvoeg."
     }
   }
 }

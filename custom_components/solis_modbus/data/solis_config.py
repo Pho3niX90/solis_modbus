@@ -78,6 +78,11 @@ class InverterConfig:
             feats.append(InverterFeature.TCP)
         self.features: list[InverterFeature] = feats
 
+    def disable_epm(self) -> None:
+        """Turn off EPM after the inverter rejected the 36xxx map (issue #466)."""
+        self.options.epm = False
+        self._rebuild_features()
+
     def clone_with_options(self, options: InverterOptions, connection: str) -> InverterConfig:
         """Copy this model definition with user-chosen options (does not mutate SOLIS_INVERTERS templates)."""
         return InverterConfig(

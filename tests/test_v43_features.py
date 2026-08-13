@@ -71,6 +71,9 @@ def test_epm_feature_defaults_on_and_can_be_disabled():
     disabled = template.clone_with_options(inverter_options_from_config({"has_epm": False}, template), "S2_WL_ST")
     assert InverterFeature.EPM in default.features  # status quo preserved on upgrade
     assert InverterFeature.EPM not in disabled.features
+    default.disable_epm()
+    assert InverterFeature.EPM not in default.features
+    assert default.options.epm is False
 
 
 # ---------- services ----------

@@ -182,6 +182,10 @@
     "datalogger_unreachable": {
       "title": "Solis datalogger unreachable",
       "description": "No successful Modbus read from {host} since {last_success}. The WiFi datalogger may be asleep, powered off or in a half-open state; the integration keeps retrying with backoff. Power-cycle the datalogger if this persists."
+    },
+    "epm_absent": {
+      "title": "No export power manager (EPM) detected",
+      "description": "Modbus register {register} on {host} returned illegal data address. That 36xxx block only exists when an EPM is fitted, so EPM polling has been turned off. Re-enable 'EPM / export power manager installed' in the integration options if you add one later."
     }
   }
 }

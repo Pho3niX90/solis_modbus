@@ -182,6 +182,10 @@
     "datalogger_unreachable": {
       "title": "Datalogger Solis irraggiungibile",
       "description": "Nessuna lettura Modbus riuscita da {host} da {last_success}. Il datalogger WiFi potrebbe essere in sospensione, spento o in uno stato semiaperto; l'integrazione continua a riprovare con backoff. Riavviare l'alimentazione del datalogger se il problema persiste."
+    },
+    "epm_absent": {
+      "title": "Nessun gestore potenza di esportazione (EPM) rilevato",
+      "description": "Il registro Modbus {register} su {host} ha restituito un indirizzo dati non valido. Il blocco 36xxx esiste solo con un EPM installato, quindi il polling EPM è stato disattivato. Riattiva «EPM / gestore potenza di esportazione installato» nelle opzioni se ne aggiungi uno in seguito."
     }
   }
 }

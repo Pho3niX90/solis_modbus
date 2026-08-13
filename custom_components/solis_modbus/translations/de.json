@@ -182,6 +182,10 @@
     "datalogger_unreachable": {
       "title": "Solis-Datenlogger nicht erreichbar",
       "description": "Kein erfolgreicher Modbus-Lesevorgang von {host} seit {last_success}. Der WiFi-Datenlogger schläft möglicherweise, ist ausgeschaltet oder in einem halboffenen Zustand; die Integration versucht es weiterhin mit Backoff. Bei anhaltendem Problem den Datenlogger stromlos machen."
+    },
+    "epm_absent": {
+      "title": "Kein Export Power Manager (EPM) erkannt",
+      "description": "Modbus-Register {register} auf {host} meldete eine ungültige Datenadresse. Der 36xxx-Block existiert nur mit einem EPM, daher wurde die EPM-Abfrage deaktiviert. Aktivieren Sie 'EPM / Export Power Manager installiert' in den Optionen, wenn Sie später eines anschließen."
     }
   }
 }

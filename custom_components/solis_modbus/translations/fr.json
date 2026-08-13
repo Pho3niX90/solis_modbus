@@ -182,6 +182,10 @@
     "datalogger_unreachable": {
       "title": "Enregistreur de données Solis injoignable",
       "description": "Aucune lecture Modbus réussie depuis {host} depuis {last_success}. L'enregistreur WiFi est peut-être en veille, hors tension ou dans un état semi-ouvert ; l'intégration continue de réessayer avec temporisation. Redémarrez l'enregistreur si le problème persiste."
+    },
+    "epm_absent": {
+      "title": "Aucun gestionnaire de puissance d'export (EPM) détecté",
+      "description": "Le registre Modbus {register} sur {host} a renvoyé une adresse de données illégale. Le bloc 36xxx n'existe que si un EPM est installé, donc l'interrogation EPM a été désactivée. Réactivez « EPM / gestionnaire de puissance d'export installé » dans les options si vous en ajoutez un plus tard."
     }
   }
 }
