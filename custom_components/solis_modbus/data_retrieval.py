@@ -514,7 +514,7 @@ class DataRetrieval:
                     self._apply_register_read_to_cache(sensor_group, values, marked_for_removal)
 
                 # Remove "ONCE" poll speed groups
-                self.controller._sensor_groups = [g for g in self.controller.sensor_groups if g not in marked_for_removal]
+                self.controller._sensor_groups = [g for g in self.controller._sensor_groups if g not in marked_for_removal]
 
                 total_duration = time.perf_counter() - total_start_time
                 _LOGGER.debug(f"✅ {speed.name} update completed in {total_duration:.4f}s")

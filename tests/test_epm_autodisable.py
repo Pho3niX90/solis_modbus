@@ -92,12 +92,17 @@ def _retrieval(inverter_type=InverterType.GRID, epm=True, entry_id="entry1"):
     return retrieval, hass, controller
 
 
+def _set_groups(controller, groups: list) -> None:
+    controller._sensor_groups = groups
+    controller.sensor_groups = groups
+
+
 def test_runtime_disable_drops_epm_groups_and_keeps_others():
     retrieval, hass, controller = _retrieval()
     epm_fast = _group([[36028, 36029]], start=36028)
     epm_id = _group([[36013], [36014]], start=36013)
     other = _group([[3004, 3005]], start=3004)
-    controller._sensor_groups = [other, epm_fast, epm_id]
+    _set_groups(controller, [other, epm_fast, epm_id])
 
     with patch("custom_components.solis_modbus.data_retrieval.ir") as mock_ir:
         with patch("custom_components.solis_modbus.data_retrieval.mark_platform_entities_unavailable_for_base_sensors"):
@@ -147,7 +152,7 @@ async def test_witness_group_failure_autodisables_epm():
     epm_fast = _group([[36028, 36029]], start=36028)
     other = _group([[3004]], start=3004)
     other.poll_speed = PollSpeed.FAST
-    controller._sensor_groups = [other, epm_fast]
+    _set_groups(controller, [other, epm_fast])
 
     async def read_blk(start, count, is_holding):
         if start == 36028:
@@ -171,7 +176,7 @@ async def test_reserved_group_failure_does_not_autodisable():
     retrieval, hass, controller = _retrieval()
     reserved = _group([[36013], [36014]], start=36013)
     reserved.poll_speed = PollSpeed.NORMAL
-    controller._sensor_groups = [reserved]
+    _set_groups(controller, [reserved])
 
     with patch.object(retrieval, "_read_register_block_with_exception", new=AsyncMock(return_value=(None, 2))):
         with patch.object(retrieval, "_recover_sensor_group_after_modbus_failure", new=AsyncMock(return_value=None)):
@@ -188,7 +193,7 @@ async def test_hybrid_mapping_failure_does_not_autodisable():
     retrieval, hass, controller = _retrieval(inverter_type=InverterType.HYBRID)
     mapping = _group([[36000], [36001]], start=36000)
     mapping.poll_speed = PollSpeed.NORMAL
-    controller._sensor_groups = [mapping]
+    _set_groups(controller, [mapping])
 
     with patch.object(retrieval, "_read_register_block_with_exception", new=AsyncMock(return_value=(None, 2))):
         with patch.object(retrieval, "_recover_sensor_group_after_modbus_failure", new=AsyncMock(return_value=None)):
