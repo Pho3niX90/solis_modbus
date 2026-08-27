@@ -4132,6 +4132,15 @@ hybrid_sensors = [
                 "hidden": True,
                 "state_class": SensorStateClass.MEASUREMENT,
             },
+	    {
+                "name": "Backup Supply value",
+                "category": Category.BATTERY_SETTING,
+                "unique": "solis_modbus_inverter_backup_supply_value",
+                "register": ["43111"],
+                "multiplier": 1,
+                "hidden": True,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
         ],
     },
     {

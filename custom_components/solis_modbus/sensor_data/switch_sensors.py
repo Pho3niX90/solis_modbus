@@ -59,6 +59,20 @@ def get_switch_sensors(inverter_config):
                         {"bit_position": 11, "name": "Peak Shaving Mode", "conflicts_with": [0, 1, 2, 4, 6]},
                     ],
                 },
+		{
+                    # S5-EH1P backup/EPS supply enable.
+                    # Bench verified on S5-EH1P5K-L:
+                    # 0 = Backup Supply OFF
+                    # 1 = Backup Supply ON
+                    "register": 43111,
+                    "entities": [
+                        {
+                            "name": "Backup Supply",
+                            "on_value": 1,
+                            "off_value": 0,
+                        },
+                    ],
+                },
                 {
                     "register": 43365,
                     "entities": [
