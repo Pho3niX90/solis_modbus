@@ -2,6 +2,7 @@ from custom_components.solis_modbus.data.enums import InverterType
 
 
 def get_switch_sensors(inverter_config):
+    """Return switch sensor definitions supported by the inverter configuration."""
     switch_sensors = [
         {
             "register": 90005,
