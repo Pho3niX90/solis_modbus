@@ -2,6 +2,7 @@ from custom_components.solis_modbus.data.enums import InverterType
 
 
 def get_switch_sensors(inverter_config):
+    """Return switch sensor definitions supported by the inverter configuration."""
     switch_sensors = [
         {
             "register": 90005,
@@ -57,6 +58,20 @@ def get_switch_sensors(inverter_config):
                         # TOU (1) and Off-Grid (2) must not survive entering Peak Shaving:
                         # the EA1P cloud value is exactly 2080 = bits 5+11 (issue #413).
                         {"bit_position": 11, "name": "Peak Shaving Mode", "conflicts_with": [0, 1, 2, 4, 6]},
+                    ],
+                },
+                {
+                    # S5-EH1P backup/EPS supply enable.
+                    # Bench verified on S5-EH1P5K-L:
+                    # 0 = Backup Supply OFF
+                    # 1 = Backup Supply ON
+                    "register": 43111,
+                    "entities": [
+                        {
+                            "name": "Backup Supply",
+                            "on_value": 1,
+                            "off_value": 0,
+                        },
                     ],
                 },
                 {
