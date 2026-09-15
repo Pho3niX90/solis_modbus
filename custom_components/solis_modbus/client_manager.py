@@ -8,6 +8,12 @@ from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP
 
 _LOGGER = logging.getLogger(__name__)
 
+# Solis RS485_MODBUS protocol (Hybrid Inverter V3.1 / PV Grid-Connected Inverter V19),
+# section 3.2 "Inter-frame interval requirement": "More than 300ms communications frame
+# interval is required." Applies to every request on the link, read or write. 310ms gives
+# a small margin above the documented floor (see issue #480).
+MIN_INTER_FRAME_MS = 310
+
 
 class ModbusClientManager:
     _instance = None
@@ -102,7 +108,7 @@ class ModbusClientManager:
         """Minimum spacing between Modbus operations on one TCP/serial link, across all controllers sharing it."""
         if connection_id not in self._clients:
             return
-        delay_ms = 100 if is_write else 50
+        delay_ms = MIN_INTER_FRAME_MS
         entry = self._clients[connection_id]
         current_time = time.perf_counter()
         last = float(entry.get("last_modbus_request", 0.0))

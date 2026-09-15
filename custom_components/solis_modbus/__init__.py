@@ -120,6 +120,8 @@ DISPATCH_SOC_LOW_REG = 44109
 DISPATCH_SOC_HIGH_REG = 44110
 DISPATCH_SCHEDULE_BASE = 44116  # 6 periods x 14 registers
 DISPATCH_SCHEDULE_STRIDE = 14
+DISPATCH_LIMIT_UNIT = 100
+DISPATCH_LIMIT_DEFAULT = 0xFFFF
 
 # mode -> (44105 value, sign applied to power_watts); modes 3/4: +export/-import
 DISPATCH_MODES = {
@@ -143,6 +145,8 @@ SCHEME_DISPATCH = vol.Schema(
         vol.Optional("disable_discharge"): vol.Coerce(bool),
         vol.Optional("soc_min"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         vol.Optional("soc_max"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("import_limit_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
+        vol.Optional("export_limit_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
         vol.Optional("failsafe_minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
         vol.Optional("host"): vol.Coerce(str),
         vol.Optional("slave", default=1): vol.Coerce(int),
@@ -188,6 +192,24 @@ def _dispatch_function_value(pv_shutdown, allow_grid_charge, disable_discharge) 
 def _s32_words(value: int) -> list[int]:
     raw = value & 0xFFFFFFFF
     return [(raw >> 16) & 0xFFFF, raw & 0xFFFF]
+
+
+def _dispatch_system_limits(import_limit_watts, export_limit_watts) -> tuple[int, int, int]:
+    """Build 44102/44103/44104. Omitted = switch off + 0xFFFF (inverter default)."""
+
+    def raw(watts) -> int:
+        return (int(watts) + DISPATCH_LIMIT_UNIT // 2) // DISPATCH_LIMIT_UNIT
+
+    switches = 0
+    import_raw = DISPATCH_LIMIT_DEFAULT
+    export_raw = DISPATCH_LIMIT_DEFAULT
+    if import_limit_watts is not None:
+        switches |= 0b01
+        import_raw = raw(import_limit_watts)
+    if export_limit_watts is not None:
+        switches |= 0b10
+        export_raw = raw(export_limit_watts)
+    return switches, import_raw, export_raw
 
 
 async def async_remove_config_entry_device(hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
@@ -354,15 +376,16 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
         soc_low = int(call.data["soc_min"]) if call.data.get("soc_min") is not None else 0
         soc_high = int(call.data["soc_max"]) if call.data.get("soc_max") is not None else 100
+        switches, import_raw, export_raw = _dispatch_system_limits(call.data.get("import_limit_watts"), call.data.get("export_limit_watts"))
 
         # The dispatch block must be written as contiguous chunks (Ver3.4 doc):
         # scattered single-register writes get silently dropped/re-initialized,
         # especially under write-queue contention. Two atomic FC16 blocks:
-        #   global 44100-44104  = master, failsafe, no system caps (0xFFFF = default)
+        #   global 44100-44104  = master, failsafe, limit switch, import/export caps
         #   realtime 44105-44112 = mode, power(S32), function, SOC window
         # Global first so dispatch is active before the realtime block lands
         # (the function field is re-initialized unless the master is already on).
-        await controller.async_write_holding_registers(DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), 0, 0xFFFF, 0xFFFF])
+        await controller.async_write_holding_registers(DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), switches, import_raw, export_raw])
         await controller.async_write_holding_registers(DISPATCH_MODE_REG, [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, 0, 0])
 
     async def service_dispatch_stop(call: ServiceCall) -> None:
