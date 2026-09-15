@@ -1,8 +1,8 @@
 import unittest
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.solis_modbus.client_manager import ModbusClientManager
+from custom_components.solis_modbus.client_manager import MIN_INTER_FRAME_MS, ModbusClientManager
 
 
 class TestModbusClientManager(unittest.TestCase):
@@ -90,6 +90,27 @@ class TestModbusClientManagerInterFrame(IsolatedAsyncioTestCase):
         self.assertEqual(0.0, self.manager.get_last_modbus_request("1.2.3.4:502"))
         await self.manager.inter_frame_wait("1.2.3.4:502", is_write=False)
         self.assertGreater(self.manager.get_last_modbus_request("1.2.3.4:502"), 0.0)
+
+    @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+    @patch("custom_components.solis_modbus.client_manager.time.perf_counter")
+    @patch("custom_components.solis_modbus.client_manager.asyncio.sleep", new_callable=AsyncMock)
+    async def test_inter_frame_wait_enforces_min_interval_for_reads_and_writes(self, mock_sleep, mock_perf_counter, mock_client_cls):
+        mock_client_cls.return_value = MagicMock()
+        # Two operations back-to-back on the same connection: each should independently
+        # compute a wait based on MIN_INTER_FRAME_MS, regardless of is_write.
+        # Call sequence: [read: current_time, read: recorded last] [write: current_time, write: recorded last]
+        mock_perf_counter.side_effect = [0.0, 0.31, 0.32, 0.62]
+        self.manager.get_tcp_client("1.2.3.4", 502)
+
+        await self.manager.inter_frame_wait("1.2.3.4:502", is_write=False)
+        await self.manager.inter_frame_wait("1.2.3.4:502", is_write=True)
+
+        expected_delay_s = MIN_INTER_FRAME_MS / 1000
+        self.assertEqual(2, mock_sleep.call_count)
+        # Read: 0.0 elapsed since last (0.0) -> full MIN_INTER_FRAME_MS wait.
+        self.assertAlmostEqual(expected_delay_s, mock_sleep.call_args_list[0].args[0])
+        # Write: 10ms elapsed since last (0.31) -> remaining wait is MIN_INTER_FRAME_MS - 10ms.
+        self.assertAlmostEqual(expected_delay_s - 0.01, mock_sleep.call_args_list[1].args[0])
 
 
 if __name__ == "__main__":
