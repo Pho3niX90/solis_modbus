@@ -208,7 +208,8 @@ def mark_platform_entities_unavailable_for_base_sensors(hass: HomeAssistant, dis
         base = getattr(ent, "base_sensor", None)
         if base is not None and base in disabled_set:
             ent._attr_available = False
-            ent.schedule_update_ha_state()
+            if ent.hass is not None:
+                ent.schedule_update_ha_state()
 
 
 def get_poll_profile(config_entry: ConfigEntry) -> str:
