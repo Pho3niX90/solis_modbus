@@ -261,6 +261,26 @@ solis_dispatch:
           max: 100
           unit_of_measurement: "%"
           mode: box
+    import_limit_watts:
+      name: Import limit
+      description: System power-draw (grid import) upper limit. Omit to leave the inverter default; 0 is a valid cap
+      selector:
+        number:
+          min: 0
+          max: 240000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    export_limit_watts:
+      name: Export limit
+      description: System feed-in (grid export) upper limit. Omit to leave the inverter default; 0 is a valid cap
+      selector:
+        number:
+          min: 0
+          max: 240000
+          step: 100
+          unit_of_measurement: W
+          mode: box
     failsafe_minutes:
       name: Failsafe interval
       description: The inverter reverts to normal operation by itself if no dispatch write arrives within this window

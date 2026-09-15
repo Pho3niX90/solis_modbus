@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solis_modbus import _dispatch_function_value, _s32_words
+from custom_components.solis_modbus import _dispatch_function_value, _dispatch_system_limits, _s32_words
 from custom_components.solis_modbus.const import DOMAIN
 from custom_components.solis_modbus.data.enums import InverterType
 from custom_components.solis_modbus.runtime import SolisRuntimeData
@@ -27,6 +27,26 @@ def test_function_value_pairs():
     assert _dispatch_function_value(None, False, None) == 2 << 4  # not allowed
     assert _dispatch_function_value(None, None, True) == 2 << 10  # discharge disabled
     assert _dispatch_function_value(True, True, True) == 2 | (1 << 4) | (2 << 10)
+
+
+def test_system_limits():
+    assert _dispatch_system_limits(None, None) == (0, 0xFFFF, 0xFFFF)
+    assert _dispatch_system_limits(24000, 24000) == (3, 240, 240)
+    assert _dispatch_system_limits(0, None) == (1, 0, 0xFFFF)
+    assert _dispatch_system_limits(None, 100) == (2, 0xFFFF, 1)
+    assert _dispatch_system_limits(50, 150) == (3, 1, 2)  # 100 W/LSB, half-up
+    assert _dispatch_system_limits(49, 24999) == (3, 0, 250)
+    # zero is a valid cap on both sides
+    assert _dispatch_system_limits(0, 0) == (3, 0, 0)
+    # exact LSB multiples
+    assert _dispatch_system_limits(100, 200) == (3, 1, 2)
+    assert _dispatch_system_limits(149, 151) == (3, 1, 2)
+    # 2.5 LSB banker's-rounds down; half-up goes up
+    assert _dispatch_system_limits(250, None) == (1, 3, 0xFFFF)
+    # service schema ceiling
+    assert _dispatch_system_limits(240000, 240000) == (3, 2400, 2400)
+    # HA may pass watts as strings
+    assert _dispatch_system_limits("6000", "0") == (3, 60, 0)
 
 
 @pytest.fixture
@@ -84,6 +104,21 @@ async def test_dispatch_battery_charge_positive_sign(hass: HomeAssistant, contro
     # battery_charge => mode 2, positive power 3000 W -> raw 300
     assert blocks[0] == (44100, [1, 30, 0, 0xFFFF, 0xFFFF])
     assert blocks[1] == (44105, [2, 0, 300, 0, 0, 100, 0, 0])
+
+
+@pytest.mark.asyncio
+async def test_dispatch_battery_charge_with_import_export_limits(hass: HomeAssistant, controller):
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        await hass.services.async_call(
+            DOMAIN,
+            "solis_dispatch",
+            {"mode": "battery_charge", "power_watts": 3000, "import_limit_watts": 6000, "export_limit_watts": 0},
+            blocking=True,
+        )
+    blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
+    # 44102 BIT00|BIT01, 44103 = 6000 W / 100, 44104 = 0 W
+    assert blocks[0] == (44100, [1, 30, 0b11, 60, 0])
 
 
 @pytest.mark.asyncio
