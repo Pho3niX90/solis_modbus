@@ -94,9 +94,7 @@ class TestModbusClientManagerInterFrame(IsolatedAsyncioTestCase):
     @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
     @patch("custom_components.solis_modbus.client_manager.time.perf_counter")
     @patch("custom_components.solis_modbus.client_manager.asyncio.sleep", new_callable=AsyncMock)
-    async def test_inter_frame_wait_enforces_min_interval_for_reads_and_writes(
-        self, mock_sleep, mock_perf_counter, mock_client_cls
-    ):
+    async def test_inter_frame_wait_enforces_min_interval_for_reads_and_writes(self, mock_sleep, mock_perf_counter, mock_client_cls):
         mock_client_cls.return_value = MagicMock()
         # Two operations back-to-back on the same connection: each should independently
         # compute a wait based on MIN_INTER_FRAME_MS, regardless of is_write.
