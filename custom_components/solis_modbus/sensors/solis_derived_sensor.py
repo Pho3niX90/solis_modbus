@@ -210,7 +210,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         if not serial:
             return
         dev_reg = dr.async_get(self.hass)
-        device = dev_reg.async_get_device(identifiers={(DOMAIN, serial)})
+        device = next(iter(dev_reg.async_get_devices(identifiers={(DOMAIN, serial)})), None)
         sw_version = f"Protocol {protocol_version}"
         if device and device.sw_version != sw_version:
             dev_reg.async_update_device(device.id, sw_version=sw_version)
