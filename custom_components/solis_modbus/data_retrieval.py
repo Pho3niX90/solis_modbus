@@ -15,7 +15,7 @@ from custom_components.solis_modbus.helpers import (
     notify_register_update,
 )
 
-from .const import DOMAIN
+from .const import CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, DOMAIN
 from .data.enums import PollSpeed
 from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
@@ -213,12 +213,37 @@ class DataRetrieval:
         stale_after = max(120.0, float(max(self.controller.poll_speed.values())) * 3)
         return (datetime.now(UTC) - last).total_seconds() > stale_after
 
+    def _suppress_issue_at_night(self) -> bool:
+        """True when the 'unreachable' repair issue should be skipped because it's night.
+
+        Solar inverters normally power off overnight, so a stale/absent Modbus
+        link then is expected rather than a fault (issue #465). Opt-in via
+        CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE since not every setup is PV-only.
+        """
+        entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        if entry is None:
+            return False
+        # Options take priority, but the initial config flow stores this in
+        # entry.data — read both, matching the merge pattern used elsewhere
+        # (e.g. async_setup_entry) so it also applies before the options flow
+        # has ever been saved.
+        config = {**entry.data, **entry.options}
+        if not config.get(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, False):
+            return False
+        sun_state = self.hass.states.get("sun.sun")
+        return sun_state is not None and sun_state.state == "below_horizon"
+
     def _update_connection_issue(self, unreachable: bool) -> None:
         """Raise/clear the 'datalogger unreachable' repair issue for this entry."""
         if self._entry_id is None:
             return
         issue_id = f"datalogger_unreachable_{self._entry_id}"
         if unreachable:
+            if self._suppress_issue_at_night():
+                # Also clears an issue raised before sunset, so it doesn't linger
+                # all night just because suppression only started applying now.
+                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+                return
             last = self.controller.last_modbus_success
             ir.async_create_issue(
                 self.hass,
