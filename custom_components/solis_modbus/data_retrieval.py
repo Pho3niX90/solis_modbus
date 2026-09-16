@@ -233,6 +233,9 @@ class DataRetrieval:
         issue_id = f"datalogger_unreachable_{self._entry_id}"
         if unreachable:
             if self._suppress_issue_at_night():
+                # Also clears an issue raised before sunset, so it doesn't linger
+                # all night just because suppression only started applying now.
+                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
                 return
             last = self.controller.last_modbus_success
             ir.async_create_issue(
