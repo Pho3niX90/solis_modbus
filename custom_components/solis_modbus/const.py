@@ -54,6 +54,13 @@ POLL_PROFILE_EXTREME = "extreme"
 CONF_POLL_PROFILE = "poll_profile"
 CONF_EXTREME_INCLUDE_BATTERY = "extreme_include_battery"
 
+# Skip the "datalogger unreachable" repair issue while the sun is below the
+# horizon (issue #465): solar inverters normally power off overnight, so a
+# stale/absent Modbus link then is expected rather than a fault. Opt-in
+# because not everyone's setup is PV-only (e.g. battery/generator-backed
+# installs may legitimately expect to stay reachable at night).
+CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE = "suppress_night_offline_issue"
+
 POLL_PROFILES = {
     POLL_PROFILE_FULL: "Full (all sensors)",
     POLL_PROFILE_ESSENTIAL: "Essential only (reduce datalogger load)",
