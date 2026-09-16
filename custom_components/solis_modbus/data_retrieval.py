@@ -221,7 +221,14 @@ class DataRetrieval:
         CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE since not every setup is PV-only.
         """
         entry = self.hass.config_entries.async_get_entry(self._entry_id)
-        if entry is None or not entry.options.get(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, False):
+        if entry is None:
+            return False
+        # Options take priority, but the initial config flow stores this in
+        # entry.data — read both, matching the merge pattern used elsewhere
+        # (e.g. async_setup_entry) so it also applies before the options flow
+        # has ever been saved.
+        config = {**entry.data, **entry.options}
+        if not config.get(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, False):
             return False
         sun_state = self.hass.states.get("sun.sun")
         return sun_state is not None and sun_state.state == "below_horizon"
