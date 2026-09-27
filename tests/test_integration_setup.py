@@ -82,3 +82,47 @@ async def test_setup_entry_missing_serial_raises_error(hass: HomeAssistant):
 
     # ConfigEntryError results in 'setup_error'
     assert config_entry.state.value == "setup_error"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("data_value", "options", "expected"),
+    [
+        (True, {}, True),
+        (False, {"suppress_night_offline_issue": True}, True),
+        # Options win over data, e.g. enabled at setup and later disabled in options.
+        (True, {"suppress_night_offline_issue": False}, False),
+    ],
+)
+async def test_setup_entry_passes_night_suppression_flag(hass: HomeAssistant, data_value, options, expected):
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="SN123456",
+        data={
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "inverter_serial": "SN123456",
+            "model": "S6-EH1P",
+            "poll_interval_fast": 10,
+            "poll_interval_normal": 15,
+            "poll_interval_slow": 30,
+            "suppress_night_offline_issue": data_value,
+        },
+        options=options,
+        title="Solis Inverter",
+    )
+    config_entry.add_to_hass(hass)
+
+    with (
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connect", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connected", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_input_register", return_value=[1, 2, 3]),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.process_write_queue"),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_holding_register", return_value=[1, 2, 3]),
+    ):
+        assert await hass.config_entries.async_setup(config_entry.entry_id)
+        await hass.async_block_till_done()
+        assert config_entry.runtime_data.data_retrieval._suppress_night_issue is expected
+        assert await hass.config_entries.async_unload(config_entry.entry_id)
+        await hass.async_block_till_done()
