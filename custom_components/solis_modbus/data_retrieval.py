@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import sun
 from homeassistant.helpers.event import async_track_time_interval
 
 from custom_components.solis_modbus.helpers import (
@@ -15,7 +16,7 @@ from custom_components.solis_modbus.helpers import (
     notify_register_update,
 )
 
-from .const import CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, DOMAIN
+from .const import DOMAIN
 from .data.enums import PollSpeed
 from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
@@ -28,13 +29,28 @@ _MAX_REGISTER_RECOVERY_DEPTH = 24
 # (~the datalogger has been gone for a while, not a single blip).
 _ISSUE_AFTER_FAILURES = 5
 
+# With night suppression on, also treat this long before sunset / after sunrise
+# as night: inverters drop off at dusk and wake well after the sun is up.
+_NIGHT_GRACE = timedelta(hours=1)
+
 
 class DataRetrieval:
-    def __init__(self, hass: HomeAssistant, controller: ModbusController, entry_id: str | None = None):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        controller: ModbusController,
+        entry_id: str | None = None,
+        suppress_night_issue: bool = False,
+    ):
         self._spike_counter = {}
         self.controller: ModbusController = controller
         self.hass = hass
         self._entry_id = entry_id
+        # Fixed for this instance's lifetime: an options change reloads the entry.
+        self._suppress_night_issue = suppress_night_issue
+        # None = unknown (an issue may survive from before a restart), so the first
+        # night-time pass still clears it; afterwards we skip redundant deletes.
+        self._issue_raised: bool | None = None
         self.poll_lock = asyncio.Lock()
         self.connection_check = False
         self.first_poll = True
@@ -213,25 +229,21 @@ class DataRetrieval:
         stale_after = max(120.0, float(max(self.controller.poll_speed.values())) * 3)
         return (datetime.now(UTC) - last).total_seconds() > stale_after
 
-    def _suppress_issue_at_night(self) -> bool:
-        """True when the 'unreachable' repair issue should be skipped because it's night.
+    def _expected_offline_at_night(self) -> bool:
+        """True when the datalogger is expected to be offline because it's night.
 
         Solar inverters normally power off overnight, so a stale/absent Modbus
         link then is expected rather than a fault (issue #465). Opt-in via
         CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE since not every setup is PV-only.
+
+        "Night" is widened by _NIGHT_GRACE on both sides: inverters shut down
+        before sunset and only wake once irradiance picks up well after sunrise.
+        Computed from the HA home location, so the sun integration isn't needed.
         """
-        entry = self.hass.config_entries.async_get_entry(self._entry_id)
-        if entry is None:
+        if not self._suppress_night_issue:
             return False
-        # Options take priority, but the initial config flow stores this in
-        # entry.data — read both, matching the merge pattern used elsewhere
-        # (e.g. async_setup_entry) so it also applies before the options flow
-        # has ever been saved.
-        config = {**entry.data, **entry.options}
-        if not config.get(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, False):
-            return False
-        sun_state = self.hass.states.get("sun.sun")
-        return sun_state is not None and sun_state.state == "below_horizon"
+        now = datetime.now(UTC)
+        return not (sun.is_up(self.hass, now - _NIGHT_GRACE) and sun.is_up(self.hass, now + _NIGHT_GRACE))
 
     def _update_connection_issue(self, unreachable: bool) -> None:
         """Raise/clear the 'datalogger unreachable' repair issue for this entry."""
@@ -239,11 +251,14 @@ class DataRetrieval:
             return
         issue_id = f"datalogger_unreachable_{self._entry_id}"
         if unreachable:
-            if self._suppress_issue_at_night():
-                # Also clears an issue raised before sunset, so it doesn't linger
+            if self._expected_offline_at_night():
+                # Also clears an issue raised before dusk, so it doesn't linger
                 # all night just because suppression only started applying now.
-                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+                if self._issue_raised is not False:
+                    ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+                    self._issue_raised = False
                 return
+            self._issue_raised = True
             last = self.controller.last_modbus_success
             ir.async_create_issue(
                 self.hass,
@@ -259,6 +274,7 @@ class DataRetrieval:
             )
         else:
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            self._issue_raised = False
 
     async def check_connection(self, now=None):
         """Ensure the Modbus controller is connected, retrying on failure.
@@ -295,9 +311,10 @@ class DataRetrieval:
                 # succeeding — a half-open TCP link (e.g. the WiFi datalogger
                 # slept overnight and the stack never noticed, issue #411).
                 # Force-close so the loop below establishes a fresh connection.
-                _LOGGER.warning(
+                _LOGGER.log(
+                    logging.DEBUG if self._expected_offline_at_night() else logging.WARNING,
                     f"⚠️({self.controller.host}.{self.controller.slave}) Modbus link looks half-open: "
-                    f"no successful read since {self.controller.last_modbus_success}; forcing a reconnect."
+                    f"no successful read since {self.controller.last_modbus_success}; forcing a reconnect.",
                 )
                 self._update_connection_issue(True)
                 self.controller.force_close()
@@ -311,7 +328,11 @@ class DataRetrieval:
                         break
                     _LOGGER.debug(f"⚠️({self.controller.host}.{self.controller.slave}) Modbus connection failed, retrying in {retry_delay:.2f} seconds...")
                 except Exception as e:
-                    _LOGGER.error(f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}")
+                    # Expected every retry overnight when the inverter is off; don't spam the log.
+                    _LOGGER.log(
+                        logging.DEBUG if self._expected_offline_at_night() else logging.ERROR,
+                        f"❌({self.controller.host}.{self.controller.slave}) Connection error : {e}",
+                    )
 
                 # Persistent failure (not a single blip) -> surface a repair issue
                 if self.controller.connect_failures >= _ISSUE_AFTER_FAILURES:
