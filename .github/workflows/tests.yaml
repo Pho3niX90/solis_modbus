@@ -17,8 +17,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
         with:
-          # Branch ref required for auto-commit on push; PR uses head ref.
-          ref: ${{ github.head_ref || github.ref_name }}
+          # Branch ref required for auto-commit on push. PRs use the default
+          # merge ref: head_ref only exists on the contributor's fork.
+          ref: ${{ github.event_name == 'push' && github.ref_name || '' }}
           # Only persist credentials when we may push format fixes.
           persist-credentials: ${{ github.event_name == 'push' }}
 
