@@ -310,3 +310,58 @@ async def test_link_is_stale_thresholds():
     assert retrieval._link_is_stale() is False
     controller.last_modbus_success = datetime.now(UTC) - timedelta(seconds=130)
     assert retrieval._link_is_stale() is True
+
+
+async def test_poll_stops_after_link_drops():
+    """Issue #478: a read that times out closes the link. The remaining groups in the
+    batch must not each retry the connection and log "Not connected"."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC))
+    controller.enabled = True
+    groups = []
+    for start in (43007, 43128, 43173, 43195):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.SLOW
+        group.start_register = start
+        group.registrar_count = 1
+        groups.append(group)
+    controller.sensor_groups = list(groups)
+
+    link_up = True
+
+    async def read(start, count):
+        nonlocal link_up
+        if start == 43128:
+            link_up = False  # "No response received" -> controller closes the client
+            return None, None
+        return [1] * count, None
+
+    controller.connected = MagicMock(side_effect=lambda: link_up)
+    controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=read)
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.get_modbus_updates(groups, PollSpeed.SLOW)
+
+    read_starts = [c.args[0] for c in controller.async_read_holding_registers_with_exception.await_args_list]
+    assert read_starts == [43007, 43128]
+    assert retrieval.poll_updating[PollSpeed.SLOW] == {}
+
+
+async def test_poll_continues_after_failure_when_link_up():
+    """A failed group that leaves the link connected must not abort the batch."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC))
+    controller.enabled = True
+    controller.connected = MagicMock(return_value=True)
+    groups = []
+    for start in (43007, 43128, 43173):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.SLOW
+        group.start_register = start
+        group.registrar_count = 1
+        groups.append(group)
+    controller.sensor_groups = list(groups)
+    controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=lambda start, count: (None, None) if start == 43128 else ([1] * count, None))
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.get_modbus_updates(groups, PollSpeed.SLOW)
+
+    assert controller.async_read_holding_registers_with_exception.await_count == 3
