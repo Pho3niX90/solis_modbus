@@ -39,7 +39,7 @@ jobs:
       - name: Get latest tag or fail
         id: get-latest-tag
         run: |
-          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
+          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | grep -v '^refs/tags/pr-' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
           if [ -z "$latest_tag" ]; then
             echo "No tags found for the commit."
             exit 1
