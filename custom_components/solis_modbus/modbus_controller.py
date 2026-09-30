@@ -328,7 +328,9 @@ class ModbusController:
     async def async_read_input_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
         """Like async_read_input_register but returns (registers, exception_code) for recoverable-read logic."""
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("input", register, count)
+                return None, None
             return await self._async_read_input_register_raw_detailed(register, count, quiet=False)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
@@ -348,7 +350,9 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("input", register, count)
+                return None
             return await self._async_read_input_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
@@ -391,7 +395,9 @@ class ModbusController:
     async def async_read_holding_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
         """Like async_read_holding_register but returns (registers, exception_code) for recoverable-read logic."""
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("holding", register, count)
+                return None, None
             return await self._async_read_holding_register_raw_detailed(register, count, quiet=False)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
@@ -411,11 +417,19 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("holding", register, count)
+                return None
             return await self._async_read_holding_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
             return None
+
+    def _log_skipped_read(self, kind: str, register: int, count: int) -> None:
+        # The link is down and the reconnect attempt failed. Issuing the read anyway only
+        # produces a pymodbus "Not connected" error per group (issue #478); the reconnect
+        # watchdog in DataRetrieval owns recovery, so stay quiet here.
+        _LOGGER.debug("(%s.%s) Skipping %s register read at %s (count=%s): not connected", self.host, self.device_id, kind, register, count)
 
     async def connect(self):
         """Establishes a connection to the Modbus device.
