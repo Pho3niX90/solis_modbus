@@ -33,12 +33,15 @@ STATE_TABLE = [
     (33, "Self-Use"),  # #413 reporter's idle value (bit 5 = grid charge preserved)
     (3, "Self-Use + TOU"),
     (35, "Self-Use + TOU"),
-    (17, "Reserve / Backup"),
-    (49, "Reserve / Backup"),
-    (51, "Reserve / Backup + TOU"),
+    (17, "Self-Use + Reserve/Backup"),
+    (49, "Self-Use + Reserve/Backup"),
+    (51, "Self-Use + TOU + Reserve/Backup"),
     (64, "Feed-in Priority"),
     (96, "Feed-in Priority"),
     (98, "Feed-in Priority + TOU"),
+    (80, "Feed-in Priority + Reserve/Backup"),
+    (112, "Feed-in Priority + Reserve/Backup"),
+    (82, "Feed-in Priority + TOU + Reserve/Backup"),
     (4, "Off-Grid Operation"),
     (2048, "Peak Shaving"),
     (2080, "Peak Shaving"),  # EA1P cloud value = bits 5+11 (#413)
@@ -62,10 +65,15 @@ def test_current_option_resolution(value, expected):
         (33, "Peak Shaving", 2080),
         (35, "Peak Shaving", 2080),  # TOU bit must not survive (old code wrote 2082)
         (33, "Self-Use + TOU", 35),
-        (33, "Reserve / Backup", 49),
-        (33, "Reserve / Backup + TOU", 51),
+        (33, "Self-Use + Reserve/Backup", 49),
+        (33, "Self-Use + TOU + Reserve/Backup", 51),
         (33, "Feed-in Priority", 96),
         (2080, "Self-Use", 33),  # and back out of peak shaving
+        # Discussion #496: Reserve/Backup paired with Feed-in Priority instead of Self-Use.
+        # Grid-charge bit 5 (already on at 96) is independent of STORAGE_MODE_BITS and survives.
+        (96, "Feed-in Priority + Reserve/Backup", 112),
+        (96, "Feed-in Priority + TOU + Reserve/Backup", 114),
+        (80, "Feed-in Priority", 64),  # dropping Reserve/Backup from Feed-in Priority (no bit 5 here)
         # Independent modifier bits (3 wakeup, 8 forcecharge) must be preserved
         (33 | (1 << 3) | (1 << 8), "Peak Shaving", 2080 | (1 << 3) | (1 << 8)),
     ],
