@@ -53,6 +53,7 @@ POLL_PROFILE_EXTREME = "extreme"
 
 CONF_POLL_PROFILE = "poll_profile"
 CONF_EXTREME_INCLUDE_BATTERY = "extreme_include_battery"
+CONF_EXTREME_INCLUDE_SMART_PORT = "extreme_include_smart_port"
 
 # Skip the "datalogger unreachable" repair issue while the sun is below the
 # horizon (issue #465): solar inverters normally power off overnight, so a

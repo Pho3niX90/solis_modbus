@@ -10,6 +10,7 @@ from homeassistant.util import dt as dt_utils
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import (
     CONF_EXTREME_INCLUDE_BATTERY,
+    CONF_EXTREME_INCLUDE_SMART_PORT,
     CONF_POLL_PROFILE,
     CONN_TYPE_TCP,
     CONTROLLER,
@@ -246,14 +247,26 @@ def extreme_includes_battery(config_entry: ConfigEntry) -> bool:
     return {**config_entry.data, **config_entry.options}.get(CONF_EXTREME_INCLUDE_BATTERY, False)
 
 
-def group_in_poll_profile(group: dict, profile: str, include_battery: bool = False) -> bool:
+def extreme_includes_smart_port(config_entry: ConfigEntry) -> bool:
+    """True when extreme mode should also poll the Smart Port AC power group.
+
+    Opt-in because it costs another Modbus frame per fast cycle, and only matters
+    where generation arrives through the Smart Port (AC-coupled PV, issue #501).
+    Inverters without the SMART_PORT feature skip the group regardless.
+    """
+    return {**config_entry.data, **config_entry.options}.get(CONF_EXTREME_INCLUDE_SMART_PORT, False)
+
+
+def group_in_poll_profile(group: dict, profile: str, include_battery: bool = False, include_smart_port: bool = False) -> bool:
     """True when a sensor group should be polled under the given profile."""
     if profile == POLL_PROFILE_ESSENTIAL:
         return bool(group.get("essential", False))
     if profile == POLL_PROFILE_EXTREME:
         if group.get("extreme", False):
             return True
-        return include_battery and bool(group.get("extreme_battery", False))
+        if include_battery and group.get("extreme_battery", False):
+            return True
+        return include_smart_port and bool(group.get("extreme_smart_port", False))
     return True
 
 

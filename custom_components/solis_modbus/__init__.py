@@ -42,6 +42,7 @@ from .helpers import (
     combine_u32_le,
     derived_sensor_is_supported,
     extreme_includes_battery,
+    extreme_includes_smart_port,
     get_controller,
     get_poll_profile,
     group_in_poll_profile,
@@ -589,6 +590,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         controller._sensor_groups = []
         poll_profile = get_poll_profile(entry)
         include_battery = extreme_includes_battery(entry)
+        include_smart_port = extreme_includes_smart_port(entry)
 
         # A profile that matches nothing would set the entry up with no sensors at
         # all, which reads as a broken integration. Extreme currently only maps the
@@ -608,7 +610,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
                 continue
 
-            if not group_in_poll_profile(group, poll_profile, include_battery):
+            if not group_in_poll_profile(group, poll_profile, include_battery, include_smart_port):
                 skipped_by_profile += 1
                 continue
 

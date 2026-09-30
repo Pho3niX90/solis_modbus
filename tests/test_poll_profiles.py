@@ -24,6 +24,7 @@ from custom_components.solis_modbus.config_flow import (
 )
 from custom_components.solis_modbus.const import (
     CONF_EXTREME_INCLUDE_BATTERY,
+    CONF_EXTREME_INCLUDE_SMART_PORT,
     CONF_POLL_PROFILE,
     POLL_INTERVAL_FAST_MIN,
     POLL_INTERVAL_FAST_MIN_EXTREME,
@@ -35,6 +36,7 @@ from custom_components.solis_modbus.const import (
 from custom_components.solis_modbus.helpers import (
     derived_sensor_is_supported,
     extreme_includes_battery,
+    extreme_includes_smart_port,
     get_poll_profile,
     group_in_poll_profile,
     is_essential_only,
@@ -46,6 +48,7 @@ from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sen
 # meter/CT, and the ONCE identity groups so the device still identifies itself.
 EXTREME_GROUPS = {33000, 35000, 33049, 33126}
 EXTREME_BATTERY_GROUP = 33132
+EXTREME_SMART_PORT_GROUP = 34391  # AC-coupled PV phase power (#501)
 
 
 def _entry(data=None, options=None):
@@ -55,8 +58,8 @@ def _entry(data=None, options=None):
     return entry
 
 
-def _selected(profile, include_battery=False, groups=hybrid_sensors):
-    return {g["register_start"] for g in groups if group_in_poll_profile(g, profile, include_battery)}
+def _selected(profile, include_battery=False, include_smart_port=False, groups=hybrid_sensors):
+    return {g["register_start"] for g in groups if group_in_poll_profile(g, profile, include_battery, include_smart_port)}
 
 
 class TestGroupSelection:
@@ -65,6 +68,18 @@ class TestGroupSelection:
 
     def test_extreme_battery_adds_only_the_battery_group(self):
         assert _selected(POLL_PROFILE_EXTREME, include_battery=True) == EXTREME_GROUPS | {EXTREME_BATTERY_GROUP}
+
+    def test_extreme_smart_port_adds_only_the_smart_port_group(self):
+        assert _selected(POLL_PROFILE_EXTREME, include_smart_port=True) == EXTREME_GROUPS | {EXTREME_SMART_PORT_GROUP}
+
+    def test_extreme_opt_ins_combine(self):
+        selected = _selected(POLL_PROFILE_EXTREME, include_battery=True, include_smart_port=True)
+        assert selected == EXTREME_GROUPS | {EXTREME_BATTERY_GROUP, EXTREME_SMART_PORT_GROUP}
+
+    def test_smart_port_opt_in_does_not_leak_into_essential(self):
+        # The flag only widens extreme; essential keeps its own group set.
+        assert _selected(POLL_PROFILE_ESSENTIAL, include_smart_port=True) == _selected(POLL_PROFILE_ESSENTIAL)
+        assert EXTREME_SMART_PORT_GROUP not in _selected(POLL_PROFILE_ESSENTIAL, include_smart_port=True)
 
     def test_extreme_includes_the_meter_group_essential_does_not(self):
         # 33126 carries meter voltage/current/active power — the signal an export
@@ -88,7 +103,7 @@ class TestGroupSelection:
     def test_extreme_frame_budget_fits_the_two_second_floor(self):
         # >300ms mandatory spacing per frame; the live groups are what recur at the
         # fast interval (identity groups are ONCE), so the recurring cost must fit.
-        live = {g for g in _selected(POLL_PROFILE_EXTREME, include_battery=True) if g not in (33000, 35000)}
+        live = {g for g in _selected(POLL_PROFILE_EXTREME, include_battery=True, include_smart_port=True) if g not in (33000, 35000)}
         assert len(live) * 0.3 < POLL_INTERVAL_FAST_MIN_EXTREME
 
 
@@ -131,6 +146,10 @@ class TestProfileResolution:
     def test_battery_opt_in_defaults_off(self):
         assert extreme_includes_battery(_entry()) is False
         assert extreme_includes_battery(_entry(options={CONF_EXTREME_INCLUDE_BATTERY: True})) is True
+
+    def test_smart_port_opt_in_defaults_off(self):
+        assert extreme_includes_smart_port(_entry()) is False
+        assert extreme_includes_smart_port(_entry(options={CONF_EXTREME_INCLUDE_SMART_PORT: True})) is True
 
 
 class TestPollIntervalFloor:
@@ -303,6 +322,7 @@ class TestSchemaOptions:
         for keys in (base_keys, options_keys):
             assert CONF_POLL_PROFILE in keys
             assert CONF_EXTREME_INCLUDE_BATTERY in keys
+            assert CONF_EXTREME_INCLUDE_SMART_PORT in keys
         assert set(POLL_PROFILES) == {POLL_PROFILE_FULL, POLL_PROFILE_ESSENTIAL, POLL_PROFILE_EXTREME}
 
     def test_profile_values_are_rejected_when_unknown(self):
