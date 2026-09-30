@@ -1,0 +1,127 @@
+name: PR Pre-release
+
+# Publishes a temporary pre-release (tag `pr-<number>`) with the integration zip
+# for every PR, so it can be tested without cloning the branch. The pre-release
+# is rebuilt on every push and deleted when the PR is closed or merged.
+#
+# pull_request_target is used so fork PRs get a token that can create releases.
+# The PR code is never executed here: it is only checked out, zipped and uploaded,
+# and credentials are not persisted into the checkout.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, closed]
+    paths:
+      - "custom_components/**"
+
+env:
+  COMPONENT_NAME: solis_modbus
+  TAG: pr-${{ github.event.pull_request.number }}
+
+concurrency:
+  group: pr-prerelease-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish pre-release
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Stamp version in manifest.json
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          manifest="custom_components/${COMPONENT_NAME}/manifest.json"
+          base=$(jq -r '.version' "$manifest")
+          version="${base}-pr${PR_NUMBER}+${HEAD_SHA:0:7}"
+          jq --arg v "$version" '.version = $v' "$manifest" > manifest.tmp.json && mv manifest.tmp.json "$manifest"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Zip ${{ env.COMPONENT_NAME }} dir
+        run: |
+          cd "custom_components/${COMPONENT_NAME}"
+          # -y stores symlinks as links rather than following them out of the checkout
+          zip -r -y "${GITHUB_WORKSPACE}/${COMPONENT_NAME}.zip" ./ -x '__pycache__/*' '*/__pycache__/*'
+
+      - name: Recreate pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh release delete "$TAG" --cleanup-tag --yes || true
+
+          cat > notes.md <<EOF
+          Temporary test build for ${PR_URL} at commit ${HEAD_SHA}.
+
+          **Not for production use.** This pre-release is replaced on every push to the PR and deleted when the PR is closed.
+          EOF
+
+          gh release create "$TAG" "${COMPONENT_NAME}.zip" \
+            --prerelease \
+            --latest=false \
+            --target "$HEAD_SHA" \
+            --title "PR #${PR_NUMBER} test build (${VERSION})" \
+            --notes-file notes.md
+
+          echo "ZIP_URL=https://github.com/${GH_REPO}/releases/download/${TAG}/${COMPONENT_NAME}.zip" >> "$GITHUB_ENV"
+          echo "RELEASE_URL=https://github.com/${GH_REPO}/releases/tag/${TAG}" >> "$GITHUB_ENV"
+
+      - name: Comment on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-prerelease
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            ### 🧪 Test build
+
+            A pre-release has been built for commit ${{ github.event.pull_request.head.sha }}.
+
+            **Download:** [${{ env.COMPONENT_NAME }}.zip](${{ env.ZIP_URL }}) (version `${{ env.VERSION }}`, [release page](${{ env.RELEASE_URL }}))
+
+            **To install:**
+            1. Back up your current `config/custom_components/${{ env.COMPONENT_NAME }}` folder.
+            2. Extract the zip into `config/custom_components/${{ env.COMPONENT_NAME }}`, replacing the existing files.
+            3. Restart Home Assistant.
+
+            To go back, restore your backup (or redownload a release through HACS) and restart.
+
+            _This build is updated on every push and deleted when the PR is closed._
+
+  cleanup:
+    name: Delete pre-release
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Delete pre-release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete "$TAG" --cleanup-tag --yes || echo "No pre-release to delete"
+
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-prerelease
+          number: ${{ github.event.pull_request.number }}
+          only_update: true
+          message: |
+            ### 🧪 Test build
+
+            _The test pre-release for this PR was removed when the PR was closed._

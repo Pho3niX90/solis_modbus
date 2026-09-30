@@ -22,6 +22,7 @@ from .const import (
     CONF_SERIAL_PORT,
     CONF_SLAVE,
     CONF_STOPBITS,
+    CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -663,7 +664,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # which already unloads [Platform.SENSOR, *PLATFORMS] together.
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
-        entry.runtime_data.data_retrieval = DataRetrieval(hass, controller, entry.entry_id)
+        entry.runtime_data.data_retrieval = DataRetrieval(
+            hass,
+            controller,
+            entry.entry_id,
+            suppress_night_issue=bool(config.get(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, False)),
+        )
     except Exception:
         controller.close_connection()
         entry.runtime_data = None

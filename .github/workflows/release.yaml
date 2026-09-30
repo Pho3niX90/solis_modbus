@@ -26,6 +26,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # master requires PR reviews, so the default GITHUB_TOKEN cannot push
+          # the version bump. The PAT (repo admin) bypasses that rule.
+          token: ${{ secrets.PAT }}
 
       - name: Install jq
         run: sudo apt-get install jq
@@ -36,7 +39,7 @@ jobs:
       - name: Get latest tag or fail
         id: get-latest-tag
         run: |
-          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
+          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | grep -v '^refs/tags/pr-' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
           if [ -z "$latest_tag" ]; then
             echo "No tags found for the commit."
             exit 1
@@ -81,12 +84,27 @@ jobs:
           echo "is_higher_version=true" >> $GITHUB_ENV
 
       - name: Commit and push version bump
+        id: bump
         if: env.is_higher_version == 'true'
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add custom_components/${{ env.COMPONENT_NAME }}/manifest.json
-          git diff --exit-code || (git commit -m "chore: bump version to v${{ env.version }}" && git push)
+          # Compare the index, not the working tree: after `git add` a plain
+          # `git diff` is always empty, which silently skipped the bump.
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: bump version to v${{ env.version }}"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Verify manifest version
+        run: |
+          actual=$(git show HEAD:custom_components/${{ env.COMPONENT_NAME }}/manifest.json | jq -r '.version')
+          if [ "$actual" != "${{ env.version }}" ]; then
+            echo "::error::manifest.json at HEAD is $actual, expected ${{ env.version }}"
+            exit 1
+          fi
 
       - name: Zip ${{ env.COMPONENT_NAME }} dir
         run: |
@@ -99,6 +117,8 @@ jobs:
         with:
           files: ${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/${{ env.COMPONENT_NAME }}.zip
           tag_name: v${{ env.version }}
+          # Tag the bump commit so the release source has the right manifest version.
+          target_commitish: ${{ steps.bump.outputs.sha }}
           name: v${{ env.version }}
           token: ${{ secrets.PAT }}
           generate_release_notes: true

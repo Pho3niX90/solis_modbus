@@ -17,8 +17,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
         with:
-          # Branch ref required for auto-commit on push; PR uses head ref.
-          ref: ${{ github.head_ref || github.ref_name }}
+          # Branch ref required for auto-commit on push. PRs use the default
+          # merge ref: head_ref only exists on the contributor's fork.
+          ref: ${{ github.event_name == 'push' && github.ref_name || '' }}
           # Only persist credentials when we may push format fixes.
           persist-credentials: ${{ github.event_name == 'push' }}
 
@@ -52,6 +53,19 @@ jobs:
         with:
           commit_message: "style: apply ruff format"
           file_pattern: "*.py"
+
+      # sensors.md is derived from the sensor definitions; regenerate it here so
+      # contributors (including fork PRs, which get a read-only token) never have to.
+      - name: Regenerate sensor docs
+        if: github.event_name == 'push'
+        run: uv run python docs/generate_sensors_md.py
+
+      - name: Commit sensor docs
+        if: github.event_name == 'push'
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          commit_message: "docs: regenerate sensors.md"
+          file_pattern: "docs/source/sensors.md"
 
       - name: Run all tests
         run: uv run pytest
