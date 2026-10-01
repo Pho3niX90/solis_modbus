@@ -53,47 +53,63 @@ DATA_TYPE_RAW_RANGES = {
 # is what made the old derivation retarget registers it never considered.
 MAX_SOURCE_INVERTER_RATING = "inverter_rating"
 
-# Battery-current setpoints, mapped to the BMS mirror register that publishes the
-# battery's own current limit. The mirrors are surfaced as an advisory ``device_limit``
+# Battery-current setpoints, mapped to the register that publishes the BMS's own
+# live current limitation for that direction. Surfaced as an advisory ``device_limit``
 # (entity attribute + warning on write), NOT as the advertised max. Two field reports
-# disqualified them as bounds on what may be *configured*:
+# disqualified a live register as a bound on what may be *configured*:
 #
 #   #467 — a real BMS (Dyness HV) derates the limit with SOC, so it moves through the
 #          day: the number's state ended up above its own max, TOU slots (scheduled
 #          config) were bounded by the instant the page was opened, and automation
 #          writes intermittently raised out_of_range.
-#   #464 — some firmware echoes the effective setpoint back on the mirror, so lowering
-#          the setpoint lowered the advertised max: a one-way ratchet (users stuck at
-#          1-2 A until they went through Solis Cloud).
+#   #464 — some firmware echoes the effective setpoint back on 33206/33207 ("Battery
+#          Max Charge/Discharge Current Mirror" — its name says mirror, and it behaves
+#          like one), so lowering the setpoint lowered the advertised max: a one-way
+#          ratchet (users stuck at 1-2 A until they went through Solis Cloud).
+#
+# #481 caught 33206/33207 doing the same echo on the *advisory* path: it reported a
+# stale "1 A" limit matching a prior setpoint rather than what the BMS could deliver,
+# while the separately-named "Battery Charge/Discharge Current Limitation (BMS)"
+# registers (33143/33144) — independent of anything written to a setpoint register —
+# read 300 A on the same install. Those are what's mapped here instead; 33206/33207
+# stay defined as their own read-only mirror sensors, just no longer read as the limit.
 #
 # The TOU slot and time-charging currents are mapped for the same reason the four
 # originals are (#455): their old literals (135 A / 300 A) sat below both a 15 kW LV
 # bank's ~293 A and the 580 A a parallel pair reports (#351).
-BATTERY_CURRENT_MIRROR_REGISTERS = {
-    # --- charge -> Battery Max Charge Current Mirror ---
-    43012: 33206,  # Max Charge Current
-    43117: 33206,  # Battery Max Charge Current
-    43141: 33206,  # Time-Charging Charge Current
-    43709: 33206,  # Grid TOU Charge battery current (Slot 1)
-    43716: 33206,  # Grid TOU Charge battery current (Slot 2)
-    43723: 33206,  # Grid TOU Charge battery current (Slot 3)
-    43730: 33206,  # Grid TOU Charge battery current (Slot 4)
-    43737: 33206,  # Grid TOU Charge battery current (Slot 5)
-    43744: 33206,  # Grid TOU Charge battery current (Slot 6)
-    # --- discharge -> Battery Max Discharge Current Mirror ---
-    43013: 33207,  # Max Discharge Current
-    43118: 33207,  # Battery Max Discharge Current
-    43142: 33207,  # Time-Charging Discharge Current
-    43751: 33207,  # Grid TOU Discharge battery current (Slot 1)
-    43758: 33207,  # Grid TOU Discharge battery current (Slot 2)
-    43765: 33207,  # Grid TOU Discharge battery current (Slot 3)
-    43772: 33207,  # Grid TOU Discharge battery current (Slot 4)
-    43779: 33207,  # Grid TOU Discharge battery current (Slot 5)
-    43786: 33207,  # Grid TOU Discharge battery current (Slot 6)
+BATTERY_CURRENT_LIMIT_REGISTERS = {
+    # --- charge -> Battery Charge Current Limitation (BMS) ---
+    43012: 33143,  # Max Charge Current
+    43117: 33143,  # Battery Max Charge Current
+    43141: 33143,  # Time-Charging Charge Current
+    43709: 33143,  # Grid TOU Charge battery current (Slot 1)
+    43716: 33143,  # Grid TOU Charge battery current (Slot 2)
+    43723: 33143,  # Grid TOU Charge battery current (Slot 3)
+    43730: 33143,  # Grid TOU Charge battery current (Slot 4)
+    43737: 33143,  # Grid TOU Charge battery current (Slot 5)
+    43744: 33143,  # Grid TOU Charge battery current (Slot 6)
+    # --- discharge -> Battery Discharge Current Limitation (BMS) ---
+    43013: 33144,  # Max Discharge Current
+    43118: 33144,  # Battery Max Discharge Current
+    43142: 33144,  # Time-Charging Discharge Current
+    43751: 33144,  # Grid TOU Discharge battery current (Slot 1)
+    43758: 33144,  # Grid TOU Discharge battery current (Slot 2)
+    43765: 33144,  # Grid TOU Discharge battery current (Slot 3)
+    43772: 33144,  # Grid TOU Discharge battery current (Slot 4)
+    43779: 33144,  # Grid TOU Discharge battery current (Slot 5)
+    43786: 33144,  # Grid TOU Discharge battery current (Slot 6)
 }
 
-# The mirrors are U16 on a 0.1 A scale, same as the setpoints they bound.
-BATTERY_CURRENT_MIRROR_MULTIPLIER = 0.1
+# The BMS limitation registers are U16 on a 0.1 A scale, same as the setpoints they
+# advise.
+BATTERY_CURRENT_LIMIT_MULTIPLIER = 0.1
+
+# The inverter's own instrumented current ceiling (#481 point 2): independent of the
+# BMS, and applies to every battery-current setpoint regardless of direction. Same
+# 0.1 A scale. Folded into ``device_limit`` as a second, min()'d factor rather than a
+# separate attribute, so the advisory number is "what can actually flow" without
+# requiring dashboards to combine two attributes themselves.
+INVERTER_MAX_CURRENT_REGISTER = 33041
 
 # Grid TOU cut-off voltage: charge slots 1-6, then discharge slots 1-6.
 _TOU_CUTOFF_VOLTAGE_REGISTERS = (43710, 43717, 43724, 43731, 43738, 43745, 43752, 43759, 43766, 43773, 43780, 43787)
@@ -272,28 +288,46 @@ class SolisBaseSensor:
         return self.protocol_raw_range[0] * (self.multiplier or 1)
 
     @property
-    def battery_current_mirror_register(self) -> int | None:
-        """The BMS mirror register advising this setpoint, or None if it isn't one."""
+    def battery_current_limit_register(self) -> int | None:
+        """The BMS limitation register advising this setpoint, or None if it isn't one."""
         for reg in self.registrars:
-            mirror = BATTERY_CURRENT_MIRROR_REGISTERS.get(reg)
-            if mirror is not None:
-                return mirror
+            limit_register = BATTERY_CURRENT_LIMIT_REGISTERS.get(reg)
+            if limit_register is not None:
+                return limit_register
         return None
+
+    @property
+    def device_limit_registers(self) -> tuple[int, ...]:
+        """Registers whose updates should refresh ``device_limit`` — see solis_number_sensor."""
+        registers = []
+        bms_register = self.battery_current_limit_register
+        if bms_register is not None:
+            registers.append(bms_register)
+            registers.append(INVERTER_MAX_CURRENT_REGISTER)
+        return tuple(registers)
 
     @property
     def device_limit(self) -> float | None:
         """What the governing device reports it can do right now, or None.
 
         Advisory only: surfaced as an entity attribute and checked on write for a log
-        warning, never advertised as the number's max. The BMS mirror derates with SOC
-        through the day (#467) and on some firmware echoes the setpoint back (#464);
-        the inverter rating can sit below a legitimate DC-side setpoint — all of which
-        disqualify them as bounds on what may be *configured*. The device enforces its
-        real limit itself at runtime.
+        warning, never advertised as the number's max. The BMS limit derates with SOC
+        through the day (#467), so it and the inverter's own instrumented ceiling
+        (#481) both disqualify themselves as bounds on what may be *configured* — the
+        device enforces its real limit itself at runtime. When both are available the
+        lower one governs, same as the real device would apply whichever binds first.
         """
-        mirror = self.battery_current_mirror_register
-        if mirror is not None:
-            return self._bms_reported_max(mirror)
+        bms_register = self.battery_current_limit_register
+        if bms_register is not None:
+            candidates = [
+                v
+                for v in (
+                    self._register_current_value(bms_register, BATTERY_CURRENT_LIMIT_MULTIPLIER),
+                    self._register_current_value(INVERTER_MAX_CURRENT_REGISTER, BATTERY_CURRENT_LIMIT_MULTIPLIER),
+                )
+                if v is not None
+            ]
+            return min(candidates) if candidates else None
         if self.max_source == MAX_SOURCE_INVERTER_RATING:
             return self._inverter_rating_max()
         return None
@@ -301,21 +335,21 @@ class SolisBaseSensor:
     @property
     def device_limit_source(self) -> str | None:
         """The authority ``device_limit`` comes from, or None if this entity has none."""
-        if self.battery_current_mirror_register is not None:
+        if self.battery_current_limit_register is not None:
             return "bms"
         if self.max_source == MAX_SOURCE_INVERTER_RATING:
             return MAX_SOURCE_INVERTER_RATING
         return None
 
-    def _bms_reported_max(self, mirror_register: int) -> float | None:
-        """The mirror's value in amps, or None while it is absent/zero/unreadable."""
+    def _register_current_value(self, register: int, multiplier: float) -> float | None:
+        """A register's current value in amps, or None while it is absent/zero/unreadable."""
         try:
-            raw = cache_get(self.hass, self.controller, mirror_register)
+            raw = cache_get(self.hass, self.controller, register)
         except Exception:  # no cache yet (tests, early setup) — no advisory limit
             return None
         if not isinstance(raw, (int, float)) or isinstance(raw, bool) or raw <= 0:
             return None
-        return round(raw * BATTERY_CURRENT_MIRROR_MULTIPLIER, 1)
+        return round(raw * multiplier, 1)
 
     def get_step(self, wanted_step):
         if wanted_step is not None:

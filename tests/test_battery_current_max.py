@@ -1,17 +1,23 @@
-"""Battery-current setpoints: static bounds, advisory BMS limit.
+"""Battery-current setpoints: static bounds, advisory BMS/inverter limit.
 
-Two generations of regressions meet here:
+Three generations of regressions meet here:
 
 * ``"max": 200`` (and 135/300 on the TOU/time-charging currents) rejected legitimate
   writes — a 15 kW LV hybrid at 51.2 V needs ~293 A, a parallel pair reports 580 A
   (#351, #455). No literal survives contact with the fleet.
-* Replacing the literal with the live BMS mirror (33206/33207) made the bound *move*:
-  a real BMS derates with SOC, so the state ended up above its own max and automation
-  writes intermittently raised out_of_range (#467); on some firmware the mirror echoes
-  the setpoint back, so lowering the value ratcheted the max down one-way (#464).
+* Replacing the literal with a live register made the bound *move*: a real BMS derates
+  with SOC, so the state ended up above its own max and automation writes
+  intermittently raised out_of_range (#467); on some firmware register 33206/33207
+  ("Battery Max Charge/Discharge Current Mirror") echoes the setpoint back, so
+  lowering the value ratcheted the max down one-way (#464).
+* #481: that same 33206/33207 echo showed up on the *advisory* ``device_limit`` too —
+  a stale "1 A" tracking the last setpoint rather than what the battery could deliver.
+  The advisory now reads 33143/33144 ("Battery Charge/Discharge Current Limitation
+  (BMS)") instead — a register independent of anything written to a setpoint — min()'d
+  with 33041 ("Max Inverter Current"), the inverter's own instrumented ceiling.
 
 The resolution: the advertised max is the *static* protocol ceiling (what the register
-can carry — never wrong-low), and the mirror is surfaced as an advisory
+can carry — never wrong-low), and the BMS/inverter limit is surfaced as an advisory
 ``device_limit`` attribute plus a log warning on write, never enforced.
 """
 
@@ -37,8 +43,9 @@ BATTERY_CURRENT_REGISTERS = CHARGE_REGISTERS + DISCHARGE_REGISTERS
 EXTENDED_CHARGE_REGISTERS = (43141, 43709, 43716, 43723, 43730, 43737, 43744)
 EXTENDED_DISCHARGE_REGISTERS = (43142, 43751, 43758, 43765, 43772, 43779, 43786)
 
-CHARGE_MIRROR = 33206
-DISCHARGE_MIRROR = 33207
+CHARGE_MIRROR = 33143
+DISCHARGE_MIRROR = 33144
+INVERTER_MAX_CURRENT = 33041
 
 # U16 on a 0.1 A scale — the static ceiling for every battery-current setpoint.
 PROTOCOL_CURRENT_MAX = 6553.5
@@ -216,6 +223,58 @@ class TestAdvisoryDeviceLimit:
         assert sensor.device_limit_source is None
 
 
+class TestDeviceLimitFoldsInInverterCeiling:
+    """#481: the advisory limit should be min(BMS limit, inverter's own ceiling)."""
+
+    def setup_method(self):
+        self.hass = _Hass()
+        self.controller = _controller(wattage_chosen=15000)
+
+    def test_the_lower_inverter_ceiling_governs(self):
+        """#481's own numbers: BMS says 300 A, the inverter is instrumented for 80 A."""
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 3000)  # 300.0 A
+        cache_save(self.hass, self.controller, INVERTER_MAX_CURRENT, 800)  # 80.0 A
+        sensor = _sensor(self.hass, self.controller, 43117)
+
+        assert sensor.device_limit == 80.0
+        assert sensor.device_limit_source == "bms"
+
+    def test_the_lower_bms_limit_governs(self):
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 184)  # 18.4 A, derated
+        cache_save(self.hass, self.controller, INVERTER_MAX_CURRENT, 800)
+        sensor = _sensor(self.hass, self.controller, 43117)
+
+        assert sensor.device_limit == 18.4
+
+    def test_a_missing_inverter_ceiling_still_reports_the_bms_limit(self):
+        """Not every model exposes 33041 — the advisory must degrade, not disappear."""
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 3000)
+        sensor = _sensor(self.hass, self.controller, 43117)
+
+        assert sensor.device_limit == 300.0
+
+    def test_a_missing_bms_limit_still_reports_the_inverter_ceiling(self):
+        cache_save(self.hass, self.controller, INVERTER_MAX_CURRENT, 800)
+        sensor = _sensor(self.hass, self.controller, 43117)
+
+        assert sensor.device_limit == 80.0
+
+    def test_the_stale_setpoint_mirror_no_longer_feeds_the_advisory(self):
+        """#481: 33206 echoing an old setpoint of 1 A must not surface as device_limit."""
+        cache_save(self.hass, self.controller, 33206, 10)  # the echoed 1.0 A setpoint
+        cache_save(self.hass, self.controller, CHARGE_MIRROR, 3000)
+        sensor = _sensor(self.hass, self.controller, 43117)
+
+        assert sensor.device_limit == 300.0
+
+    def test_discharge_setpoints_use_the_same_inverter_ceiling(self):
+        cache_save(self.hass, self.controller, DISCHARGE_MIRROR, 3000)
+        cache_save(self.hass, self.controller, INVERTER_MAX_CURRENT, 800)
+        sensor = _sensor(self.hass, self.controller, 43118)
+
+        assert sensor.device_limit == 80.0
+
+
 class TestIssue438DoesNotRegress:
     """Declared maxima on grid registers still win over everything derived."""
 
@@ -282,6 +341,21 @@ class TestNumberEntity:
         entity.schedule_update_ha_state = MagicMock()
 
         notify_register_update(hass, controller, CHARGE_MIRROR, 2930)
+        await hass.async_block_till_done()
+
+        entity.schedule_update_ha_state.assert_called()
+
+    async def test_an_inverter_ceiling_update_also_republishes_the_attributes(self, hass):
+        """#481: the inverter's own ceiling is the other half of the advisory limit."""
+        hass.data.setdefault(DOMAIN, {}).setdefault(VALUES, {})
+        controller = _controller(wattage_chosen=15000)
+        entity = SolisNumberEntity(hass, _sensor(hass, controller, 43117))
+        entity.hass = hass
+        entity.entity_id = "number.battery_max_charge_current"
+        await entity.async_added_to_hass()
+        entity.schedule_update_ha_state = MagicMock()
+
+        notify_register_update(hass, controller, INVERTER_MAX_CURRENT, 800)
         await hass.async_block_till_done()
 
         entity.schedule_update_ha_state.assert_called()

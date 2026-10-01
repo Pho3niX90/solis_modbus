@@ -2097,9 +2097,10 @@ hybrid_sensors = [
                 "default": 20,
                 "min": 0,
                 # No "max": protocol ceiling. A literal here caps LV/multi-pack banks below
-                # their own rated current, and the BMS mirror (33206) is advisory only —
-                # it derates with SOC (#467) and can echo the setpoint back (#464), so it
-                # is surfaced as the device_limit attribute, never as the bound.
+                # their own rated current; the BMS limitation register (33143) and the
+                # inverter's own ceiling (33041) are advisory only — the BMS one derates
+                # with SOC (#467) and 33206 ("mirror") echoes the setpoint (#464/#481), so
+                # they're surfaced as the device_limit attribute, never as the bound.
                 "step": 0.1,
             },
             {
@@ -2113,7 +2114,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33144) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
             },
             {"type": "reserve", "register": ["43014", "43015"]},
@@ -2485,9 +2487,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33206) advisory — see 43012. The
-                # old 135 A literal sat below the ~293 A a 15 kW LV bank draws at its own
-                # nameplate.
+                # No "max": protocol ceiling; BMS limit (33143) + inverter ceiling (33041)
+                # advisory — see 43012. The old 135 A literal sat below the ~293 A a 15 kW
+                # LV bank draws at its own nameplate.
                 "step": 0.1,
                 "default": 50,
             },
@@ -2502,7 +2504,8 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33144) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
                 "default": 50,
             },
@@ -4158,7 +4161,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33206) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33143) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
             },
             {
@@ -4172,7 +4176,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33144) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
             },
         ],

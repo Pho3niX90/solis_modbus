@@ -70,15 +70,14 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
                 )
             )
 
-        # Battery-current setpoints carry an advisory limit from a BMS mirror register
-        # that this entity doesn't otherwise read; follow it so the device_limit
-        # attribute refreshes when the battery reports a new limit.
-        mirror = getattr(self.base_sensor, "battery_current_mirror_register", None)
-        if isinstance(mirror, int):
+        # Battery-current setpoints carry an advisory limit from BMS/inverter registers
+        # that this entity doesn't otherwise read; follow them so the device_limit
+        # attribute refreshes when either reports a new value.
+        for register in set(getattr(self.base_sensor, "device_limit_registers", ())):
             self.async_on_remove(
                 async_dispatcher_connect(
                     self._hass,
-                    register_update_signal(self.base_sensor.controller, mirror),
+                    register_update_signal(self.base_sensor.controller, register),
                     self.handle_device_limit_update,
                 )
             )
