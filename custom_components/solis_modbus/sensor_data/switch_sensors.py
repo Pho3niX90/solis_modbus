@@ -187,9 +187,13 @@ def get_switch_sensors(inverter_config):
                 {
                     "register": 43292,
                     "entities": [
-                        # Solis AA/55 convention — without off_value, turning OFF wrote 0
-                        # instead of 0x55 (same convention as the 3069 power-limit switch).
-                        {"name": "Flexible Export Enabling Switch", "on_value": 170, "off_value": 85},
+                        # SAPN (South Australia) Flexible Export execution switch: 0x00AA on,
+                        # 0x0000 off — the spec marks every other value invalid. NOT the AA/55
+                        # pair of 3069: 0x55 belongs to the separate "setting allowed" gate
+                        # (string 3178), and writing it here is ignored, leaving the switch
+                        # stuck on with export capped at 43291 (#499). Off-by-default in the
+                        # registry: it only applies to SAPN sites.
+                        {"name": "Flexible Export Enabling Switch", "on_value": 170, "off_value": 0, "registry_enabled": False},
                     ],
                 },
                 {
