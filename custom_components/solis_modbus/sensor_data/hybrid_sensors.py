@@ -1800,6 +1800,18 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "data_type": DataType.S16,
             },
+            {"type": "reserve", "register": ["33516", "33517"]},
+            {
+                "name": "AC Grid Port Active Power Phase C",
+                "category": Category.AC_INFORMATION,
+                "unique": "solis_modbus_inverter_ac_grid_port_active_power_phase_c",
+                "register": ["33518"],
+                "device_class": SensorDeviceClass.POWER,
+                "multiplier": 10,
+                "unit_of_measurement": UnitOfPower.WATT,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S16,
+            },
         ],
     },
     {
