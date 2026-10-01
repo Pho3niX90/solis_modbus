@@ -16,9 +16,10 @@ def get_switch_sensors(inverter_config):
         switch_sensors.extend(
             [
                 {
+                    # Remote inverter on/off (issue #476): 0xBE = on, 0xDE = off.
                     "register": 43007,
                     "entities": [
-                        {"name": "Power State", "on_value": 190, "off_value": 222},
+                        {"name": "Inverter Power (On/Off)", "on_value": 190, "off_value": 222},
                     ],
                 },
                 {
