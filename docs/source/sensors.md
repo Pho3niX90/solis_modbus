@@ -417,7 +417,6 @@ Editable number entities (hybrid).
 | Solis Meter 2 Total Active Energy To Grid                 | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33336, 33337                                    |
 | Solis AC Grid Port Active Power Phase A                   | POWER          | WATT                 | MEASUREMENT      | 33512                                           |
 | Solis AC Grid Port Active Power Phase B                   | POWER          | WATT                 | MEASUREMENT      | 33515                                           |
-| Solis AC Grid Port Active Power Phase C                   | POWER          | WATT                 | MEASUREMENT      | 33518                                           |
 | Solis Generator Phase A Active Power                      | POWER          | WATT                 | MEASUREMENT      | 33530                                           |
 | Solis Generator Today Energy                              | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33531                                           |
 | Solis Generator Total Energy                              | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33532, 33533                                    |
