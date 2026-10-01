@@ -271,3 +271,36 @@ async def test_dispatch_pending_writes_timeout_writes_nothing(hass: HomeAssistan
             await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold"}, blocking=True)
     controller.async_read_holding_register.assert_not_awaited()
     controller.async_write_holding_registers.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stalled_inverter_does_not_block_dispatch_to_another(hass: HomeAssistant, controller):
+    """The dispatch lock is per inverter: one waiting out its flush timeout must not hold up the rest."""
+    stalled = MagicMock()
+    stalled.host = "5.6.7.8"
+    stalled.device_id = 1
+    stalled.inverter_config.type = InverterType.HYBRID
+    stalled.async_read_holding_register = AsyncMock(return_value=[40, 10000])
+    stalled.async_write_holding_registers = AsyncMock()
+    stalled.write_queue = asyncio.Queue()
+    stalled.write_queue.put_nowait((44105, 1, False))  # never processed
+    other = MockConfigEntry(domain=DOMAIN, data={})
+    other.add_to_hass(hass)
+    other.runtime_data = SolisRuntimeData(controller=stalled)
+    await setup_services(hass, controller)
+
+    with (
+        patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55),
+        patch("custom_components.solis_modbus.DISPATCH_WRITE_FLUSH_TIMEOUT", 5),
+    ):
+        stalled_call = hass.async_create_task(hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "host": "5.6.7.8"}, blocking=True))
+        await asyncio.sleep(0)  # let the stalled call take its lock and start waiting
+        await asyncio.wait_for(
+            hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "host": "1.2.3.4"}, blocking=True),
+            timeout=1,
+        )
+        assert controller.async_write_holding_registers.await_count == 2
+        assert not stalled_call.done()
+        stalled.write_queue.get_nowait()  # unstick it so the test exits cleanly
+        stalled.write_queue.task_done()
+        await stalled_call

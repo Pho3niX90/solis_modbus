@@ -382,8 +382,12 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             raise ServiceValidationError(f"This inverter does not support Remote Dispatch (register 34502 reads {capability}, expected 0xAA55)")
 
     # Serializes read-back + enqueue so two overlapping dispatch calls cannot
-    # read the same stale value and overwrite each other.
-    dispatch_lock = asyncio.Lock()
+    # read the same stale value and overwrite each other. One lock per inverter:
+    # a stalled link waiting out the flush timeout must not block the others.
+    dispatch_locks: dict[tuple[str, int], asyncio.Lock] = {}
+
+    def _dispatch_lock(controller) -> asyncio.Lock:
+        return dispatch_locks.setdefault((controller.host, controller.device_id), asyncio.Lock())
 
     async def _dispatch_reserve_words(controller, register: int, call: ServiceCall) -> list[int]:
         """Reserve SOC + PV limit % words for a dispatch block.
@@ -441,7 +445,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         # dispatch is active before the realtime block lands (the function
         # field is re-initialized unless the master is already on).
         global_block = [1, int(call.data.get("failsafe_minutes", 30)), switches, import_raw, export_raw]
-        async with dispatch_lock:
+        async with _dispatch_lock(controller):
             # Read before any write so a failed read leaves the inverter untouched.
             reserve_words = await _dispatch_reserve_words(controller, DISPATCH_RESERVE_SOC_REG, call)
             realtime_block = [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, *reserve_words]
@@ -491,7 +495,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             int(call.data.get("soc_min", 0)),
             int(call.data.get("soc_max", 100)),
         ]
-        async with dispatch_lock:
+        async with _dispatch_lock(controller):
             # battery reserve SOC + PV power-limit percentage complete the block
             block += await _dispatch_reserve_words(controller, base + DISPATCH_SCHEDULE_RESERVE_OFFSET, call)
             await controller.async_write_holding_registers(base, block)
