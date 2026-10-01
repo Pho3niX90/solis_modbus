@@ -99,6 +99,24 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         self.assertTrue(result)
         self.mock_client.connect.assert_not_called()
 
+    async def test_reads_skipped_when_reconnect_fails(self):
+        """Issue #478: when the link is down and reconnect fails, no read is issued
+        (pymodbus would only raise "Not connected" and log an error per group)."""
+        self.mock_client.connect = AsyncMock(return_value=False)
+        self.mock_client.connected = False
+        self.mock_client.read_holding_registers = AsyncMock()
+        self.mock_client.read_input_registers = AsyncMock()
+
+        with self.assertNoLogs("custom_components.solis_modbus.modbus_controller", level="ERROR"):
+            self.assertEqual((None, None), await self.controller.async_read_holding_registers_with_exception(43007, 1))
+            self.assertEqual((None, None), await self.controller.async_read_input_registers_with_exception(33000, 1))
+            self.assertIsNone(await self.controller.async_read_holding_register(43007, 1))
+            self.assertIsNone(await self.controller.async_read_input_register(33000, 1))
+
+        self.mock_client.read_holding_registers.assert_not_called()
+        self.mock_client.read_input_registers.assert_not_called()
+        self.assertEqual(4, self.mock_client.connect.await_count)
+
     async def test_async_read_input_register_success(self):
         """Test successful read of input register."""
         self.mock_client.connected = True

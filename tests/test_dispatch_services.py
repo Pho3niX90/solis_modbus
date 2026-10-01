@@ -1,10 +1,11 @@
 """Remote Dispatch services (44100 block) — live-verified write sequences."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solis_modbus import _dispatch_function_value, _dispatch_system_limits, _s32_words
@@ -27,6 +28,9 @@ def test_function_value_pairs():
     assert _dispatch_function_value(None, False, None) == 2 << 4  # not allowed
     assert _dispatch_function_value(None, None, True) == 2 << 10  # discharge disabled
     assert _dispatch_function_value(True, True, True) == 2 | (1 << 4) | (2 << 10)
+    assert _dispatch_function_value(None, None, None, True, None) == 2 << 8  # battery reserve on
+    assert _dispatch_function_value(None, None, None, None, True) == 2 << 14  # PV limit switch on
+    assert _dispatch_function_value(None, None, None, False, False) == (1 << 8) | (1 << 14)
 
 
 def test_system_limits():
@@ -56,8 +60,11 @@ def controller():
     c.device_id = 1
     c.inverter_config.type = InverterType.HYBRID
     c.async_read_input_register = AsyncMock(return_value=[0xAA55])
+    # Ver3.4 defaults for the reserve SOC / PV limit pair (40 %, 100.00 %)
+    c.async_read_holding_register = AsyncMock(return_value=[40, 10000])
     c.async_write_holding_register = AsyncMock()
     c.async_write_holding_registers = AsyncMock()
+    c.write_queue = asyncio.Queue()
     return c
 
 
@@ -90,7 +97,7 @@ async def test_dispatch_grid_import_sequence(hass: HomeAssistant, controller):
     blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
     assert blocks == [
         (44100, [1, 30, 0, 0xFFFF, 0xFFFF]),
-        (44105, [3, 0xFFFF, 0xFDA8, 2, 0, 100, 0, 0]),
+        (44105, [3, 0xFFFF, 0xFDA8, 2, 0, 100, 40, 10000]),
     ]
     assert single_writes(controller) == []
 
@@ -103,7 +110,7 @@ async def test_dispatch_battery_charge_positive_sign(hass: HomeAssistant, contro
     blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
     # battery_charge => mode 2, positive power 3000 W -> raw 300
     assert blocks[0] == (44100, [1, 30, 0, 0xFFFF, 0xFFFF])
-    assert blocks[1] == (44105, [2, 0, 300, 0, 0, 100, 0, 0])
+    assert blocks[1] == (44105, [2, 0, 300, 0, 0, 100, 40, 10000])
 
 
 @pytest.mark.asyncio
@@ -158,7 +165,9 @@ async def test_dispatch_schedule_period_block(hass: HomeAssistant, controller):
             blocking=True,
         )
     # period 2 base = 44116 + 14 = 44130
-    controller.async_write_holding_registers.assert_awaited_once_with(44130, [1, (8 << 8) | 30, 16 << 8, 3, 0xFFFF, 0xFDA8, 2, 0, 100, 0, 0])
+    controller.async_write_holding_registers.assert_awaited_once_with(44130, [1, (8 << 8) | 30, 16 << 8, 3, 0xFFFF, 0xFDA8, 2, 0, 100, 40, 10000])
+    # current reserve/PV-limit pair of period 2 is read back, not zeroed (#500)
+    controller.async_read_holding_register.assert_awaited_once_with(44139, 2)
     # enabled -> long failsafe + master on
     assert (44101, 1440) in single_writes(controller)
     assert (44100, 1) in single_writes(controller)
@@ -172,3 +181,126 @@ async def test_dispatch_schedule_disable_leaves_master_alone(hass: HomeAssistant
     block = controller.async_write_holding_registers.await_args.args
     assert block[0] == 44116 and block[1][0] == 0
     assert single_writes(controller) == []  # no master/failsafe writes on disable
+
+
+@pytest.mark.asyncio
+async def test_dispatch_preserves_reserve_and_pv_limit(hass: HomeAssistant, controller):
+    """#500: omitted reserve SOC / PV limit must be written back unchanged, never zeroed."""
+    controller.async_read_holding_register = AsyncMock(return_value=[25, 8000])
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold"}, blocking=True)
+    controller.async_read_holding_register.assert_awaited_once_with(44111, 2)
+    blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
+    # function 0: the reserve and PV-limit switches keep their current state
+    assert blocks[1] == (44105, [1, 0, 0, 0, 0, 100, 25, 8000])
+
+
+@pytest.mark.asyncio
+async def test_dispatch_sets_reserve_and_pv_limit(hass: HomeAssistant, controller):
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        await hass.services.async_call(
+            DOMAIN,
+            "solis_dispatch",
+            {"mode": "self_consumption", "battery_reserve_soc": 30, "pv_limit_percent": 55.5},
+            blocking=True,
+        )
+    # both supplied: no read needed, and both switches enabled in 44108
+    controller.async_read_holding_register.assert_not_awaited()
+    blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
+    assert blocks[1] == (44105, [5, 0, 0, (2 << 8) | (2 << 14), 0, 100, 30, 5550])
+
+
+@pytest.mark.asyncio
+async def test_dispatch_sets_one_and_preserves_the_other(hass: HomeAssistant, controller):
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "pv_limit_percent": 0}, blocking=True)
+    blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
+    assert blocks[1] == (44105, [1, 0, 0, 2 << 14, 0, 100, 40, 0])
+
+
+@pytest.mark.asyncio
+async def test_dispatch_read_failure_writes_nothing(hass: HomeAssistant, controller):
+    controller.async_read_holding_register = AsyncMock(return_value=None)
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        with pytest.raises(HomeAssistantError):
+            await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "grid_import", "power_watts": 1000}, blocking=True)
+    controller.async_write_holding_registers.assert_not_awaited()
+    controller.async_write_holding_register.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_schedule_sets_reserve_and_pv_limit(hass: HomeAssistant, controller):
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        await hass.services.async_call(
+            DOMAIN,
+            "solis_dispatch_schedule",
+            {"period": 1, "enabled": False, "battery_reserve_soc": 20, "pv_limit_percent": 100},
+            blocking=True,
+        )
+    controller.async_read_holding_register.assert_not_awaited()
+    controller.async_write_holding_registers.assert_awaited_once_with(44116, [0, 0, 0, 1, 0, 0, (2 << 8) | (2 << 14), 0, 100, 20, 10000])
+
+
+@pytest.mark.asyncio
+async def test_dispatch_drains_write_queue_before_read_back(hass: HomeAssistant, controller):
+    """Writes are queued but reads are not: a read-back must not overtake pending writes."""
+    order = []
+    controller.write_queue = MagicMock()
+    controller.write_queue.join = AsyncMock(side_effect=lambda: order.append("join"))
+    controller.async_read_holding_register = AsyncMock(side_effect=lambda *a: order.append("read") or [40, 10000])
+    await setup_services(hass, controller)
+    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+        await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold"}, blocking=True)
+    assert order == ["join", "read"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_pending_writes_timeout_writes_nothing(hass: HomeAssistant, controller):
+    controller.write_queue.put_nowait((44105, 1, False))  # never processed
+    await setup_services(hass, controller)
+    with (
+        patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55),
+        patch("custom_components.solis_modbus.DISPATCH_WRITE_FLUSH_TIMEOUT", 0.01),
+    ):
+        with pytest.raises(HomeAssistantError):
+            await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold"}, blocking=True)
+    controller.async_read_holding_register.assert_not_awaited()
+    controller.async_write_holding_registers.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stalled_inverter_does_not_block_dispatch_to_another(hass: HomeAssistant, controller):
+    """The dispatch lock is per inverter: one waiting out its flush timeout must not hold up the rest."""
+    stalled = MagicMock()
+    stalled.host = "5.6.7.8"
+    stalled.device_id = 1
+    stalled.inverter_config.type = InverterType.HYBRID
+    stalled.async_read_holding_register = AsyncMock(return_value=[40, 10000])
+    stalled.async_write_holding_registers = AsyncMock()
+    stalled.write_queue = asyncio.Queue()
+    stalled.write_queue.put_nowait((44105, 1, False))  # never processed
+    other = MockConfigEntry(domain=DOMAIN, data={})
+    other.add_to_hass(hass)
+    other.runtime_data = SolisRuntimeData(controller=stalled)
+    await setup_services(hass, controller)
+
+    with (
+        patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55),
+        patch("custom_components.solis_modbus.DISPATCH_WRITE_FLUSH_TIMEOUT", 5),
+    ):
+        stalled_call = hass.async_create_task(hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "host": "5.6.7.8"}, blocking=True))
+        await asyncio.sleep(0)  # let the stalled call take its lock and start waiting
+        await asyncio.wait_for(
+            hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "host": "1.2.3.4"}, blocking=True),
+            timeout=1,
+        )
+        assert controller.async_write_holding_registers.await_count == 2
+        assert not stalled_call.done()
+        stalled.write_queue.get_nowait()  # unstick it so the test exits cleanly
+        stalled.write_queue.task_done()
+        await stalled_call

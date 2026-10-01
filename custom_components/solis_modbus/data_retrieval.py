@@ -506,6 +506,14 @@ class DataRetrieval:
                                 f"⚠️ Received None for register {start_register} - {end_register}, "
                                 f"for ({self.controller.host}.{self.controller.slave}), skipping."
                             )
+                        if not self.controller.connected():
+                            # A failed read closes the link. Reading the remaining groups would
+                            # each retry the connection and fail again (issue #478); leave
+                            # reconnection to the check_connection watchdog.
+                            _LOGGER.debug(
+                                f"⚠️ Link to ({self.controller.host}.{self.controller.slave}) dropped during {speed.name} poll, skipping remaining groups."
+                            )
+                            break
                         continue
                     if len(values) != count:
                         _LOGGER.debug(
