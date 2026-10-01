@@ -50,7 +50,7 @@ class SolisNumberEntity(RestoreNumber, NumberEntity):
         self._attr_native_step = sensor.step
         self._attr_step = sensor.step
         self._attr_should_poll = False
-        self._attr_entity_registry_enabled_default = sensor.enabled
+        self._attr_entity_registry_enabled_default = sensor.enabled and getattr(sensor, "registry_enabled", True) is not False
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()

@@ -151,6 +151,7 @@ class SolisBaseSensor:
         step=0.1,
         hidden=False,
         enabled=True,
+        registry_enabled=True,
         category: Category = None,
         min_value: int | None = None,
         max_value: int | None = None,
@@ -195,6 +196,9 @@ class SolisBaseSensor:
         self.adjust_max(max_value)
         self.step = self.get_step(step)
         self.enabled = enabled
+        # Registry default only — unlike `enabled`, the register is still polled, so
+        # the entity works as soon as a user enables it (and derived sensors keep it).
+        self.registry_enabled = registry_enabled
         self.poll_speed = poll_speed
         self.category = category
         self.identification = identification
@@ -471,6 +475,7 @@ class SolisSensorGroup:
                     unit_of_measurement=entity.get("unit_of_measurement", None),
                     hidden=entity.get("hidden", False),
                     editable=entity.get("editable", False),
+                    registry_enabled=entity.get("registry_enabled", True),
                     max_value=entity.get("max", None),
                     max_source=entity.get("max_source", None),
                     min_value=entity.get("min", 0),

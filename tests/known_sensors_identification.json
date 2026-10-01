@@ -520,6 +520,7 @@
   "solis_modbus_solis_modbus_inverter_dc_power_2",
   "solis_modbus_solis_modbus_inverter_dc_power_3",
   "solis_modbus_solis_modbus_inverter_dc_power_4",
+  "solis_modbus_solis_modbus_inverter_flexible_export_status",
   "solis_modbus_solis_modbus_inverter_grid_power_net",
   "solis_modbus_solis_modbus_inverter_last_polled",
   "solis_modbus_solis_modbus_inverter_model_definition",
