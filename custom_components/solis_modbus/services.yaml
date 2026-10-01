@@ -261,6 +261,25 @@ solis_dispatch:
           max: 100
           unit_of_measurement: "%"
           mode: box
+    battery_reserve_soc:
+      name: Battery reserve SOC
+      description: Keep this much battery in reserve during the dispatch; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    pv_limit_percent:
+      name: PV power limit
+      description: Cap PV output at this percentage during the dispatch; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.01
+          unit_of_measurement: "%"
+          mode: box
     import_limit_watts:
       name: Import limit
       description: System power-draw (grid import) upper limit. Omit to leave the inverter default; 0 is a valid cap
@@ -398,6 +417,25 @@ solis_dispatch_schedule:
         number:
           min: 0
           max: 100
+          unit_of_measurement: "%"
+          mode: box
+    battery_reserve_soc:
+      name: Battery reserve SOC
+      description: Keep this much battery in reserve during this period; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    pv_limit_percent:
+      name: PV power limit
+      description: Cap PV output at this percentage during this period; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.01
           unit_of_measurement: "%"
           mode: box
     failsafe_minutes:
