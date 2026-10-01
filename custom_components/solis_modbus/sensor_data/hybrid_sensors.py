@@ -1245,6 +1245,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 34391,
+        "extreme_smart_port": True,  # opt-in frame: AC-coupled PV behind the Smart Port (#501)
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.SMART_PORT],
         "entities": [
