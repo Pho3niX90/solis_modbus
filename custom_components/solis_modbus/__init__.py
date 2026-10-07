@@ -79,7 +79,7 @@ SCHEME_READ_REGISTER = vol.Schema(
         vol.Optional("count", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
         vol.Optional("register_type", default="input"): vol.In(["input", "holding"]),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_FORCE_CHARGE = vol.Schema(
@@ -87,13 +87,13 @@ SCHEME_FORCE_CHARGE = vol.Schema(
         vol.Optional("power_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=60000)),
         vol.Optional("duration_minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_STOP_FORCE = vol.Schema(
     {
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 
@@ -157,7 +157,7 @@ SCHEME_DISPATCH = vol.Schema(
         vol.Optional("export_limit_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
         vol.Optional("failsafe_minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_DISPATCH_SCHEDULE = vol.Schema(
@@ -177,7 +177,7 @@ SCHEME_DISPATCH_SCHEDULE = vol.Schema(
         vol.Optional("pv_limit_percent"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
         vol.Optional("failsafe_minutes", default=1440): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 
@@ -286,10 +286,15 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         raise ServiceValidationError(f"Entity {entity_id} is not a solis_modbus time entity")
 
     def _resolve_controller(call: ServiceCall):
-        """Resolve the target controller from optional host/slave service fields."""
+        """Resolve the target controller from optional host/slave service fields.
+
+        Without a host, an explicit slave narrows the choice, so parallel inverters
+        sharing one datalogger can be addressed by slave alone.
+        """
         host = call.data.get("host")
-        slave = call.data.get("slave", 1)
+        slave = call.data.get("slave")
         if host:
+            slave = 1 if slave is None else slave
             controller = get_controller(hass, host, slave)
             if controller is None:
                 raise ServiceValidationError(f"No Solis inverter found for host {host} (slave {slave})")
@@ -297,9 +302,13 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controllers = list(iter_controllers(hass))
         if not controllers:
             raise ServiceValidationError("No Solis inverter is configured")
-        if len(controllers) > 1:
-            raise ServiceValidationError("Multiple Solis inverters configured — specify the 'host' field")
-        return controllers[0]
+        candidates = [c for c in controllers if slave is None or getattr(c, "device_id", 1) == slave]
+        if not candidates:
+            raise ServiceValidationError(f"No Solis inverter configured with slave {slave}")
+        if len(candidates) > 1:
+            choices = ", ".join(f"host {c.host} slave {c.device_id}" for c in candidates)
+            raise ServiceValidationError(f"Multiple Solis inverters match — specify 'host' and 'slave' (one of: {choices})")
+        return candidates[0]
 
     async def service_read_register(call: ServiceCall) -> dict:
         """Read arbitrary registers and return the values (register discovery / debugging)."""

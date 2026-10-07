@@ -100,6 +100,81 @@ async def test_reselecting_current_mode_is_a_noop():
     controller.async_write_holding_register.assert_not_awaited()
 
 
+TOU_OPTIONS = {"Self-Use + TOU", "Self-Use + TOU + Reserve/Backup", "Feed-in Priority + TOU", "Feed-in Priority + TOU + Reserve/Backup"}
+TOU_V2 = "custom_components.solis_modbus.sensors.solis_select_entity.tou_v2_active"
+
+
+def test_tou_options_offered_on_v1_firmware():
+    entity = make_entity()
+    with patch(TOU_V2, return_value=False):
+        assert TOU_OPTIONS <= set(entity.options)
+        assert len(entity.options) == 10
+
+
+def test_tou_options_hidden_on_v2_firmware():
+    """#475: V2 firmware clears 43110 bit 1 ~15 s after every write."""
+    entity = make_entity()
+    with patch(TOU_V2, return_value=True):
+        assert not TOU_OPTIONS & set(entity.options)
+        assert len(entity.options) == 6
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (19, "Self-Use + Reserve/Backup"),  # write echo seen on the #475 S6 before the firmware cleared it
+        (35, "Self-Use"),
+        (82, "Feed-in Priority + Reserve/Backup"),
+        (17, "Self-Use + Reserve/Backup"),
+    ],
+)
+def test_v2_ignores_dead_tou_bit(value, expected):
+    entity = make_entity()
+    with (
+        patch(TOU_V2, return_value=True),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=value),
+    ):
+        assert entity.current_option == expected
+        assert entity.current_option in entity.options
+
+
+async def test_v2_refuses_tou_write():
+    entity = make_entity()
+    controller = entity._modbus_controller
+    with (
+        patch(TOU_V2, return_value=True),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=17),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
+    ):
+        await entity.async_select_option("Self-Use + TOU + Reserve/Backup")
+    controller.async_write_holding_register.assert_not_awaited()
+
+
+async def test_v2_still_clears_stray_tou_bit():
+    entity = make_entity()
+    controller = entity._modbus_controller
+    with (
+        patch(TOU_V2, return_value=True),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=19),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_save"),
+    ):
+        await entity.async_select_option("Self-Use + Reserve/Backup")
+    controller.async_write_holding_register.assert_awaited_once_with(43110, 17)
+
+
+def test_value_selects_unaffected_by_v2():
+    """Masking bit 1 must only apply to Storage Mode, not on_value selects like RC Force."""
+    inverter_config = next(inv for inv in SOLIS_INVERTERS if inv.model == "S6-EH1P")
+    definition = next(g for g in get_select_sensors(inverter_config) if g["register"] == 43135)
+    entity = SolisSelectEntity(MagicMock(), make_entity()._modbus_controller, definition)
+    with (
+        patch(TOU_V2, return_value=True),
+        patch("custom_components.solis_modbus.sensors.solis_select_entity.cache_get", return_value=2),
+    ):
+        assert entity.current_option == "Solis RC Force Battery Discharge"
+        assert len(entity.options) == 3
+
+
 def test_entity_renamed_but_unique_id_stable():
     inverter_config = next(inv for inv in SOLIS_INVERTERS if inv.model == "S6-EH1P")
     definition = next(g for g in get_select_sensors(inverter_config) if g["register"] == 43110)

@@ -4,7 +4,8 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.helpers import cache_get, cache_save, get_bit_bool, set_bit, unique_id_generator
+from custom_components.solis_modbus.const import TOU_VERSION_REGISTER, TOU_VERSION_V2
+from custom_components.solis_modbus.helpers import cache_get, cache_save, get_bit_bool, set_bit, tou_v2_active, unique_id_generator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +22,21 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         self._attr_options = [e["name"] for e in entity_definition["entities"]]
         self._attr_options_raw = entity_definition["entities"]
         self._companion_writes = entity_definition.get("companion_writes") or []
+        self._has_tou_v1 = any(e.get("tou_v1") for e in self._attr_options_raw)
         self._current_option = None
+
+    def _hide_tou_v1(self) -> bool:
+        """V2 firmware clears the V1 TOU bit right after it is written (issue #475)."""
+        return self._has_tou_v1 and tou_v2_active(self._hass, self._modbus_controller)
+
+    def _available_options_raw(self) -> list[dict]:
+        if self._hide_tou_v1():
+            return [e for e in self._attr_options_raw if not e.get("tou_v1")]
+        return self._attr_options_raw
+
+    @property
+    def options(self) -> list[str]:
+        return [e["name"] for e in self._available_options_raw()]
 
     @property
     def current_option(self) -> str | None:
@@ -29,8 +44,13 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         if reg_cache is None:
             return
 
+        if self._hide_tou_v1():
+            # Ignore the dead V1 bit, e.g. the brief echo of a write before the
+            # firmware clears it, so the state stays on a selectable option.
+            reg_cache = set_bit(reg_cache, 1, False)
+
         # Sort by number of requires descending to prioritize more specific matches
-        sorted_options = sorted(self._attr_options_raw, key=lambda e: len(e.get("requires", [])) if "requires" in e else 0, reverse=True)
+        sorted_options = sorted(self._available_options_raw(), key=lambda e: len(e.get("requires", [])) if "requires" in e else 0, reverse=True)
 
         # Two passes: strict first (an option only matches when its conflicting bits,
         # other than its own/required ones, are clear — makes resolution independent
@@ -66,10 +86,14 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
         reg_cache = cache_get(self._hass, self._modbus_controller, self._register)
         if reg_cache is None:
             return None
-        return {
+        attributes = {
             "raw_value": reg_cache,
             "set_bits": [bit for bit in range(16) if (int(reg_cache) >> bit) & 1],
         }
+        if self._has_tou_v1:
+            version = cache_get(self._hass, self._modbus_controller, TOU_VERSION_REGISTER)
+            attributes["tou_version"] = "unknown" if version is None else ("V2" if version == TOU_VERSION_V2 else "V1")
+        return attributes
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
@@ -80,6 +104,12 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
             requires = e.get("requires", None)
 
             if e["name"] == option:
+                if e.get("tou_v1") and self._hide_tou_v1():
+                    _LOGGER.warning(
+                        f"({self._modbus_controller.host}) '{option}' not written: this inverter uses V2 time-of-use "
+                        f"(33289 = 0xAA55), which clears the V1 TOU bit. Use the Grid Time of Use period switches instead."
+                    )
+                    return
                 if on_value is not None:
                     await self._modbus_controller.async_write_holding_register(self._register, on_value)
                     await self._write_companions()

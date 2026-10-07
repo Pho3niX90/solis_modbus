@@ -391,6 +391,7 @@ Editable number entities (hybrid).
 | Solis Meter Grid Frequency                                | FREQUENCY      | HERTZ                | MEASUREMENT      | 33282                                           |
 | Solis Meter Total Active Energy From Grid                 | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33283, 33284                                    |
 | Solis Meter Total Active Energy To Grid                   | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33285, 33286                                    |
+| Solis TOU Function Version                                |                |                      |                  | 33289                                           |
 | Solis Meter 1 Type and Location                           |                |                      | MEASUREMENT      | 33300                                           |
 | Solis Meter 2 Type and Location                           |                |                      | MEASUREMENT      | 33301                                           |
 | Solis Meter 2 AC Voltage A                                | VOLTAGE        | VOLT                 | MEASUREMENT      | 33302                                           |
@@ -766,5 +767,46 @@ This is only required if your values are higher than expected, if you aren't exp
 - **Solis Implementation**: While not explicitly named, the combination of "Self-Use" and "Time Charging" modes can achieve peak shaving.
 - The battery discharges during peak demand times to reduce grid reliance and associated costs.
 - [Source](https://usservice.solisinverters.com/support/solutions/articles/73000560490-energy-storage-operating-modes)
+
+## Solis app settings and the Storage Mode select
+
+The Solis app splits the storage mode into two settings: **Storage Mode** and a
+separate **Battery Reserve Switch**. The integration's **Storage Mode** select
+(register 43110) combines both into one option:
+
+| Solis app: Storage Mode | Solis app: Battery Reserve Switch | Storage Mode select option              | 43110 value |
+|-------------------------|-----------------------------------|-----------------------------------------|-------------|
+| Self Use                | OFF                               | Self-Use                                | 1           |
+| Self Use                | ON                                | Self-Use + Reserve/Backup               | 17          |
+| Selling First           | OFF                               | Feed-in Priority                        | 64          |
+| Selling First           | ON                                | Feed-in Priority + Reserve/Backup       | 80          |
+| Off Grid                | (not applicable)                  | Off-Grid Operation                      | 4           |
+| (not offered)           | (not applicable)                  | Peak Shaving                            | 2048        |
+
+Notes:
+
+- The 43110 values above assume the other modifier bits are off. "Allow grid
+  to charge the battery" (bit 5) adds 32, e.g. Self-Use + Reserve/Backup with
+  grid charging is 49. The select keeps these bits when you change mode.
+- The Solis app does not offer **Peak Shaving** on every model, but an
+  S6-EH1P accepts it over Modbus and runs it.
+- **Time of Use.** On inverters that report V2 time-of-use (sensor *TOU
+  Function Version* = 43605, i.e. register 33289 = `0xAA55`), the Solis app has
+  no TOU storage mode. Time of use is set per period under
+  **Charge&Discharge Slot**, which corresponds to the integration's *Grid Time
+  of Use* period switches and time/number entities (43707 and up). On these
+  inverters the "+ TOU" select options and the *Time of Use* switch (43110
+  bit 1) are hidden, because the firmware clears that bit about 15 seconds
+  after it is written ([#475](https://github.com/Pho3niX90/solis_modbus/issues/475)).
+  Older V1 firmware keeps the "+ TOU" options and the *Time-Charging* slots.
+- **Parallel systems.** Set the mode on the **master** inverter. The master
+  copies its storage mode to the slave within a poll or two, and overwrites any
+  mode set on the slave directly, from the Solis app or from the slave's
+  Storage Mode select.
+- **Checking what the inverter runs.** 43110 is the setting, and register 33132
+  (*Storage Control Switching Value*) mirrors the mode actually applied. The
+  *Operating Mode* sensor (33122) shows one bit for the active mode. Values
+  seen on an S6-EH1P master: 2 = Self-Use, 8 = Feed-in Priority, 512 = Peak
+  Shaving. The slave reports 0 there.
 
 For detailed configuration and to ensure optimal performance tailored to your needs, consult the Solis inverter manual or contact their technical support.

@@ -57,17 +57,28 @@ def get_select_sensors(inverter_config):
                 # Self-Use. Discussion #496 asked for it alongside Feed-in Priority
                 # too, so it's not a primary bit_position here — it's a modifier
                 # that lives in `requires` on top of either base mode, same as TOU.
+                #
+                # Bit 1 is the *V1* TOU enable ("Optimized Revenue V1", Ver3.4 App.7).
+                # On V2 firmware (33289 == 0xAA55) the inverter clears it ~15 s after
+                # every write, so `tou_v1` options are hidden there (issue #475);
+                # V2 TOU is switched per period via the 43707 switches instead.
                 "register": 43110,
                 "name": "Storage Mode",
                 "entities": [
                     {"bit_position": 0, "name": "Self-Use", "conflicts_with": STORAGE_MODE_BITS},
-                    {"bit_position": 0, "name": "Self-Use + TOU", "conflicts_with": STORAGE_MODE_BITS, "requires": [1]},
+                    {"bit_position": 0, "name": "Self-Use + TOU", "conflicts_with": STORAGE_MODE_BITS, "requires": [1], "tou_v1": True},
                     {"bit_position": 0, "name": "Self-Use + Reserve/Backup", "conflicts_with": STORAGE_MODE_BITS, "requires": [4]},
-                    {"bit_position": 0, "name": "Self-Use + TOU + Reserve/Backup", "conflicts_with": STORAGE_MODE_BITS, "requires": [1, 4]},
+                    {"bit_position": 0, "name": "Self-Use + TOU + Reserve/Backup", "conflicts_with": STORAGE_MODE_BITS, "requires": [1, 4], "tou_v1": True},
                     {"bit_position": 6, "name": "Feed-in Priority", "conflicts_with": STORAGE_MODE_BITS},
-                    {"bit_position": 6, "name": "Feed-in Priority + TOU", "conflicts_with": STORAGE_MODE_BITS, "requires": [1]},
+                    {"bit_position": 6, "name": "Feed-in Priority + TOU", "conflicts_with": STORAGE_MODE_BITS, "requires": [1], "tou_v1": True},
                     {"bit_position": 6, "name": "Feed-in Priority + Reserve/Backup", "conflicts_with": STORAGE_MODE_BITS, "requires": [4]},
-                    {"bit_position": 6, "name": "Feed-in Priority + TOU + Reserve/Backup", "conflicts_with": STORAGE_MODE_BITS, "requires": [1, 4]},
+                    {
+                        "bit_position": 6,
+                        "name": "Feed-in Priority + TOU + Reserve/Backup",
+                        "conflicts_with": STORAGE_MODE_BITS,
+                        "requires": [1, 4],
+                        "tou_v1": True,
+                    },
                     {"bit_position": 2, "name": "Off-Grid Operation", "conflicts_with": STORAGE_MODE_BITS},
                     {"bit_position": 11, "name": "Peak Shaving", "conflicts_with": STORAGE_MODE_BITS},
                 ],
