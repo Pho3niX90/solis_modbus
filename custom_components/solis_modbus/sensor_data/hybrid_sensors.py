@@ -4119,6 +4119,9 @@ hybrid_sensors = [
                 "device_class": SensorDeviceClass.POWER,
                 "unit_of_measurement": UnitOfPower.WATT,
                 "editable": True,
+                # SAPN-only: the control is disabled in the registry by default; the
+                # read-only sensor stays, since 0 W here silently blocks export (#499).
+                "registry_enabled": False,
                 "min": 0,
                 # SUSPECT: grid-side export limit capped at 15000 — see 43488.
                 "max": 15000,
@@ -4607,6 +4610,14 @@ hybrid_sensors_derived = [
         "unique": "solis_modbus_inverter_current_status_string",
         "multiplier": 0,
         "register": ["33095"],
+    },
+    {
+        # Flexible Export switch (43292) + its export limit (43291). Switched on with a
+        # 0 W limit, every local export path is capped at 0 W with no other symptom (#499).
+        "name": "Flexible Export Status",
+        "unique": "solis_modbus_inverter_flexible_export_status",
+        "multiplier": 0,
+        "register": ["43292", "43291"],
     },
     {
         "name": "PV Power 1",

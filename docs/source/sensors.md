@@ -103,7 +103,7 @@ Editable number entities (hybrid).
 
 | Name                                                                     | Register | Bit Position | Note                |
 |--------------------------------------------------------------------------|----------|--------------|---------------------|
-| Solis Power State                                                        | 43007    |              |                     |
+| Solis Inverter Power (On/Off)                                            | 43007    |              |                     |
 | Solis Output Limit Gate                                                  | 43070    |              |                     |
 | Solis Grid feed in power limit switch                                    | 43073    | 4            |                     |
 | Solis Self-Use Mode                                                      | 43110    | 0            |                     |
@@ -533,6 +533,7 @@ Editable number entities (hybrid).
 | Solis RC Timeout                                          |                | MINUTES              |                  | 43282                                           |
 | Solis Flexible Export Backflow Power                      | POWER          | WATT                 | MEASUREMENT      | 43291                                           |
 | Solis Flexible Export Enabling Switch                     |                |                      | MEASUREMENT      | 43292                                           |
+| Solis Flexible Export Status                              |                |                      |                  | 43292, 43291                                    |
 | Solis Hybrid auxiliary control flags                      |                |                      | MEASUREMENT      | 43302                                           |
 | Solis Generator Set Enable Switch                         |                |                      | MEASUREMENT      | 43340                                           |
 | Solis MPPT Scanning Interval                              |                | SECONDS              | MEASUREMENT      | 43361                                           |

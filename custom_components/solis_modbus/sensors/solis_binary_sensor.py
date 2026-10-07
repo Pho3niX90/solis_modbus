@@ -40,6 +40,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._attr_unique_id = unique_id_generator_binary(modbus_controller, self._register, self._bit_position, self._on_value)
         self._attr_name = entity_definition["name"]
         self._attr_has_entity_name = True
+        self._attr_entity_registry_enabled_default = entity_definition.get("registry_enabled", True)
         self._attr_available = False
         # Keep-alive: RC-style registers (e.g. 44280 PV shutdown) self-revert after
         # the RC timeout (43282) — while ON, the bit is re-written inside that

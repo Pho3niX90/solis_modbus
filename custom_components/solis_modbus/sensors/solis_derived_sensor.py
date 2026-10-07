@@ -15,6 +15,10 @@ from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSe
 
 _LOGGER = logging.getLogger(__name__)
 
+FLEXIBLE_EXPORT_OFF = "Off"
+FLEXIBLE_EXPORT_ACTIVE = "Active"
+FLEXIBLE_EXPORT_BLOCKED = "Export Blocked"
+
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
@@ -177,6 +181,17 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 to_grid = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 from_grid = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = from_grid - to_grid
+
+            if 43292 in self._register:
+                # 0x00AA = Flexible Export on: export follows the 43291 limit instead of 43074.
+                switch_value = int(self._received_values[43292])
+                export_limit = int(self._received_values[43291])
+                if switch_value != 0xAA:
+                    new_value = FLEXIBLE_EXPORT_OFF
+                elif export_limit == 0:
+                    new_value = FLEXIBLE_EXPORT_BLOCKED
+                else:
+                    new_value = FLEXIBLE_EXPORT_ACTIVE
 
             # set after
             if 35000 in self._register:
