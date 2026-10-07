@@ -38,6 +38,7 @@ from .const import (
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
 from .helpers import (
+    clock_sync_enabled,
     combine_u32,
     combine_u32_le,
     derived_sensor_is_supported,
@@ -46,6 +47,7 @@ from .helpers import (
     get_controller,
     get_poll_profile,
     group_in_poll_profile,
+    is_clock_sync_sensor,
     iter_controllers,
     iter_platform_entities,
     registers_declared_by,
@@ -711,6 +713,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 poll_profile,
                 len(sensors_derived) - len(supported_derived),
             )
+
+        # The clock-adjustment sensor is what writes the RTC, so leaving it out
+        # is enough to stop clock sync entirely (issue #516).
+        if not clock_sync_enabled(entry):
+            supported_derived = [entity for entity in supported_derived if not is_clock_sync_sensor(entity)]
 
         controller._derived_sensors = [
             SolisBaseSensor(

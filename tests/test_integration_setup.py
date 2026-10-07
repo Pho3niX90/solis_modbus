@@ -126,3 +126,49 @@ async def test_setup_entry_passes_night_suppression_flag(hass: HomeAssistant, da
         assert config_entry.runtime_data.data_retrieval._suppress_night_issue is expected
         assert await hass.config_entries.async_unload(config_entry.entry_id)
         await hass.async_block_till_done()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("data", "options", "expected"),
+    [
+        # Entries from before the option existed keep syncing.
+        ({}, {}, True),
+        ({"clock_sync": False}, {}, False),
+        ({"clock_sync": True}, {"clock_sync": False}, False),
+    ],
+)
+async def test_setup_entry_clock_sync_option_controls_clock_sensor(hass: HomeAssistant, data, options, expected):
+    """Disabling clock sync drops the derived sensor that writes the RTC (#516)."""
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="SN123456",
+        data={
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "inverter_serial": "SN123456",
+            "model": "S6-EH1P",
+            "poll_interval_fast": 10,
+            "poll_interval_normal": 15,
+            "poll_interval_slow": 30,
+            **data,
+        },
+        options=options,
+        title="Solis Inverter",
+    )
+    config_entry.add_to_hass(hass)
+
+    with (
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connect", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connected", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_input_register", return_value=[1, 2, 3]),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.process_write_queue"),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_holding_register", return_value=[1, 2, 3]),
+    ):
+        assert await hass.config_entries.async_setup(config_entry.entry_id)
+        await hass.async_block_till_done()
+        derived = config_entry.runtime_data.controller._derived_sensors
+        assert any(90007 in sensor.registrars for sensor in derived) is expected
+        assert await hass.config_entries.async_unload(config_entry.entry_id)
+        await hass.async_block_till_done()

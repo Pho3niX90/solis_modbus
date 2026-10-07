@@ -48,10 +48,12 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
         if state:
-            if self.base_sensor.device_class != SensorDeviceClass.TIMESTAMP:
-                self._attr_native_value = state.native_value
-            else:
-                self._attr_native_value = datetime.now(UTC)
+            value = state.native_value
+            # Restore the stored timestamp, never "now": stamping the restart time
+            # made Last Clock Adjustment report RTC writes that never happened (#516).
+            if self.base_sensor.device_class == SensorDeviceClass.TIMESTAMP and not isinstance(value, datetime):
+                value = None
+            self._attr_native_value = value
         self.is_added_to_hass = True
 
         for reg in set(self._register):

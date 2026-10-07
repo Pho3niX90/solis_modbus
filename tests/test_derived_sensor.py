@@ -1,6 +1,8 @@
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.components.sensor import SensorDeviceClass, SensorExtraStoredData
 from homeassistant.core import HomeAssistant
 
 from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
@@ -105,3 +107,42 @@ def test_derived_sensor_incomplete_data(hass: HomeAssistant, mock_base_sensor):
 
     assert sensor.native_value is None
     assert sensor._received_values[33050] == 10
+
+
+async def _restore(hass, base_sensor, native_value):
+    sensor = SolisDerivedSensor(hass, base_sensor)
+    sensor.hass = hass
+    sensor.entity_id = "sensor.test_derived"
+    stored = SensorExtraStoredData(native_value=native_value, native_unit_of_measurement=None)
+    with patch.object(sensor, "async_get_last_sensor_data", AsyncMock(return_value=stored)):
+        await sensor.async_added_to_hass()
+    return sensor
+
+
+@pytest.mark.asyncio
+async def test_restored_timestamp_keeps_stored_value(hass: HomeAssistant, mock_base_sensor):
+    """A restart must not stamp Last Clock Adjustment with "now" — no write happened (#516)."""
+    mock_base_sensor.registrars = [90007, 33022, 33023, 33024, 33025, 33026, 33027]
+    mock_base_sensor.device_class = SensorDeviceClass.TIMESTAMP
+    last_adjusted = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+    sensor = await _restore(hass, mock_base_sensor, last_adjusted)
+
+    assert sensor.native_value == last_adjusted
+
+
+@pytest.mark.asyncio
+async def test_restored_timestamp_ignores_non_datetime(hass: HomeAssistant, mock_base_sensor):
+    mock_base_sensor.registrars = [90007, 33022, 33023, 33024, 33025, 33026, 33027]
+    mock_base_sensor.device_class = SensorDeviceClass.TIMESTAMP
+
+    sensor = await _restore(hass, mock_base_sensor, "garbage")
+
+    assert sensor.native_value is None
+
+
+@pytest.mark.asyncio
+async def test_restored_measurement_keeps_stored_value(hass: HomeAssistant, mock_base_sensor):
+    sensor = await _restore(hass, mock_base_sensor, 42)
+
+    assert sensor.native_value == 42
