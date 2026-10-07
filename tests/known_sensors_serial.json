@@ -460,6 +460,7 @@
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_4",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_5",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_tou_discharge_v2_cutoff_voltage_6",
+  "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_tou_function_version",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_tou_v2_switch",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_type_definition",
   "solis_modbus_SN_SNAPSHOT_solis_modbus_inverter_yesterday_battery_charge_energy",
