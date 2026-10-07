@@ -30,7 +30,7 @@ solis_write_holding_register:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, limits the write to inverters with this ID (omit to write to all)
       example: 1
       selector:
         number:
@@ -98,7 +98,7 @@ solis_read_register:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       example: 1
       selector:
         number:
@@ -137,7 +137,7 @@ solis_force_battery_charge:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       selector:
         number:
           min: 1
@@ -175,7 +175,7 @@ solis_force_battery_discharge:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       selector:
         number:
           min: 1
@@ -192,7 +192,7 @@ solis_stop_force_charge_discharge:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       selector:
         number:
           min: 1
