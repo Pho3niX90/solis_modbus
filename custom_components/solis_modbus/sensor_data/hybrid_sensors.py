@@ -1514,6 +1514,22 @@ hybrid_sensors = [
         ],
     },
     {
+        # TOU function version (Ver3.4 p18): 0xAA55 (43605) = V2 time-of-use, which
+        # hides the 43110 bit-1 (V1) TOU controls (issue #475). Own group so
+        # firmware without it only gets this one register disabled.
+        "register_start": 33289,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "TOU Function Version",
+                "category": Category.STATUS_INFORMATION,
+                "unique": "solis_modbus_inverter_tou_function_version",
+                "register": ["33289"],
+                "multiplier": 0,
+            },
+        ],
+    },
+    {
         # Meter 2 block (issue #425, dual-meter "Grid + PV Inverter" installs).
         # Documented in ESINV-33000ID 2020-09-15 pp.20-21 (changelog V002B000D00F
         # "Add Meter2 info. Function code 33299-33324"); the Ver3.4 NON-NDA doc

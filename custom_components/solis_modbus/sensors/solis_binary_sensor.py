@@ -16,6 +16,7 @@ from custom_components.solis_modbus.helpers import (
     is_correct_controller,
     register_update_signal,
     set_bit,
+    tou_v2_active,
     unique_id_generator_binary,
 )
 
@@ -45,6 +46,14 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         # window. Fail-safe by design: if HA dies, the inverter reverts on its own.
         self._keep_alive = entity_definition.get("keep_alive", False)
         self._keep_alive_unsub = None
+        self._tou_v1 = entity_definition.get("tou_v1", False)
+
+    @property
+    def available(self) -> bool:
+        # V2 firmware clears the V1 TOU bit right after it is written (issue #475).
+        if self._tou_v1 and tou_v2_active(self._hass, self._modbus_controller):
+            return False
+        return self._attr_available
 
     async def async_added_to_hass(self) -> None:
         """Called when entity is added to HA."""

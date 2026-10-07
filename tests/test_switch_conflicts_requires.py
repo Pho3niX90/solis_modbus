@@ -144,3 +144,19 @@ async def test_cold_cache_failed_live_read_skips_write(mock_hass, controller):
 
         controller.async_read_holding_register.assert_awaited_once_with(43110, 1)
         controller.async_write_holding_register.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "tou_v1,v2_active,expected",
+    [
+        (True, True, False),  # issue #475: V2 firmware clears 43110 bit 1, so hide the V1 switch
+        (True, False, True),
+        (False, True, True),  # other 43110 bits are unaffected
+    ],
+)
+def test_tou_v1_switch_unavailable_on_v2_firmware(mock_hass, controller, tou_v1, v2_active, expected):
+    entity_def = {"register": 43110, "bit_position": 1, "name": "Time of Use", "tou_v1": tou_v1}
+    entity = SolisBinaryEntity(mock_hass, controller, entity_def)
+    entity._attr_available = True
+    with patch("custom_components.solis_modbus.sensors.solis_binary_sensor.tou_v2_active", return_value=v2_active):
+        assert entity.available is expected

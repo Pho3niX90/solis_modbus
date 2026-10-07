@@ -21,6 +21,8 @@ from custom_components.solis_modbus.const import (
     POLL_PROFILES,
     REGISTER,
     SLAVE,
+    TOU_VERSION_REGISTER,
+    TOU_VERSION_V2,
     VALUE,
     VALUES,
 )
@@ -188,6 +190,15 @@ def cache_save(hass: HomeAssistant, controller, register: str | int, value):
 
 def cache_get(hass: HomeAssistant, controller, register: str | int):
     return hass.data[DOMAIN][VALUES].get(register_cache_key(controller, register), None)
+
+
+def tou_v2_active(hass: HomeAssistant, controller) -> bool:
+    """True when the inverter reports V2 time-of-use (33289 == 0xAA55).
+
+    Unknown (not yet polled, or firmware without 33289) is False, so V1-only
+    inverters keep the 43110 bit-1 TOU controls (issue #475).
+    """
+    return cache_get(hass, controller, TOU_VERSION_REGISTER) == TOU_VERSION_V2
 
 
 def iter_platform_entities(hass: HomeAssistant, *platforms: str):

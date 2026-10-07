@@ -43,7 +43,8 @@ def get_switch_sensors(inverter_config):
                         # NOTE: Self-Use must NOT clear bit 4 — Reserve/Backup is bit 4 as a
                         # modifier on Self-Use in every SolisCloud capture (17/49/51).
                         {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [2, 6, 11]},
-                        {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6]},
+                        # V1 TOU enable: unavailable on V2 firmware, which clears it (issue #475).
+                        {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6], "tou_v1": True},
                         {"bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 4, 6, 11]},
                         {"bit_position": 3, "name": "Battery Wakeup Switch"},
                         {"bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [2, 11], "requires": [0]},
