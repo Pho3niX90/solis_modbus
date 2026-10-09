@@ -1,0 +1,56 @@
+name: Open Next Release Branch
+
+# When a `release/X.Y.Z` branch is merged back into master, open
+# `release/X.(Y+1).0` from the merge commit, so the next version has a branch
+# (and, through release_branch.yaml, a milestone) to collect PRs and issues.
+# Patch releases are still cut from master with the Release workflow.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  open-next:
+    name: Open next release branch
+    if: >-
+      github.event.pull_request.merged
+      && startsWith(github.event.pull_request.head.ref, 'release/')
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      # A PAT, so creating the branch triggers release_branch.yaml (events from
+      # GITHUB_TOKEN trigger no workflows).
+      GH_TOKEN: ${{ secrets.PAT }}
+      GH_REPO: ${{ github.repository }}
+      MERGED_BRANCH: ${{ github.event.pull_request.head.ref }}
+      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+    steps:
+      - name: Work out the next version
+        run: |
+          version="${MERGED_BRANCH#release/}"
+          if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+            echo "::warning::$MERGED_BRANCH is not named release/X.Y.Z; not opening a next release branch"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          next="${BASH_REMATCH[1]}.$(( BASH_REMATCH[2] + 1 )).0"
+          echo "NEXT=$next" >> "$GITHUB_ENV"
+
+      - name: Create release branch
+        if: env.SKIP != 'true'
+        run: |
+          branch="release/$NEXT"
+          if gh api "repos/$GH_REPO/git/ref/heads/$branch" > /dev/null 2>&1; then
+            echo "$branch already exists"
+            exit 0
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/v$NEXT" > /dev/null 2>&1; then
+            echo "::warning::v$NEXT is already released; not opening $branch"
+            exit 0
+          fi
+
+          gh api -X POST "repos/$GH_REPO/git/refs" \
+            -f ref="refs/heads/$branch" \
+            -f sha="$MERGE_SHA" > /dev/null
+          echo "Opened $branch at $MERGE_SHA" | tee -a "$GITHUB_STEP_SUMMARY"

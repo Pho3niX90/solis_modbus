@@ -1,0 +1,170 @@
+name: Release Branch
+
+# Runs on every push to a `release/X.Y.Z` branch: its creation, a merged PR, or a
+# direct push.
+#
+# 1. Makes sure milestone `X.Y.Z` exists (and is open), so issues can be
+#    assigned the version they will ship in, and adds the merged PR (and the
+#    issues it closes) to it.
+# 2. Publishes the next release candidate, `vX.Y.Z-rc.N`, as a GitHub
+#    pre-release. HACS offers it to users who enable "Show beta versions".
+#
+# Each candidate stamps `X.Y.Z-rc.N` into manifest.json in a commit that only its
+# tag points to. That commit is never pushed to the branch, so HACS (which
+# installs the source at the tag) reports the right version and the branch
+# carries no bot commits.
+#
+# `rc.N`, not `rcN`: under SemVer, `rc10` sorts before `rc9`.
+#
+# The stable `vX.Y.Z` is cut by running the Release workflow on the branch.
+
+on:
+  push:
+    branches:
+      - "release/**"
+  # A branch created in the GitHub UI may not send a push event. When both
+  # arrive, the second run finds nothing new and only re-checks the milestone.
+  create:
+
+env:
+  COMPONENT_NAME: solis_modbus
+
+concurrency:
+  # Serialized, not cancelled: two merges in a row must not claim the same rc.N.
+  group: release-branch-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    name: Milestone and release candidate
+    # The Release workflow pushes its version bump to the branch while cutting the
+    # stable release; that push must not publish a candidate after it.
+    if: >-
+      startsWith(github.ref, 'refs/heads/release/')
+      && !startsWith(github.event.head_commit.message, 'chore: bump version to v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read version from branch name
+        run: |
+          version="${GITHUB_REF_NAME#release/}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Branch $GITHUB_REF_NAME is not named release/X.Y.Z"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+            echo "::error::v$version is already released. Cut a new release branch for further changes."
+            exit 1
+          fi
+
+          latest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "${latest#v}" "$version" | sort -V | tail -1)" != "$version" ]; then
+            echo "::error::$GITHUB_REF_NAME is not newer than the latest release, $latest"
+            exit 1
+          fi
+
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "LATEST_STABLE=$latest" >> "$GITHUB_ENV"
+
+      - name: Ensure milestone
+        run: |
+          milestone=$(gh api --paginate "repos/$GH_REPO/milestones?state=all&per_page=100" \
+            --jq ".[] | select(.title == \"$VERSION\") | \"\(.number) \(.state)\"" | head -1)
+          number="${milestone%% *}"
+          state="${milestone##* }"
+
+          if [ -z "$milestone" ]; then
+            number=$(gh api -X POST "repos/$GH_REPO/milestones" \
+              -f title="$VERSION" \
+              -f description="Shipping in v$VERSION (branch $GITHUB_REF_NAME)." \
+              --jq .number)
+            echo "Created milestone $VERSION (#$number)"
+          elif [ "$state" = "closed" ]; then
+            # Not released yet (checked above), so it was closed too early.
+            gh api -X PATCH "repos/$GH_REPO/milestones/$number" -f state=open > /dev/null
+            echo "Reopened milestone $VERSION (#$number)"
+          fi
+
+      - name: Add merged PRs to the milestone
+        if: github.event_name == 'push'
+        run: |
+          prs=$(gh api "repos/$GH_REPO/commits/$GITHUB_SHA/pulls" \
+            --jq ".[] | select(.merged_at != null and .base.ref == \"$GITHUB_REF_NAME\") | .number")
+          for pr in $prs; do
+            gh pr edit "$pr" --milestone "$VERSION"
+            # Closing keywords only link issues for some bases; add what is linked.
+            for issue in $(gh pr view "$pr" --json closingIssuesReferences --jq '.closingIssuesReferences[].number'); do
+              gh issue edit "$issue" --milestone "$VERSION"
+            done
+          done
+
+      - name: Pick the next release candidate
+        run: |
+          last_rc=$(git tag --list "v$VERSION-rc.*" | sort -V | tail -1)
+          # An rc tag points at its stamp commit; the parent is the branch commit.
+          # The first candidate compares against the last stable release, so a
+          # branch opened right after a release publishes nothing until it differs.
+          if [ -n "$last_rc" ]; then
+            base="$last_rc^"
+          else
+            base="$LATEST_STABLE"
+          fi
+          if [ -n "$base" ] && git diff --quiet "$base" HEAD -- custom_components hacs.json; then
+            echo "Nothing to ship since ${last_rc:-$LATEST_STABLE}"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          n=$(( ${last_rc##*.} + 1 ))
+          echo "RC_VERSION=$VERSION-rc.$n" >> "$GITHUB_ENV"
+          echo "TAG=v$VERSION-rc.$n" >> "$GITHUB_ENV"
+          # Notes cover what changed since the previous candidate, or since the
+          # last stable release for the first one.
+          echo "NOTES_FROM=${last_rc:-$LATEST_STABLE}" >> "$GITHUB_ENV"
+
+      - name: Tag a commit stamped with the candidate version
+        if: env.SKIP != 'true'
+        run: |
+          manifest="custom_components/${COMPONENT_NAME}/manifest.json"
+          jq --arg v "$RC_VERSION" '.version = $v' "$manifest" > manifest.tmp.json && mv manifest.tmp.json "$manifest"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$manifest"
+          git commit -m "chore: release candidate $TAG"
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+
+      - name: Zip ${{ env.COMPONENT_NAME }} dir
+        if: env.SKIP != 'true'
+        run: |
+          cd "custom_components/${COMPONENT_NAME}"
+          # -y stores symlinks as links rather than following them out of the checkout
+          zip -r -y "${GITHUB_WORKSPACE}/${COMPONENT_NAME}.zip" ./ -x '__pycache__/*' '*/__pycache__/*'
+
+      - name: Publish pre-release
+        if: env.SKIP != 'true'
+        run: |
+          notes_from=()
+          if [ -n "$NOTES_FROM" ]; then
+            notes_from=(--notes-start-tag "$NOTES_FROM")
+          fi
+
+          gh release create "$TAG" "${COMPONENT_NAME}.zip" \
+            --verify-tag \
+            --prerelease \
+            --latest=false \
+            --title "$TAG" \
+            --notes "Release candidate for v$VERSION from \`$GITHUB_REF_NAME\`. To install it through HACS, enable **Show beta versions** for this repository." \
+            --generate-notes \
+            "${notes_from[@]}"
