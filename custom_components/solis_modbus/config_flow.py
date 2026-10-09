@@ -10,6 +10,7 @@ from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
+    CONF_CLOCK_SYNC,
     CONF_CONNECTION_TYPE,
     CONF_EXTREME_INCLUDE_BATTERY,
     CONF_EXTREME_INCLUDE_SMART_PORT,
@@ -61,6 +62,7 @@ BASE_CONFIG_SCHEMA = {
     vol.Required(CONF_EXTREME_INCLUDE_BATTERY, default=False): bool,
     vol.Required(CONF_EXTREME_INCLUDE_SMART_PORT, default=False): bool,
     vol.Required(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, default=False): bool,
+    vol.Required(CONF_CLOCK_SYNC, default=True): bool,
     vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),
     # Boolean options (Yes/No toggle)
     vol.Required("has_v2", default=True): bool,
@@ -101,6 +103,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required(CONF_EXTREME_INCLUDE_BATTERY, default=False): bool,
         vol.Required(CONF_EXTREME_INCLUDE_SMART_PORT, default=False): bool,
         vol.Required(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, default=False): bool,
+        vol.Required(CONF_CLOCK_SYNC, default=True): bool,
         vol.Required("model"): vol.In(SOLIS_MODELS),
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
         # Boolean options (Yes/No toggle)

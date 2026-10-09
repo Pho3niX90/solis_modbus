@@ -9,6 +9,7 @@ from homeassistant.util import dt as dt_utils
 
 from custom_components.solis_modbus import DOMAIN
 from custom_components.solis_modbus.const import (
+    CONF_CLOCK_SYNC,
     CONF_EXTREME_INCLUDE_BATTERY,
     CONF_EXTREME_INCLUDE_SMART_PORT,
     CONF_POLL_PROFILE,
@@ -266,6 +267,19 @@ def extreme_includes_smart_port(config_entry: ConfigEntry) -> bool:
     Inverters without the SMART_PORT feature skip the group regardless.
     """
     return {**config_entry.data, **config_entry.options}.get(CONF_EXTREME_INCLUDE_SMART_PORT, False)
+
+
+def clock_sync_enabled(config_entry: ConfigEntry) -> bool:
+    """True when the integration may correct inverter clock drift (issue #516).
+
+    Defaults on so entries created before the option existed keep syncing.
+    """
+    return bool({**config_entry.data, **config_entry.options}.get(CONF_CLOCK_SYNC, True))
+
+
+def is_clock_sync_sensor(entity: dict) -> bool:
+    """True for the derived sensor that drives clock-drift correction (synthetic 90007)."""
+    return "90007" in entity.get("register", [])
 
 
 def group_in_poll_profile(group: dict, profile: str, include_battery: bool = False, include_smart_port: bool = False) -> bool:

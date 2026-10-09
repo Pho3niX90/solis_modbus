@@ -69,6 +69,12 @@ CONF_EXTREME_INCLUDE_SMART_PORT = "extreme_include_smart_port"
 # installs may legitimately expect to stay reachable at night).
 CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE = "suppress_night_offline_issue"
 
+# Write HA's clock to the inverter RTC (43000-43005) when it drifts (issue #516).
+# On by default to keep existing behaviour; turning it off drops the "Last Clock
+# Adjustment" sensor, the only thing that writes without a user action, so
+# monitoring-only installs never touch the inverter.
+CONF_CLOCK_SYNC = "clock_sync"
+
 POLL_PROFILES = {
     POLL_PROFILE_FULL: "Full (all sensors)",
     POLL_PROFILE_ESSENTIAL: "Essential only (reduce datalogger load)",
