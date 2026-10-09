@@ -10,6 +10,9 @@ on:
     types: [closed]
     branches: [master]
 
+# The job acts only through the PAT; GITHUB_TOKEN needs no access.
+permissions: {}
+
 jobs:
   open-next:
     name: Open next release branch
