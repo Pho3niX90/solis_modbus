@@ -20,6 +20,9 @@ on:
 # The job acts only through the PAT; GITHUB_TOKEN needs no access.
 permissions: {}
 
+# Runs are serialized. A newer push replaces a pending run, which loses
+# nothing: every run merges the latest master, and milestones are assigned to
+# all unmilestoned PRs merged since the last release, not just this push's.
 concurrency:
   group: release-sync
   cancel-in-progress: false
@@ -55,13 +58,23 @@ jobs:
           sorted=$(printf '%s\n' "${versions[@]}" | grep . | sort -V | tr '\n' ' ')
           echo "Open release branches: ${sorted:-none}"
           echo "VERSIONS=$sorted" >> "$GITHUB_ENV"
+          echo "LATEST=$latest" >> "$GITHUB_ENV"
 
       - name: Add merged PRs to the next milestone
         if: env.VERSIONS != ''
         run: |
           next="${VERSIONS%% *}"
-          for pr in $(gh api "repos/$GH_REPO/commits/$GITHUB_SHA/pulls" \
-            --jq '.[] | select(.merged_at != null and .base.ref == "master" and .milestone == null) | select(.head.ref | startswith("release/") or startswith("sync/") | not) | .number'); do
+          # Every PR merged into master since the last release without a
+          # milestone, not only this push's, so a replaced pending run (see
+          # concurrency) misses none. Strictly after: the release commit's own
+          # PR merged in the same second.
+          query="no:milestone"
+          if [ -n "$LATEST" ]; then
+            since=$(gh api "repos/$GH_REPO/commits/v$LATEST" --jq .commit.committer.date)
+            query="$query merged:>$since"
+          fi
+          for pr in $(gh pr list --base master --state merged --search "$query" --limit 200 \
+            --json number,headRefName --jq '.[] | select(.headRefName | startswith("release/") or startswith("sync/") | not) | .number'); do
             gh pr edit "$pr" --milestone "$next"
             # And the issues it closed, so the milestone shows what was fixed.
             for issue in $(gh pr view "$pr" --json closingIssuesReferences --jq '.closingIssuesReferences[].number'); do
@@ -74,6 +87,7 @@ jobs:
         if: env.VERSIONS != ''
         run: |
           short="${GITHUB_SHA:0:7}"
+          failed=()
           for version in $VERSIONS; do
             branch="release/$version"
             status=$(gh api -X POST "repos/$GH_REPO/merges" --include \
@@ -86,9 +100,14 @@ jobs:
               409)
                 sync="sync/master-into-$version"
                 if gh api "repos/$GH_REPO/git/ref/heads/$sync" > /dev/null 2>&1; then
-                  # Bring the open sync branch up to date; if that conflicts too,
-                  # the PR already shows the conflict to resolve.
-                  gh api -X POST "repos/$GH_REPO/merges" -f base="$sync" -f head="$GITHUB_SHA" > /dev/null 2>&1 || true
+                  # Bring the existing sync branch up to master.
+                  sync_status=$(gh api -X POST "repos/$GH_REPO/merges" --include \
+                    -f base="$sync" -f head="$GITHUB_SHA" \
+                    -f commit_message="Merge master ($short) into $sync" 2> /dev/null | head -1 | awk '{print $2}')
+                  if [ "$sync_status" != "201" ] && [ "$sync_status" != "204" ]; then
+                    echo "::error::Could not bring $sync up to master $short (HTTP ${sync_status:-?}); its PR does not include it yet. Merge master into $sync by hand."
+                    failed+=("$sync")
+                  fi
                 else
                   gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/heads/$sync" -f sha="$GITHUB_SHA" > /dev/null
                 fi
@@ -108,7 +127,14 @@ jobs:
                 fi
                 ;;
               *)
-                echo "::warning::Merging master into $branch failed (HTTP ${status:-?})"
+                echo "::error::Merging master into $branch failed (HTTP ${status:-?})"
+                failed+=("$branch")
                 ;;
             esac
           done
+
+          # Every branch was attempted; now fail visibly if any was left behind.
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "Not brought up to master $short: ${failed[*]}" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
