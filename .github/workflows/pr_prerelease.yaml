@@ -41,9 +41,34 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           manifest="custom_components/${COMPONENT_NAME}/manifest.json"
-          base=$(jq -r '.version' "$manifest")
+          # Label the build with the release it will ship in: the release branch
+          # it targets (or, for a release branch merging back, comes from), else
+          # the lowest open release/X.Y.0 a master PR flows into, else the
+          # manifest version.
+          base=""
+          if [[ "$BASE_REF" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}"
+          elif [[ "$HEAD_REF" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}"
+          else
+            latest=$(gh api --paginate "repos/$GH_REPO/tags?per_page=100" --jq '.[].name' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -1)
+            for version in $(gh api --paginate "repos/$GH_REPO/branches?per_page=100" \
+                --jq '.[].name | select(startswith("release/")) | ltrimstr("release/")' \
+                | grep -E '^[0-9]+\.[0-9]+\.0$' | sort -V); do
+              if [ -z "$latest" ] || [ "$(printf '%s\n%s\n' "$version" "$latest" | sort -V | tail -1)" = "$version" ] && [ "$version" != "$latest" ]; then
+                base="$version"
+                break
+              fi
+            done
+          fi
+          base="${base:-$(jq -r '.version' "$manifest")}"
           version="${base}-pr${PR_NUMBER}+${HEAD_SHA:0:7}"
           jq --arg v "$version" '.version = $v' "$manifest" > manifest.tmp.json && mv manifest.tmp.json "$manifest"
           echo "VERSION=$version" >> "$GITHUB_ENV"
