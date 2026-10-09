@@ -85,6 +85,7 @@
       "serial_required": "Het serienummer van de omvormer is verplicht.",
       "model_required": "Selecteer een omvormermodel.",
       "tcp_port_closed": "Er accepteert niets Modbus-verbindingen op dat adres en die poort. Het apparaat is mogelijk bereikbaar (het antwoordt op ping) maar biedt geen Modbus aan — controleer of Modbus TCP is ingeschakeld op de datalogger. Van recente Solis-loggerfirmware is bekend dat deze lokale poort 502 sluit; een RS485-naar-TCP-bridge is een tijdelijke oplossing.",
+      "serial_port_unsupported": "Deze seriële poort kan niet worden gebruikt. ESPHome seriële proxy's (esphome-hass://) worden nog niet ondersteund; gebruik een USB-RS485-adapter, een socket://- of rfc2217://-gateway, of het verbindingstype TCP.",
       "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s)."
     },
     "abort": {

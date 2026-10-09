@@ -85,6 +85,7 @@
       "serial_required": "Die Seriennummer des Wechselrichters ist erforderlich.",
       "model_required": "Bitte ein Wechselrichtermodell auswählen.",
       "tcp_port_closed": "Auf dieser Adresse und diesem Port nimmt nichts Modbus-Verbindungen an. Das Gerät ist möglicherweise erreichbar (es antwortet auf Ping), stellt aber kein Modbus bereit — prüfen Sie, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe.",
+      "serial_port_unsupported": "Dieser serielle Port kann nicht verwendet werden. ESPHome-Serial-Proxys (esphome-hass://) werden noch nicht unterstützt; verwenden Sie einen USB-RS485-Adapter, ein socket://- oder rfc2217://-Gateway oder den Verbindungstyp TCP.",
       "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s)."
     },
     "abort": {
