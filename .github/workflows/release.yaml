@@ -1,5 +1,10 @@
 name: Release
 
+# Run on master, or on a `release/X.Y.Z` branch to cut stable vX.Y.Z from it.
+# Release candidates for a release branch are published by release_branch.yaml
+# on every push; this workflow only makes the final release there, then closes
+# the milestone and opens a PR merging the branch back into master.
+
 on:
   workflow_dispatch:
     inputs:
@@ -22,6 +27,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,6 +36,28 @@ jobs:
           # master requires PR reviews, so the default GITHUB_TOKEN cannot push
           # the version bump. The PAT (repo admin) bypasses that rule.
           token: ${{ secrets.PAT }}
+
+      - name: Check branch
+        run: |
+          case "$GITHUB_REF_NAME" in
+            master) ;;
+            release/*)
+              branch_version="${GITHUB_REF_NAME#release/}"
+              if ! [[ "$branch_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::Branch $GITHUB_REF_NAME is not named release/X.Y.Z"
+                exit 1
+              fi
+              if [ "${{ inputs.release_type }}" != "release" ]; then
+                echo "::error::Release candidates for $GITHUB_REF_NAME are published on every push. Run with release_type=release to cut v$branch_version."
+                exit 1
+              fi
+              echo "branch_version=$branch_version" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "::error::Run Release on master or on a release/X.Y.Z branch"
+              exit 1
+              ;;
+          esac
 
       - name: Install jq
         run: sudo apt-get install jq
@@ -39,7 +68,7 @@ jobs:
       - name: Get latest tag or fail
         id: get-latest-tag
         run: |
-          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | grep -v '^refs/tags/pr-' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
+          latest_tag=$(git for-each-ref --sort=version:refname --format '%(refname)' refs/tags/ | grep -v 'latest' | grep -v '^refs/tags/pr-' | grep -v -- '-rc\.[0-9]*$' | tail -1 | sed 's/^refs\/tags\///; s/^v//')
           if [ -z "$latest_tag" ]; then
             echo "No tags found for the commit."
             exit 1
@@ -61,6 +90,19 @@ jobs:
           echo "Current version: $current"
           echo "Latest tag: $latest"
           echo "Release type: ${{ inputs.release_type }}"
+
+          # A release branch names its version; it must be newer than the latest tag.
+          if [ -n "${{ env.branch_version }}" ]; then
+            target="${{ env.branch_version }}"
+            if [ "$(python -c "import semver; print(semver.compare('$target', '$latest') > 0)")" != "True" ]; then
+              echo "::error::$GITHUB_REF_NAME is not newer than the latest release, v$latest"
+              exit 1
+            fi
+            jq ".version = \"$target\"" "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json" > package.tmp.json && mv package.tmp.json "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}/manifest.json"
+            echo "version=$target" >> $GITHUB_ENV
+            echo "is_higher_version=true" >> $GITHUB_ENV
+            exit 0
+          fi
 
           # Check if latest tag is a valid SemVer string
           if ! python -c "import semver; semver.VersionInfo.parse('$latest')" > /dev/null 2>&1; then
@@ -111,6 +153,24 @@ jobs:
           cd "${{ github.workspace }}/custom_components/${{ env.COMPONENT_NAME }}"
           zip ${{ env.COMPONENT_NAME }}.zip -r ./
 
+      - name: Generate release notes
+        if: env.is_higher_version == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Name the previous stable tag explicitly: left to GitHub, a release
+          # candidate could be picked and the notes would only cover its tail.
+          previous=()
+          if git rev-parse -q --verify "refs/tags/v${{ env.latest_tag }}" > /dev/null; then
+            previous=(-f previous_tag_name="v${{ env.latest_tag }}")
+          fi
+          gh api -X POST "repos/$GH_REPO/releases/generate-notes" \
+            -f tag_name="v${{ env.version }}" \
+            -f target_commitish="${{ steps.bump.outputs.sha }}" \
+            "${previous[@]}" \
+            --jq .body > "${{ github.workspace }}/release_notes.md"
+
       - name: Upload zip to release
         if: env.is_higher_version == 'true'
         uses: softprops/action-gh-release@v2
@@ -121,10 +181,57 @@ jobs:
           target_commitish: ${{ steps.bump.outputs.sha }}
           name: v${{ env.version }}
           token: ${{ secrets.PAT }}
-          generate_release_notes: true
+          body_path: ${{ github.workspace }}/release_notes.md
           prerelease: ${{ inputs.release_type == 'prerelease' }}
           make_latest: ${{ inputs.release_type == 'release' }}
 
       - name: 🏷️ Update latest tag
         if: env.is_higher_version == 'true' && inputs.release_type == 'release'
         uses: EndBug/latest-tag@latest
+
+      - name: Open PR merging the release branch into master
+        if: env.is_higher_version == 'true' && env.branch_version != ''
+        env:
+          # A PAT, so the PR's checks run (GITHUB_TOKEN events trigger no workflows).
+          GH_TOKEN: ${{ secrets.PAT }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ -n "$(gh pr list --base master --head "$GITHUB_REF_NAME" --state open --json number --jq '.[].number')" ]; then
+            echo "A PR from $GITHUB_REF_NAME into master is already open"
+            exit 0
+          fi
+
+          # Issues fixed on the release branch are not closed by its PRs, whose
+          # base is not the default branch. List the milestone's open issues so
+          # merging this PR closes them.
+          issues=$(gh issue list --milestone "${{ env.version }}" --state open --limit 200 --json number --jq '.[].number')
+          {
+            echo "Merges the changes made on \`$GITHUB_REF_NAME\` for v${{ env.version }} back into master."
+            if [ -n "$issues" ]; then
+              echo
+              echo "Open issues in milestone ${{ env.version }}. **Remove the line for any issue this release does not fix before merging:**"
+              echo
+              for issue in $issues; do
+                echo "Closes #$issue"
+              done
+            fi
+          } > backmerge.md
+
+          gh pr create --base master --head "$GITHUB_REF_NAME" \
+            --title "Merge $GITHUB_REF_NAME into master" \
+            --body-file backmerge.md
+
+      - name: Close milestone
+        if: env.is_higher_version == 'true' && inputs.release_type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          number=$(gh api --paginate "repos/$GH_REPO/milestones?state=open&per_page=100" \
+            --jq '.[] | select(.title == "${{ env.version }}") | .number' | head -1)
+          if [ -z "$number" ]; then
+            echo "No open milestone ${{ env.version }}"
+            exit 0
+          fi
+          gh api -X PATCH "repos/$GH_REPO/milestones/$number" -f state=closed > /dev/null
+          echo "Closed milestone ${{ env.version }} (#$number)"
