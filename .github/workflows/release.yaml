@@ -40,7 +40,15 @@ jobs:
       - name: Check branch
         run: |
           case "$GITHUB_REF_NAME" in
-            master) ;;
+            master)
+              # Master is the trunk: with a release branch open, it may hold
+              # features meant for that release. Hotfixes belong on a
+              # release/X.Y.Z branch cut from the last release tag.
+              open=$(git branch -r --list 'origin/release/*' | sed 's|^ *origin/||' | paste -sd ' ' -)
+              if [ -n "$open" ]; then
+                echo "::warning::Releasing from master while release branches are open ($open). Master may contain unreleased features; prefer a release/X.Y.Z hotfix branch cut from the last release tag."
+              fi
+              ;;
             release/*)
               branch_version="${GITHUB_REF_NAME#release/}"
               if ! [[ "$branch_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

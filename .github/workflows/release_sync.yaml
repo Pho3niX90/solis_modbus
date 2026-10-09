@@ -1,0 +1,110 @@
+name: Sync Release Branches
+
+# Master is the trunk: features and fixes are PR'd against it. Every push to
+# master is merged into each open, unreleased `release/X.Y.0` branch, which
+# publishes that version's next release candidate (release_branch.yaml).
+#
+# - A conflicting merge opens (or refreshes) a `sync/master-into-X.Y.0` PR, so
+#   the conflict is resolved there rather than on master.
+# - PRs merged into master are added to the milestone of the lowest open
+#   release branch, the first release they ship in.
+# - Hotfix branches (`release/X.Y.Z` with Z > 0, cut from a release tag) are
+#   left alone, so they don't pick up unreleased features.
+# - Branches older than the latest release can no longer be released and are
+#   skipped (release_next.yaml flags them).
+
+on:
+  push:
+    branches: [master]
+
+# The job acts only through the PAT; GITHUB_TOKEN needs no access.
+permissions: {}
+
+concurrency:
+  group: release-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge master into open release branches
+    runs-on: ubuntu-latest
+    env:
+      # A PAT, so the merges trigger release_branch.yaml (events from
+      # GITHUB_TOKEN trigger no workflows).
+      GH_TOKEN: ${{ secrets.PAT }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Find open release branches
+        run: |
+          latest=$(gh api --paginate "repos/$GH_REPO/tags?per_page=100" --jq '.[].name' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          latest="${latest#v}"
+
+          versions=()
+          for branch in $(gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name | select(startswith("release/"))'); do
+            version="${branch#release/}"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.0$ ]] || continue
+            # Released, or older than the latest release: nothing to ship.
+            if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$version" "$latest" | sort -V | tail -1)" != "$version" ]; then
+              continue
+            fi
+            [ "$version" = "$latest" ] && continue
+            versions+=("$version")
+          done
+
+          sorted=$(printf '%s\n' "${versions[@]}" | grep . | sort -V | tr '\n' ' ')
+          echo "Open release branches: ${sorted:-none}"
+          echo "VERSIONS=$sorted" >> "$GITHUB_ENV"
+
+      - name: Add merged PRs to the next milestone
+        if: env.VERSIONS != ''
+        run: |
+          next="${VERSIONS%% *}"
+          for pr in $(gh api "repos/$GH_REPO/commits/$GITHUB_SHA/pulls" \
+            --jq '.[] | select(.merged_at != null and .base.ref == "master" and .milestone == null) | select(.head.ref | startswith("release/") or startswith("sync/") | not) | .number'); do
+            gh pr edit "$pr" --milestone "$next"
+            echo "Added #$pr to milestone $next" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Merge master into each release branch
+        if: env.VERSIONS != ''
+        run: |
+          short="${GITHUB_SHA:0:7}"
+          for version in $VERSIONS; do
+            branch="release/$version"
+            status=$(gh api -X POST "repos/$GH_REPO/merges" --include \
+              -f base="$branch" -f head="$GITHUB_SHA" \
+              -f commit_message="Merge master ($short) into $branch" 2> /dev/null | head -1 | awk '{print $2}')
+
+            case "$status" in
+              201) echo "Merged master into $branch" | tee -a "$GITHUB_STEP_SUMMARY" ;;
+              204) echo "$branch already has master" ;;
+              409)
+                sync="sync/master-into-$version"
+                if gh api "repos/$GH_REPO/git/ref/heads/$sync" > /dev/null 2>&1; then
+                  # Bring the open sync branch up to date; if that conflicts too,
+                  # the PR already shows the conflict to resolve.
+                  gh api -X POST "repos/$GH_REPO/merges" -f base="$sync" -f head="$GITHUB_SHA" > /dev/null 2>&1 || true
+                else
+                  gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/heads/$sync" -f sha="$GITHUB_SHA" > /dev/null
+                fi
+
+                if [ -z "$(gh pr list --base "$branch" --head "$sync" --state open --json number --jq '.[].number')" ]; then
+                  {
+                    echo "Merging master into \`$branch\` conflicts, so it couldn't be done automatically."
+                    echo
+                    echo "Resolve the conflicts on this PR (the resolution is committed to \`$sync\`, not master), then merge it to publish the next $version candidate."
+                  } > sync.md
+                  url=$(gh pr create --base "$branch" --head "$sync" \
+                    --title "Merge master into $branch" \
+                    --body-file sync.md)
+                  echo "Merge conflict: opened $url" | tee -a "$GITHUB_STEP_SUMMARY"
+                else
+                  echo "Merge conflict: the open $sync PR was updated" | tee -a "$GITHUB_STEP_SUMMARY"
+                fi
+                ;;
+              *)
+                echo "::warning::Merging master into $branch failed (HTTP ${status:-?})"
+                ;;
+            esac
+          done
