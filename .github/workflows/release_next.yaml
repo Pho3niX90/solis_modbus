@@ -3,7 +3,10 @@ name: Open Next Release Branch
 # When a `release/X.Y.Z` branch is merged back into master, open
 # `release/X.(Y+1).0` from the merge commit, so the next version has a branch
 # (and, through release_branch.yaml, a milestone) to collect PRs and issues.
-# Patch releases are still cut from master with the Release workflow.
+# Hotfix branches (`release/X.Y.Z`, Z > 0) don't advance it: merging 4.3.1
+# finds release/4.4.0 already open. Other open release branches get master
+# through release_sync.yaml; ones older than the merged release can no longer be
+# released, and the merged PR gets a comment naming them.
 
 on:
   pull_request:
@@ -57,3 +60,35 @@ jobs:
             -f ref="refs/heads/$branch" \
             -f sha="$MERGE_SHA" > /dev/null
           echo "Opened $branch at $MERGE_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Flag release branches older than this release
+        if: env.SKIP != 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          merged="${MERGED_BRANCH#release/}"
+          stale=()
+          for branch in $(gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name | select(startswith("release/"))'); do
+            version="${branch#release/}"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+            [ "$version" = "$merged" ] && continue
+            # Released already: a leftover branch, not unshipped work.
+            gh api "repos/$GH_REPO/git/ref/tags/v$version" > /dev/null 2>&1 && continue
+            if [ "$(printf '%s\n%s\n' "$version" "$merged" | sort -V | tail -1)" = "$merged" ]; then
+              stale+=("$branch")
+            fi
+          done
+
+          if [ ${#stale[@]} -gt 0 ]; then
+            {
+              echo "These release branches are older than v$merged and can no longer be released (a release must be newer than the latest):"
+              echo
+              for branch in "${stale[@]}"; do
+                echo "- \`$branch\`"
+              done
+              echo
+              echo "Move any changes they still need into master, then delete them."
+            } > stale.md
+            gh pr comment "$PR_NUMBER" --body-file stale.md
+            cat stale.md >> "$GITHUB_STEP_SUMMARY"
+          fi
