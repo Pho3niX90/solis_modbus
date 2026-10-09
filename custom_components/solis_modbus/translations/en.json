@@ -85,6 +85,7 @@
       "serial_required": "Inverter serial number is required.",
       "model_required": "Please select an inverter model.",
       "tcp_port_closed": "Nothing is accepting Modbus connections on that address and port. The device may be reachable (it answers ping) but not serving Modbus — check that Modbus TCP is enabled on the datalogger. Recent Solis logger firmware is known to close local port 502; an RS485-to-TCP bridge is a workaround.",
+      "serial_port_unsupported": "This serial port can't be used. ESPHome serial proxies (esphome-hass://) aren't supported yet; use a USB-RS485 adapter, a socket:// or rfc2217:// gateway, or the TCP connection type.",
       "poll_interval_below_floor": "Fast poll interval is below the minimum for the selected poll profile. Only the extreme profile allows intervals below 10s (minimum 2s)."
     },
     "abort": {

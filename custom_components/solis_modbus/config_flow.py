@@ -47,6 +47,28 @@ CONNECTION_TYPES = {CONN_TYPE_TCP: "TCP (WiFi Dongle)", CONN_TYPE_SERIAL: "Seria
 # Parity options
 PARITY_OPTIONS = {"N": "None", "E": "Even", "O": "Odd"}
 
+# HA 2026.5+ offers a picker of the serial ports it can see, with a manual-entry
+# option for socket:// or rfc2217:// gateways. Older versions get a text field.
+try:
+    from homeassistant.helpers.selector import SerialPortSelector
+except ImportError:  # HA < 2026.5
+    SERIAL_PORT_FIELD = {vol.Required(CONF_SERIAL_PORT, default="/dev/ttyUSB0"): str}
+else:
+    # No default: preselecting a port that may not exist hides the real ones.
+    SERIAL_PORT_FIELD = {vol.Required(CONF_SERIAL_PORT): SerialPortSelector()}
+
+# pymodbus opens serial ports with pyserial's serial_for_url, which takes device
+# paths and these URL schemes. The picker can also list ports pyserial cannot
+# open, such as ESPHome serial proxies (esphome-hass://), and offers no filter.
+PYSERIAL_URL_SCHEMES = ("alt", "cp2110", "hwgrep", "loop", "rfc2217", "socket", "spy")
+
+
+def _is_supported_serial_port(port: str) -> bool:
+    """Return whether pyserial can open this serial port path or URL."""
+    scheme, separator, _ = port.partition("://")
+    return not separator or scheme.lower() in PYSERIAL_URL_SCHEMES
+
+
 # Base schema with common fields (for both TCP and Serial)
 BASE_CONFIG_SCHEMA = {
     vol.Required(CONF_CONNECTION_TYPE, default=CONN_TYPE_TCP): vol.In(CONNECTION_TYPES),
@@ -87,7 +109,7 @@ TCP_CONFIG_SCHEMA = {
 # Serial-specific fields (no WiFi dongle type needed)
 SERIAL_CONFIG_SCHEMA = {
     **BASE_CONFIG_SCHEMA,
-    vol.Required(CONF_SERIAL_PORT, default="/dev/ttyUSB0"): str,
+    **SERIAL_PORT_FIELD,
     vol.Required(CONF_BAUDRATE, default=DEFAULT_BAUDRATE): vol.In([9600, 19200, 38400, 57600, 115200]),
     vol.Required(CONF_BYTESIZE, default=DEFAULT_BYTESIZE): vol.In([7, 8]),
     vol.Required(CONF_PARITY, default=DEFAULT_PARITY): vol.In(PARITY_OPTIONS),
@@ -340,6 +362,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return False, "tcp_port_closed"
             client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
+            if not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
+                _LOGGER.error("Serial port %s cannot be opened by pymodbus", user_input[CONF_SERIAL_PORT])
+                return False, "serial_port_unsupported"
             client = AsyncModbusSerialClient(
                 port=user_input[CONF_SERIAL_PORT],
                 baudrate=user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),

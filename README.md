@@ -41,7 +41,7 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 ### Configuration
 **Connection Type**:
 - **TCP (WiFi Dongle)**: Use for Data Logging Sticks (DLS) or WiFi dongles. Requires IP and Port (Default 502).
-- **Serial (RS485)**: Use for direct USB-RS485 connection. Requires Serial Port path.
+- **Serial (RS485)**: Use for direct USB-RS485 connection. Requires Serial Port path. On Home Assistant 2026.5+ you pick the port from a list (choose *Enter manually* for `socket://` or `rfc2217://` gateways; ESPHome serial proxies are not supported yet). On Home Assistant 2026.9+ the port also shows up under **Settings → Connectivity → Serial** as used by Solis Modbus.
 
 **Inverter Serial**: (Required)
 - Enter your inverter's serial number. This is now **mandatory** for generating unique entity IDs and ensuring configuration stability.

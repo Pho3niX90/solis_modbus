@@ -85,6 +85,7 @@
       "serial_required": "O número de série do inversor é obrigatório.",
       "model_required": "Selecione um modelo de inversor.",
       "tcp_port_closed": "Nada aceita ligações Modbus nesse endereço e porta. O dispositivo pode estar acessível (responde a ping) mas não está a servir Modbus — verifique se o Modbus TCP está ativado no registador. Sabe-se que o firmware recente dos registadores Solis fecha a porta local 502; uma ponte RS485 para TCP é uma solução alternativa.",
+      "serial_port_unsupported": "Esta porta série não pode ser usada. Os proxies série ESPHome (esphome-hass://) ainda não são suportados; use um adaptador USB-RS485, um gateway socket:// ou rfc2217://, ou o tipo de ligação TCP.",
       "poll_interval_below_floor": "O intervalo de sondagem rápida está abaixo do mínimo para o perfil selecionado. Apenas o perfil extremo permite intervalos inferiores a 10s (mínimo 2s)."
     },
     "abort": {
