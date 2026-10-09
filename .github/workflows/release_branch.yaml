@@ -17,6 +17,9 @@ name: Release Branch
 # `rc.N`, not `rcN`: under SemVer, `rc10` sorts before `rc9`.
 #
 # The stable `vX.Y.Z` is cut by running the Release workflow on the branch.
+# Pushes after that (e.g. resolving conflicts on the PR merging it back into
+# master) are ignored. Deleting an unreleased release branch closes its milestone
+# if no open issues remain in it.
 
 on:
   push:
@@ -25,6 +28,7 @@ on:
   # A branch created in the GitHub UI may not send a push event. When both
   # arrive, the second run finds nothing new and only re-checks the milestone.
   create:
+  delete:
 
 env:
   COMPONENT_NAME: solis_modbus
@@ -63,8 +67,10 @@ jobs:
             exit 1
           fi
           if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
-            echo "::error::v$version is already released. Cut a new release branch for further changes."
-            exit 1
+            # Typically conflicts resolved on the PR merging it back into master.
+            echo "::notice::v$version is already released; not publishing candidates for $GITHUB_REF_NAME"
+            echo "RELEASED=true" >> "$GITHUB_ENV"
+            exit 0
           fi
 
           latest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
@@ -77,6 +83,7 @@ jobs:
           echo "LATEST_STABLE=$latest" >> "$GITHUB_ENV"
 
       - name: Ensure milestone
+        if: env.RELEASED != 'true'
         run: |
           milestone=$(gh api --paginate "repos/$GH_REPO/milestones?state=all&per_page=100" \
             --jq ".[] | select(.title == \"$VERSION\") | \"\(.number) \(.state)\"" | head -1)
@@ -96,10 +103,12 @@ jobs:
           fi
 
       - name: Add merged PRs to the milestone
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && env.RELEASED != 'true'
         run: |
+          # Not the sync PRs bringing master in: their changes were milestoned
+          # when they reached master.
           prs=$(gh api "repos/$GH_REPO/commits/$GITHUB_SHA/pulls" \
-            --jq ".[] | select(.merged_at != null and .base.ref == \"$GITHUB_REF_NAME\") | .number")
+            --jq ".[] | select(.merged_at != null and .base.ref == \"$GITHUB_REF_NAME\") | select(.head.ref | startswith(\"sync/\") | not) | .number")
           for pr in $prs; do
             gh pr edit "$pr" --milestone "$VERSION"
             # Closing keywords only link issues for some bases; add what is linked.
@@ -109,6 +118,7 @@ jobs:
           done
 
       - name: Pick the next release candidate
+        if: env.RELEASED != 'true'
         run: |
           last_rc=$(git tag --list "v$VERSION-rc.*" | sort -V | tail -1)
           # An rc tag points at its stamp commit; the parent is the branch commit.
@@ -133,7 +143,7 @@ jobs:
           echo "NOTES_FROM=${last_rc:-$LATEST_STABLE}" >> "$GITHUB_ENV"
 
       - name: Tag a commit stamped with the candidate version
-        if: env.SKIP != 'true'
+        if: env.SKIP != 'true' && env.RELEASED != 'true'
         run: |
           manifest="custom_components/${COMPONENT_NAME}/manifest.json"
           jq --arg v "$RC_VERSION" '.version = $v' "$manifest" > manifest.tmp.json && mv manifest.tmp.json "$manifest"
@@ -146,14 +156,14 @@ jobs:
           git push origin "refs/tags/$TAG"
 
       - name: Zip ${{ env.COMPONENT_NAME }} dir
-        if: env.SKIP != 'true'
+        if: env.SKIP != 'true' && env.RELEASED != 'true'
         run: |
           cd "custom_components/${COMPONENT_NAME}"
           # -y stores symlinks as links rather than following them out of the checkout
           zip -r -y "${GITHUB_WORKSPACE}/${COMPONENT_NAME}.zip" ./ -x '__pycache__/*' '*/__pycache__/*'
 
       - name: Publish pre-release
-        if: env.SKIP != 'true'
+        if: env.SKIP != 'true' && env.RELEASED != 'true'
         run: |
           notes_from=()
           if [ -n "$NOTES_FROM" ]; then
@@ -168,3 +178,39 @@ jobs:
             --notes "Release candidate for v$VERSION from \`$GITHUB_REF_NAME\`. To install it through HACS, enable **Show beta versions** for this repository." \
             --generate-notes \
             "${notes_from[@]}"
+
+  abandoned:
+    name: Close the milestone of a deleted release branch
+    if: >-
+      github.event_name == 'delete'
+      && github.event.ref_type == 'branch'
+      && startsWith(github.event.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DELETED: ${{ github.event.ref }}
+    steps:
+      - name: Close the milestone if nothing is left in it
+        run: |
+          version="${DELETED#release/}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 0
+          # A released branch's milestone was closed by the Release workflow.
+          if gh api "repos/$GH_REPO/git/ref/tags/v$version" > /dev/null 2>&1; then
+            exit 0
+          fi
+
+          milestone=$(gh api --paginate "repos/$GH_REPO/milestones?state=open&per_page=100" \
+            --jq ".[] | select(.title == \"$version\") | \"\(.number) \(.open_issues)\"" | head -1)
+          [ -n "$milestone" ] || exit 0
+          number="${milestone%% *}"
+          open="${milestone##* }"
+
+          if [ "$open" = "0" ]; then
+            gh api -X PATCH "repos/$GH_REPO/milestones/$number" -f state=closed > /dev/null
+            echo "Closed milestone $version: $DELETED was deleted unreleased" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::$DELETED was deleted unreleased; milestone $version still has $open open issue(s) or PR(s) to move"
+          fi
