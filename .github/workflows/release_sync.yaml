@@ -123,7 +123,7 @@ jobs:
                     --body-file sync.md)
                   echo "Merge conflict: opened $url" | tee -a "$GITHUB_STEP_SUMMARY"
                 else
-                  echo "Merge conflict: the open $sync PR was updated" | tee -a "$GITHUB_STEP_SUMMARY"
+                  echo "Merge conflict: resolve it on the open $sync PR" | tee -a "$GITHUB_STEP_SUMMARY"
                 fi
                 ;;
               *)
