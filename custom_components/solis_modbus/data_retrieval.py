@@ -58,6 +58,8 @@ class DataRetrieval:
         self._issue_raised: bool | None = None
         # Set once the slave ID check is settled (see _check_serial_slave_id).
         self._slave_id_checked = False
+        # Set once its issue is raised: stop probing, but keep checking whether to clear it.
+        self._slave_id_issue_raised = False
         self._polling_since: float | None = None
         self.poll_lock = asyncio.Lock()
         self.connection_check = False
@@ -303,14 +305,17 @@ class DataRetrieval:
             return
         if any(other is not controller and other.connection_id == controller.connection_id and other.device_id == 1 for other in iter_controllers(self.hass)):
             # Unit 1 is another inverter configured on this bus; an answer proves nothing.
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
             self._slave_id_checked = True
+            return
+        if self._slave_id_issue_raised:
             return
         if self._polling_since is None or time.monotonic() - self._polling_since < _SLAVE_PROBE_AFTER.total_seconds():
             return
         if not await controller.async_unit_answers(1):
             # Nothing at unit 1 either (asleep, wiring, ...); check again next time.
             return
-        self._slave_id_checked = True
+        self._slave_id_issue_raised = True
         _LOGGER.warning(
             "(%s.%s) No answer from slave ID %s, but a device answers at slave ID 1. If that is this inverter, reconfigure the entry with slave ID 1.",
             controller.host,

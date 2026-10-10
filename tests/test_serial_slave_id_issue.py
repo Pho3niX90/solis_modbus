@@ -62,8 +62,24 @@ async def test_issue_raised_when_only_unit_1_answers(mock_ir, other_controllers)
     assert kwargs["translation_key"] == "serial_slave_id"
     assert kwargs["translation_placeholders"] == {"port": "/dev/ttyUSB0", "slave": "7"}
 
-    # Settled: no further probes.
+    # No further probes while the issue stands.
     await retrieval._check_serial_slave_id()
+    controller.async_unit_answers.assert_awaited_once()
+    mock_ir.async_delete_issue.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_raised_issue_cleared_once_configured_slave_answers(mock_ir, other_controllers):
+    # e.g. the configured inverter was asleep for the first minutes after startup
+    controller = make_controller()
+    retrieval, hass = make_retrieval(controller)
+    await retrieval._check_serial_slave_id()
+    mock_ir.async_create_issue.assert_called_once()
+
+    controller.has_answered = True
+    await retrieval._check_serial_slave_id()
+
+    mock_ir.async_delete_issue.assert_called_once_with(hass, DOMAIN, ISSUE_ID)
     controller.async_unit_answers.assert_awaited_once()
 
 
