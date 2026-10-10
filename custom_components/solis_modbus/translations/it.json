@@ -192,6 +192,10 @@
     "datalogger_unreachable": {
       "title": "Datalogger Solis irraggiungibile",
       "description": "Nessuna lettura Modbus riuscita da {host} da {last_success}. Il datalogger WiFi potrebbe essere in sospensione, spento o in uno stato semiaperto; l'integrazione continua a riprovare con backoff. Riavviare l'alimentazione del datalogger se il problema persiste."
+    },
+    "serial_slave_id": {
+      "title": "L'inverter Solis non risponde all'ID slave {slave}",
+      "description": "L'inverter su {port} non risponde al suo ID slave Modbus configurato {slave}, ma un dispositivo sul bus risponde all'ID slave 1. Le versioni precedenti di questa integrazione inviavano ogni richiesta seriale (RS485) all'ID slave 1, qualunque fosse l'ID configurato, quindi questa configurazione potrebbe aver funzionato finora. Se l'inverter è all'ID slave 1, riconfigurare la voce dell'integrazione e impostare l'ID slave a 1."
     }
   }
 }

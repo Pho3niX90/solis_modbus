@@ -192,6 +192,10 @@
     "datalogger_unreachable": {
       "title": "Solis-datalogger onbereikbaar",
       "description": "Geen geslaagde Modbus-uitlezing van {host} sinds {last_success}. De WiFi-datalogger slaapt mogelijk, is uitgeschakeld of half-open; de integratie blijft het met backoff proberen. Herstart de voeding van de datalogger als dit aanhoudt."
+    },
+    "serial_slave_id": {
+      "title": "Solis-omvormer antwoordt niet op slave-ID {slave}",
+      "description": "De omvormer op {port} antwoordt niet op zijn ingestelde Modbus-slave-ID {slave}, maar een apparaat op de bus antwoordt op slave-ID 1. Oudere versies van deze integratie stuurden elk serieel (RS485) verzoek naar slave-ID 1, ongeacht de ingestelde ID, dus deze opstelling heeft mogelijk tot nu toe gewerkt. Staat de omvormer op slave-ID 1, herconfigureer dan de integratie-invoer en stel de slave-ID in op 1."
     }
   }
 }

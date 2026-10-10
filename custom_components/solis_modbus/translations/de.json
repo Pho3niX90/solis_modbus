@@ -192,6 +192,10 @@
     "datalogger_unreachable": {
       "title": "Solis-Datenlogger nicht erreichbar",
       "description": "Kein erfolgreicher Modbus-Lesevorgang von {host} seit {last_success}. Der WiFi-Datenlogger schläft möglicherweise, ist ausgeschaltet oder in einem halboffenen Zustand; die Integration versucht es weiterhin mit Backoff. Bei anhaltendem Problem den Datenlogger stromlos machen."
+    },
+    "serial_slave_id": {
+      "title": "Solis-Wechselrichter antwortet nicht unter Slave-ID {slave}",
+      "description": "Der Wechselrichter an {port} antwortet nicht unter seiner konfigurierten Modbus-Slave-ID {slave}, aber ein Gerät am Bus antwortet unter Slave-ID 1. Ältere Versionen dieser Integration haben jede serielle (RS485) Anfrage unabhängig von der konfigurierten ID an Slave-ID 1 gesendet, daher hat diese Konfiguration bisher möglicherweise funktioniert. Wenn der Wechselrichter Slave-ID 1 hat, den Integrationseintrag neu konfigurieren und die Slave-ID auf 1 setzen."
     }
   }
 }

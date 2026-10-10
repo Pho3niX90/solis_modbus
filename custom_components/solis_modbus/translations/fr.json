@@ -192,6 +192,10 @@
     "datalogger_unreachable": {
       "title": "Enregistreur de données Solis injoignable",
       "description": "Aucune lecture Modbus réussie depuis {host} depuis {last_success}. L'enregistreur WiFi est peut-être en veille, hors tension ou dans un état semi-ouvert ; l'intégration continue de réessayer avec temporisation. Redémarrez l'enregistreur si le problème persiste."
+    },
+    "serial_slave_id": {
+      "title": "L'onduleur Solis ne répond pas à l'ID esclave {slave}",
+      "description": "L'onduleur sur {port} ne répond pas à son ID esclave Modbus configuré {slave}, mais un appareil du bus répond à l'ID esclave 1. Les anciennes versions de cette intégration envoyaient toutes les requêtes série (RS485) à l'ID esclave 1, quel que soit l'ID configuré ; cette configuration a donc pu fonctionner jusqu'ici. Si l'onduleur est à l'ID esclave 1, reconfigurez l'entrée de l'intégration et réglez l'ID esclave sur 1."
     }
   }
 }
