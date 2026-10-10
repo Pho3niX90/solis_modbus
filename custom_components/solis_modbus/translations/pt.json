@@ -192,6 +192,10 @@
     "datalogger_unreachable": {
       "title": "Datalogger Solis inacessível",
       "description": "Nenhuma leitura Modbus bem-sucedida de {host} desde {last_success}. O datalogger WiFi pode estar em suspensão, desligado ou em estado semiaberto; a integração continua a tentar com backoff. Reinicie a alimentação do datalogger se persistir."
+    },
+    "serial_slave_id": {
+      "title": "O inversor Solis não responde no ID de escravo {slave}",
+      "description": "O inversor em {port} não responde no seu ID de escravo Modbus configurado {slave}, mas um dispositivo no barramento responde no ID de escravo 1. Versões anteriores desta integração enviavam todos os pedidos série (RS485) para o ID de escravo 1, qualquer que fosse o ID configurado, pelo que esta configuração pode ter funcionado até agora. Se o inversor estiver no ID de escravo 1, reconfigure a entrada da integração e defina o ID de escravo como 1."
     }
   }
 }

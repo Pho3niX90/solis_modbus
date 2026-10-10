@@ -76,9 +76,6 @@ class SerialProxyClient:
         # retries is accepted for pymodbus compatibility; modbus-connection
         # doesn't retry, and the controller's own recovery handles failures.
         self.port = port
-        # The controller sets this on serial clients; requests use it unless
-        # they pass device_id.
-        self.slave = 1
         self._connection = ModbusConnection(
             ModbusSerialParams(device=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits),
             timeout=timeout,
@@ -132,11 +129,11 @@ class SerialProxyClient:
             # Shielded: a cancelled request must not cancel the teardown.
             await asyncio.shield(task)
 
-    async def _unit(self, device_id: int | None):
+    async def _unit(self, device_id: int):
         await self._await_teardown()
-        return self._connection.for_unit(self.slave if device_id is None else device_id)
+        return self._connection.for_unit(device_id)
 
-    async def read_input_registers(self, address: int, *, count: int = 1, device_id: int | None = None) -> SerialProxyResult:
+    async def read_input_registers(self, address: int, *, count: int = 1, device_id: int = 1) -> SerialProxyResult:
         """Read input registers (FC04)."""
         unit = await self._unit(device_id)
         try:
@@ -144,7 +141,7 @@ class SerialProxyClient:
         except ModbusExceptionError as err:
             return SerialProxyResult(error=err)
 
-    async def read_holding_registers(self, address: int, *, count: int = 1, device_id: int | None = None) -> SerialProxyResult:
+    async def read_holding_registers(self, address: int, *, count: int = 1, device_id: int = 1) -> SerialProxyResult:
         """Read holding registers (FC03)."""
         unit = await self._unit(device_id)
         try:
@@ -152,7 +149,7 @@ class SerialProxyClient:
         except ModbusExceptionError as err:
             return SerialProxyResult(error=err)
 
-    async def write_register(self, address: int, value: int, *, device_id: int | None = None) -> SerialProxyResult:
+    async def write_register(self, address: int, value: int, *, device_id: int = 1) -> SerialProxyResult:
         """Write one holding register (FC06); the result echoes the value, as pymodbus's does."""
         unit = await self._unit(device_id)
         try:
@@ -161,7 +158,7 @@ class SerialProxyClient:
             return SerialProxyResult(error=err)
         return SerialProxyResult([value])
 
-    async def write_registers(self, address: int, values: list[int], *, device_id: int | None = None) -> SerialProxyResult:
+    async def write_registers(self, address: int, values: list[int], *, device_id: int = 1) -> SerialProxyResult:
         """Write consecutive holding registers (FC16)."""
         unit = await self._unit(device_id)
         try:

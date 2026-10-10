@@ -53,7 +53,7 @@ def test_builds_serial_params_from_line_settings(connection):
 
 
 async def test_reads_go_to_the_requested_unit(connection):
-    """device_id picks the unit; without it the client's slave is used, like the controller sets it."""
+    """device_id picks the unit; without it, unit 1, as with pymodbus."""
     connection.for_unit(3).input[33000] = 1234
     connection.for_unit(1).holding[43000] = 7
     client = SerialProxyClient(PROXY_PORT)
@@ -64,9 +64,6 @@ async def test_reads_go_to_the_requested_unit(connection):
 
     result = await client.read_holding_registers(address=43000, count=1)
     assert result.registers == [7]
-
-    client.slave = 3
-    assert (await client.read_input_registers(address=33000, count=1)).registers == [1234]
 
 
 async def test_modbus_exception_is_a_result_not_a_raise(connection):

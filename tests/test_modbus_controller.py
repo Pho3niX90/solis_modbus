@@ -3,6 +3,8 @@ from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from pymodbus.client import AsyncModbusSerialClient
+
 from custom_components.solis_modbus.const import (
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
@@ -326,9 +328,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_input_register(100, 1)
 
         self.assertEqual([42], result)
-        # Serial: slave is set on client, not passed as parameter
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1)
-        self.assertEqual(self.mock_client.slave, 1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
@@ -350,9 +350,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_holding_register(100, 1)
 
         self.assertEqual([42], result)
-        # Serial: slave is set on client, not passed as parameter
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1)
-        self.assertEqual(self.mock_client.slave, 1)
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_holding_register_failure(self):
         """Test failed read of holding register."""
@@ -409,6 +407,86 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         """Test enabling the connection."""
         self.controller.enable_connection()
         self.assertTrue(self.controller.enabled)
+
+
+class TestModbusControllerSerialSlave(IsolatedAsyncioTestCase):
+    """A serial controller must address its configured slave, not unit 1.
+
+    Regression: the serial path assigned `client.slave = device_id` and sent
+    requests without a device_id. pymodbus takes the unit as a request kwarg
+    (default 1) and AsyncModbusSerialClient never reads `slave`, so every
+    serial request went to unit 1 whatever slave ID was configured.
+    """
+
+    def setUp(self):
+        self.manager_patcher = patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager")
+        mock_manager = self.manager_patcher.start().get_instance.return_value
+        mock_manager.inter_frame_wait = AsyncMock()
+        mock_lock = MagicMock()
+        mock_lock.__aenter__ = AsyncMock(return_value=None)
+        mock_lock.__aexit__ = AsyncMock(return_value=None)
+        mock_manager.get_client_lock.return_value = mock_lock
+
+        # spec: a real serial client has no `slave` attribute to fall back on.
+        self.mock_client = MagicMock(spec=AsyncModbusSerialClient)
+        self.mock_client.connected = True
+        mock_manager.get_serial_client.return_value = self.mock_client
+
+        result = MagicMock()
+        result.registers = [42]
+        result.isError.return_value = False
+        for method in ("read_input_registers", "read_holding_registers", "write_register", "write_registers"):
+            setattr(self.mock_client, method, AsyncMock(return_value=result))
+
+        self.controller = ModbusController(
+            hass=MagicMock(),
+            connection_type=CONN_TYPE_SERIAL,
+            serial_port="/dev/ttyUSB0",
+            inverter_config=MagicMock(),
+            device_id=7,
+        )
+
+    def tearDown(self):
+        self.manager_patcher.stop()
+
+    async def test_reads_target_configured_slave(self):
+        self.assertEqual([42], await self.controller.async_read_input_register(33000, 1))
+        self.assertEqual([42], await self.controller.async_read_holding_register(43000, 1))
+
+        self.mock_client.read_input_registers.assert_awaited_once_with(address=33000, count=1, device_id=7)
+        self.mock_client.read_holding_registers.assert_awaited_once_with(address=43000, count=1, device_id=7)
+
+    async def test_writes_target_configured_slave(self):
+        with (
+            patch("custom_components.solis_modbus.modbus_controller.cache_save"),
+            patch("custom_components.solis_modbus.modbus_controller.notify_register_update"),
+        ):
+            self.assertIsNotNone(await self.controller._execute_write_holding_register(43110, 42))
+            self.assertIsNotNone(await self.controller._execute_write_holding_registers(43141, [1, 2]))
+
+        self.mock_client.write_register.assert_awaited_once_with(address=43110, value=42, device_id=7)
+        self.mock_client.write_registers.assert_awaited_once_with(address=43141, values=[1, 2], device_id=7)
+
+    async def test_unit_answers_probes_other_unit_without_counting_as_success(self):
+        self.controller.inverter_config.probe_register = 35000
+
+        self.assertTrue(await self.controller.async_unit_answers(1))
+
+        self.mock_client.read_input_registers.assert_awaited_once_with(address=35000, count=1, device_id=1)
+        self.assertFalse(self.controller.has_answered)
+
+    async def test_read_from_configured_slave_marks_answered(self):
+        self.assertFalse(self.controller.has_answered)
+        await self.controller.async_read_input_register(33000, 1)
+        self.assertTrue(self.controller.has_answered)
+
+    async def test_unit_answers_false_on_error_or_timeout(self):
+        self.controller.inverter_config.probe_register = 35000
+        self.mock_client.read_input_registers.return_value.isError.return_value = True
+        self.assertFalse(await self.controller.async_unit_answers(1))
+
+        self.mock_client.read_input_registers.side_effect = TimeoutError
+        self.assertFalse(await self.controller.async_unit_answers(1))
 
 
 class TestModbusControllerInitialization(unittest.TestCase):
