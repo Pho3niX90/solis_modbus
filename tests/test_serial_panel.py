@@ -78,29 +78,30 @@ def test_serial_port_field_uses_selector_when_available(monkeypatch):
         "socket://192.168.1.50:8899",
         "rfc2217://192.168.1.50:4000",
         "RFC2217://192.168.1.50:4000",
+        "esphome-hass://aux-2/0",
     ],
 )
 def test_supported_serial_ports(port):
-    """Device paths and the URL schemes pyserial handles are accepted."""
+    """Device paths, pyserial's URL schemes and ESPHome serial proxies are accepted."""
     assert config_flow._is_supported_serial_port(port)
 
 
-@pytest.mark.parametrize("port", ["esphome-hass://living-room-proxy/0", "esphome://192.168.1.60:6053", "tcp://192.168.1.50:502"])
+@pytest.mark.parametrize("port", ["esphome://192.168.1.60:6053", "tcp://192.168.1.50:502"])
 def test_unsupported_serial_ports(port):
-    """URLs pyserial cannot open, such as ESPHome serial proxies, are rejected."""
+    """URLs neither pyserial nor the serial proxy client can open are rejected."""
     assert not config_flow._is_supported_serial_port(port)
 
 
-async def test_validate_config_rejects_esphome_serial_proxy(hass):
-    """Picking an ESPHome serial proxy gives a clear error instead of a failed connection."""
+async def test_validate_config_rejects_unsupported_port(hass):
+    """An unsupported port gives a clear error instead of a failed connection."""
     flow = config_flow.ModbusConfigFlow()
     flow.hass = hass
 
-    with patch.object(config_flow, "AsyncModbusSerialClient") as serial_client:
+    with patch.object(config_flow, "AsyncModbusSerialClient") as serial_client, patch.object(config_flow, "SerialProxyClient") as proxy_client:
         valid, err = await flow._validate_config(
             {
                 "connection_type": "serial",
-                CONF_SERIAL_PORT: "esphome-hass://living-room-proxy/0",
+                CONF_SERIAL_PORT: "tcp://192.168.1.50:502",
                 "slave": 1,
                 "model": "S6-EH1P",
             }
@@ -108,3 +109,37 @@ async def test_validate_config_rejects_esphome_serial_proxy(hass):
 
     assert (valid, err) == (False, "serial_port_unsupported")
     serial_client.assert_not_called()
+    proxy_client.assert_not_called()
+
+
+async def test_validate_config_probes_esphome_proxy_through_serialx(hass):
+    """An ESPHome serial proxy (e.g. Connect AUX-2) is probed with SerialProxyClient, at the configured slave."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    flow = config_flow.ModbusConfigFlow()
+    flow.hass = hass
+
+    probe = MagicMock()
+    probe.isError.return_value = False
+    client = MagicMock()
+    client.connect = AsyncMock()
+    client.connected = True
+    client.read_input_registers = AsyncMock(return_value=probe)
+
+    with (
+        patch.object(config_flow, "AsyncModbusSerialClient") as serial_client,
+        patch.object(config_flow, "SerialProxyClient", return_value=client) as proxy_client,
+    ):
+        valid, err = await flow._validate_config(
+            {
+                "connection_type": "serial",
+                CONF_SERIAL_PORT: "esphome-hass://aux-2/0",
+                "slave": 4,
+                "model": "S6-EH1P",
+            }
+        )
+
+    assert (valid, err) == (True, None)
+    serial_client.assert_not_called()
+    assert proxy_client.call_args.kwargs["port"] == "esphome-hass://aux-2/0"
+    assert client.read_input_registers.await_args.kwargs["device_id"] == 4

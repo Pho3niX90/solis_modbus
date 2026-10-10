@@ -35,6 +35,7 @@ from .const import (
 )
 from .data.enums import InverterType
 from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig, inverter_options_from_config
+from .serial_proxy import SerialProxyClient, is_serial_proxy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,15 +59,15 @@ else:
     SERIAL_PORT_FIELD = {vol.Required(CONF_SERIAL_PORT): SerialPortSelector()}
 
 # pymodbus opens serial ports with pyserial's serial_for_url, which takes device
-# paths and these URL schemes. The picker can also list ports pyserial cannot
-# open, such as ESPHome serial proxies (esphome-hass://), and offers no filter.
+# paths and these URL schemes; ESPHome serial proxies go through SerialProxyClient.
+# The picker can list other ports neither can open, and offers no filter.
 PYSERIAL_URL_SCHEMES = ("alt", "cp2110", "hwgrep", "loop", "rfc2217", "socket", "spy")
 
 
 def _is_supported_serial_port(port: str) -> bool:
-    """Return whether pyserial can open this serial port path or URL."""
+    """Return whether this serial port path or URL can be opened."""
     scheme, separator, _ = port.partition("://")
-    return not separator or scheme.lower() in PYSERIAL_URL_SCHEMES
+    return not separator or scheme.lower() in PYSERIAL_URL_SCHEMES or is_serial_proxy(port)
 
 
 # Base schema with common fields (for both TCP and Serial)
@@ -363,9 +364,10 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
             if not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
-                _LOGGER.error("Serial port %s cannot be opened by pymodbus", user_input[CONF_SERIAL_PORT])
+                _LOGGER.error("Serial port %s cannot be opened", user_input[CONF_SERIAL_PORT])
                 return False, "serial_port_unsupported"
-            client = AsyncModbusSerialClient(
+            client_cls = SerialProxyClient if is_serial_proxy(user_input[CONF_SERIAL_PORT]) else AsyncModbusSerialClient
+            client = client_cls(
                 port=user_input[CONF_SERIAL_PORT],
                 baudrate=user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
                 bytesize=user_input.get(CONF_BYTESIZE, DEFAULT_BYTESIZE),

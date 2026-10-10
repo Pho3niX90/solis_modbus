@@ -1,7 +1,7 @@
 {
   "domain": "solis_modbus",
   "name": "Solis Modbus",
-  "after_dependencies": ["usb"],
+  "after_dependencies": ["esphome", "usb"],
   "codeowners": [
     "@pho3nix90"
   ],
@@ -13,6 +13,7 @@
   "issue_tracker": "https://github.com/Pho3niX90/solis_modbus/issues",
   "quality_scale": "silver",
   "requirements": [
+    "modbus-connection[tmodbus]>=4.12.3",
     "pymodbus>=3.11.1"
   ],
   "version": "4.4.0"
