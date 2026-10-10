@@ -5,6 +5,7 @@ import time
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP
+from custom_components.solis_modbus.serial_proxy import SerialProxyClient, is_serial_proxy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,15 +51,19 @@ class ModbusClientManager:
         _LOGGER.debug(f"TCP client ref count for {host}:{port} is now {self._clients[key]['ref_count']}")
         return self._clients[key]["client"]
 
-    def get_serial_client(self, serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient:
+    def get_serial_client(self, serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient | SerialProxyClient:
         """Get or create a Serial Modbus client."""
         key = serial_port  # Use serial_port as the key
         if key not in self._clients:
             _LOGGER.debug(f"Creating new Modbus Serial client for {serial_port} (baudrate={baudrate})")
-            # retries=1 for the same reason as the TCP client: the integration's own
-            # reconnect watchdog handles recovery, and pymodbus retry storms only
-            # add latency on an already-struggling link.
-            client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
+            if is_serial_proxy(serial_port):
+                # ESPHome serial proxies (e.g. Connect AUX-2): pyserial can't open them.
+                client = SerialProxyClient(serial_port, baudrate, bytesize, parity, stopbits, timeout=5)
+            else:
+                # retries=1 for the same reason as the TCP client: the integration's own
+                # reconnect watchdog handles recovery, and pymodbus retry storms only
+                # add latency on an already-struggling link.
+                client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,
