@@ -33,7 +33,6 @@ from .const import (
     POLL_PROFILE_FULL,
     POLL_PROFILES,
 )
-from .data.enums import InverterType
 from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig, inverter_options_from_config
 from .serial_proxy import SerialProxyClient, is_serial_proxy
 
@@ -348,7 +347,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
         device_id = user_input.get("slave", 1)
-        probe_register = 3041 if inverter_config.type in [InverterType.GRID, InverterType.STRING] else 35000
+        probe_register = inverter_config.probe_register
 
         if conn_type == CONN_TYPE_TCP:
             host, port = user_input["host"], user_input.get("port", 502)

@@ -192,6 +192,10 @@
     "datalogger_unreachable": {
       "title": "Solis datalogger unreachable",
       "description": "No successful Modbus read from {host} since {last_success}. The WiFi datalogger may be asleep, powered off or in a half-open state; the integration keeps retrying with backoff. Power-cycle the datalogger if this persists."
+    },
+    "serial_slave_id": {
+      "title": "Solis inverter not answering at slave ID {slave}",
+      "description": "The inverter on {port} doesn't answer at its configured Modbus slave ID {slave}, but a device on the bus answers at slave ID 1. Older versions of this integration sent every serial (RS485) request to slave ID 1 whatever ID was configured, so this setup may have worked until now. If the inverter is at slave ID 1, reconfigure the integration entry and set the slave ID to 1."
     }
   }
 }

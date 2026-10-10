@@ -78,6 +78,11 @@ class InverterConfig:
             feats.append(InverterFeature.TCP)
         self.features: list[InverterFeature] = feats
 
+    @property
+    def probe_register(self) -> int:
+        """An input register every inverter of this type answers, for checking a unit responds."""
+        return 3041 if self.type in [InverterType.GRID, InverterType.STRING] else 35000
+
     def clone_with_options(self, options: InverterOptions, connection: str) -> InverterConfig:
         """Copy this model definition with user-chosen options (does not mutate SOLIS_INVERTERS templates)."""
         return InverterConfig(

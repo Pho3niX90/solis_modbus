@@ -12,11 +12,12 @@ from homeassistant.helpers.event import async_track_time_interval
 from custom_components.solis_modbus.helpers import (
     cache_get,
     cache_save,
+    iter_controllers,
     mark_platform_entities_unavailable_for_base_sensors,
     notify_register_update,
 )
 
-from .const import DOMAIN
+from .const import CONN_TYPE_SERIAL, DOMAIN
 from .data.enums import PollSpeed
 from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
@@ -32,6 +33,10 @@ _ISSUE_AFTER_FAILURES = 5
 # With night suppression on, also treat this long before sunset / after sunrise
 # as night: inverters drop off at dusk and wake well after the sun is up.
 _NIGHT_GRACE = timedelta(hours=1)
+
+# How long a serial inverter must go unanswered from startup before we check
+# whether it answers at unit 1 instead of its configured slave ID.
+_SLAVE_PROBE_AFTER = timedelta(minutes=1)
 
 
 class DataRetrieval:
@@ -51,6 +56,11 @@ class DataRetrieval:
         # None = unknown (an issue may survive from before a restart), so the first
         # night-time pass still clears it; afterwards we skip redundant deletes.
         self._issue_raised: bool | None = None
+        # Set once the slave ID check is settled (see _check_serial_slave_id).
+        self._slave_id_checked = False
+        # Set once its issue is raised: stop probing, but keep checking whether to clear it.
+        self._slave_id_issue_raised = False
+        self._polling_since: float | None = None
         self.poll_lock = asyncio.Lock()
         self.connection_check = False
         self.first_poll = True
@@ -196,6 +206,9 @@ class DataRetrieval:
         # the datalogger is offline — otherwise it keeps spinning after unload).
         self._stopping = True
         self._update_connection_issue(False)
+        if self._entry_id is not None:
+            # A reload re-raises it if it still applies.
+            ir.async_delete_issue(self.hass, DOMAIN, f"serial_slave_id_{self._entry_id}")
 
         # Clean up the startup listener only if it hasn't fired yet
         if self._startup_unsub:
@@ -276,6 +289,53 @@ class DataRetrieval:
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
             self._issue_raised = False
 
+    async def _check_serial_slave_id(self) -> None:
+        """Raise a repair issue when a serial inverter only answers at unit 1.
+
+        Serial requests used to go to unit 1 whatever slave ID was configured, so
+        an entry with the wrong slave ID kept working. Now that requests go to the
+        configured slave, such an entry gets no data. While the configured slave
+        has never answered, see whether unit 1 does.
+        """
+        if self._slave_id_checked or self._entry_id is None:
+            return
+        controller = self.controller
+        issue_id = f"serial_slave_id_{self._entry_id}"
+        if controller.connection_type != CONN_TYPE_SERIAL or controller.device_id == 1 or controller.has_answered:
+            # Also clears the issue once the entry is reconfigured or its slave answers.
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            self._slave_id_checked = True
+            return
+        if any(other is not controller and other.connection_id == controller.connection_id and other.device_id == 1 for other in iter_controllers(self.hass)):
+            # Unit 1 is another inverter configured on this bus; an answer proves nothing.
+            # Not settled: that entry may be removed later.
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            self._slave_id_issue_raised = False
+            return
+        if self._slave_id_issue_raised:
+            return
+        if self._polling_since is None or time.monotonic() - self._polling_since < _SLAVE_PROBE_AFTER.total_seconds():
+            return
+        if not await controller.async_unit_answers(1):
+            # Nothing at unit 1 either (asleep, wiring, ...); check again next time.
+            return
+        self._slave_id_issue_raised = True
+        _LOGGER.warning(
+            "(%s.%s) No answer from slave ID %s, but a device answers at slave ID 1. If that is this inverter, reconfigure the entry with slave ID 1.",
+            controller.host,
+            controller.slave,
+            controller.device_id,
+        )
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="serial_slave_id",
+            translation_placeholders={"port": str(controller.connection_id), "slave": str(controller.device_id)},
+        )
+
     async def check_connection(self, now=None):
         """Ensure the Modbus controller is connected, retrying on failure.
 
@@ -297,6 +357,8 @@ class DataRetrieval:
         # until a manual reload. Use try/finally so it is always reset.
         self.connection_check = True
         try:
+            await self._check_serial_slave_id()
+
             # Emit controller status (dispatcher — not persisted to recorder)
             notify_register_update(self.hass, self.controller, 90005, self.controller.enabled)
 
@@ -363,6 +425,7 @@ class DataRetrieval:
         if event is not None:
             self._startup_unsub = None
 
+        self._polling_since = time.monotonic()
         await self.check_connection()
 
         # Start periodic polling
