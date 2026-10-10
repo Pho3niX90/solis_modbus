@@ -139,7 +139,7 @@ async def test_configured_slave_answering_clears_issue(mock_ir, other_controller
 
 
 @pytest.mark.asyncio
-async def test_no_probe_when_unit_1_is_another_configured_inverter(mock_ir, other_controllers):
+async def test_no_probe_while_unit_1_is_another_configured_inverter(mock_ir, other_controllers):
     controller = make_controller()
     other_controllers.return_value = [controller, make_controller(device_id=1)]
     retrieval, _ = make_retrieval(controller)
@@ -148,6 +148,23 @@ async def test_no_probe_when_unit_1_is_another_configured_inverter(mock_ir, othe
 
     controller.async_unit_answers.assert_not_awaited()
     mock_ir.async_create_issue.assert_not_called()
+
+    # That entry is removed: the check resumes.
+    other_controllers.return_value = [controller]
+    await retrieval._check_serial_slave_id()
+
+    controller.async_unit_answers.assert_awaited_once_with(1)
+    mock_ir.async_create_issue.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_issue_deleted_on_stop(mock_ir, other_controllers):
+    retrieval, hass = make_retrieval(make_controller())
+    retrieval._poll_task = None  # a MagicMock from the mocked hass
+
+    await retrieval.async_stop()
+
+    mock_ir.async_delete_issue.assert_any_call(hass, DOMAIN, ISSUE_ID)
 
 
 @pytest.mark.asyncio

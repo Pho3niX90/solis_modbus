@@ -206,6 +206,9 @@ class DataRetrieval:
         # the datalogger is offline — otherwise it keeps spinning after unload).
         self._stopping = True
         self._update_connection_issue(False)
+        if self._entry_id is not None:
+            # A reload re-raises it if it still applies.
+            ir.async_delete_issue(self.hass, DOMAIN, f"serial_slave_id_{self._entry_id}")
 
         # Clean up the startup listener only if it hasn't fired yet
         if self._startup_unsub:
@@ -305,8 +308,9 @@ class DataRetrieval:
             return
         if any(other is not controller and other.connection_id == controller.connection_id and other.device_id == 1 for other in iter_controllers(self.hass)):
             # Unit 1 is another inverter configured on this bus; an answer proves nothing.
+            # Not settled: that entry may be removed later.
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
-            self._slave_id_checked = True
+            self._slave_id_issue_raised = False
             return
         if self._slave_id_issue_raised:
             return
