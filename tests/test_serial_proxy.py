@@ -1,5 +1,7 @@
 """SerialProxyClient: ESPHome serial proxies (e.g. Connect AUX-2) through modbus-connection."""
 
+import asyncio
+
 import pytest
 from modbus_connection import IllegalDataAddressError, ModbusTimeoutError
 from modbus_connection.mock import MockModbusConnection
@@ -113,15 +115,76 @@ async def test_write_exception_is_a_result(connection):
 
 
 async def test_connect_and_close(connection):
-    """connect() reports the link state; close() drops it so the next request reopens it."""
+    """connect() reports the link state; close() drops it so the next connect reopens it."""
     client = SerialProxyClient(PROXY_PORT)
 
     assert await client.connect() is True
     assert client.connected
 
     client.close()
-    await next(iter(client._closing))
-    assert not client.connected
+    assert not client.connected  # at once, not only when the teardown task has run
+
+    assert await client.connect() is True
+    assert client.connected
+
+
+async def test_request_after_close_waits_for_the_teardown(connection, monkeypatch):
+    """A request issued right after close() runs after the disconnect, not alongside it."""
+    connection.for_unit(1).input[33000] = 5
+    client = SerialProxyClient(PROXY_PORT)
+    await client.connect()
+
+    events = []
+    release = asyncio.Event()
+    real_disconnect = connection.disconnect
+
+    async def slow_disconnect():
+        events.append("disconnect started")
+        await release.wait()
+        await real_disconnect()
+        events.append("disconnect finished")
+
+    monkeypatch.setattr(connection, "disconnect", slow_disconnect)
+
+    client.close()
+    read = asyncio.create_task(client.read_input_registers(address=33000, count=1, device_id=1))
+    await asyncio.sleep(0)
+    assert not read.done()  # held back while the teardown is in progress
+
+    release.set()
+    result = await read
+    events.append("read")
+
+    assert result.registers == [5]
+    assert events == ["disconnect started", "disconnect finished", "read"]
+
+
+async def test_new_client_waits_for_the_released_clients_teardown(connection, monkeypatch):
+    """After the manager drops a client, a new one for the same port waits before opening it."""
+    old = SerialProxyClient(PROXY_PORT)
+    await old.connect()
+
+    events = []
+    release = asyncio.Event()
+    real_disconnect = connection.disconnect
+
+    async def slow_disconnect():
+        await release.wait()
+        await real_disconnect()
+        events.append("old closed")
+
+    monkeypatch.setattr(connection, "disconnect", slow_disconnect)
+    old.close()
+
+    new = SerialProxyClient(PROXY_PORT)
+    opening = asyncio.create_task(new.connect())
+    await asyncio.sleep(0)
+    assert not opening.done()
+
+    release.set()
+    assert await opening is True
+    events.append("new opened")
+    assert events == ["old closed", "new opened"]
 
 
 def test_client_manager_picks_the_proxy_client_for_proxy_ports(connection, monkeypatch):

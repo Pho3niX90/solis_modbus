@@ -25,6 +25,11 @@ _LOGGER = logging.getLogger(__name__)
 # (HA 2026.5+), which is why the manifest lists esphome in after_dependencies.
 SERIAL_PROXY_SCHEMES = ("esphome-hass",)
 
+# Teardowns still running, by port. close() is synchronous, like pymodbus's, so
+# the disconnect runs as a task; whatever opens the port next (this client, or a
+# new one after the manager released this one) waits for it first.
+_PENDING_TEARDOWNS: dict[str, asyncio.Task] = {}
+
 
 def is_serial_proxy(port: str) -> bool:
     """Return whether this port is one only serialx can open."""
@@ -78,15 +83,16 @@ class SerialProxyClient:
             ModbusSerialParams(device=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits),
             timeout=timeout,
         )
-        self._closing: set[asyncio.Task] = set()
+        self._teardown: asyncio.Task | None = None
 
     @property
     def connected(self) -> bool:
-        """Whether the link is currently open."""
-        return self._connection.connected
+        """Whether the link is open; False from close() on, while it is torn down."""
+        return self._teardown is None and self._connection.connected
 
     async def connect(self) -> bool:
         """Open the link; like pymodbus, report failure instead of raising."""
+        await self._await_teardown()
         try:
             await self._connection.connect()
         except ModbusError as err:
@@ -96,45 +102,70 @@ class SerialProxyClient:
     def close(self) -> None:
         """Drop the link; the next connect() or request opens a fresh one.
 
-        Synchronous like pymodbus's close(), so the teardown runs as a task.
+        Synchronous like pymodbus's close(), so the teardown runs as a task that
+        connect() and every request wait for.
         """
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        task = loop.create_task(self._connection.disconnect())
-        self._closing.add(task)
-        task.add_done_callback(self._closing.discard)
+        task = loop.create_task(self._disconnect())
+        self._teardown = task
+        _PENDING_TEARDOWNS[self.port] = task
+        task.add_done_callback(self._teardown_done)
 
-    def _unit(self, device_id: int | None):
+    async def _disconnect(self) -> None:
+        try:
+            await self._connection.disconnect()
+        except ModbusError as err:
+            _LOGGER.debug("Error closing serial proxy %s: %s", self.port, err)
+
+    def _teardown_done(self, task: asyncio.Task) -> None:
+        if self._teardown is task:
+            self._teardown = None
+        if _PENDING_TEARDOWNS.get(self.port) is task:
+            del _PENDING_TEARDOWNS[self.port]
+
+    async def _await_teardown(self) -> None:
+        """Wait for a teardown of this port still in progress, by any client."""
+        for task in {self._teardown, _PENDING_TEARDOWNS.get(self.port)} - {None}:
+            # Shielded: a cancelled request must not cancel the teardown.
+            await asyncio.shield(task)
+
+    async def _unit(self, device_id: int | None):
+        await self._await_teardown()
         return self._connection.for_unit(self.slave if device_id is None else device_id)
 
     async def read_input_registers(self, address: int, *, count: int = 1, device_id: int | None = None) -> SerialProxyResult:
         """Read input registers (FC04)."""
+        unit = await self._unit(device_id)
         try:
-            return SerialProxyResult(list(await self._unit(device_id).read_input_registers(address, count)))
+            return SerialProxyResult(list(await unit.read_input_registers(address, count)))
         except ModbusExceptionError as err:
             return SerialProxyResult(error=err)
 
     async def read_holding_registers(self, address: int, *, count: int = 1, device_id: int | None = None) -> SerialProxyResult:
         """Read holding registers (FC03)."""
+        unit = await self._unit(device_id)
         try:
-            return SerialProxyResult(list(await self._unit(device_id).read_holding_registers(address, count)))
+            return SerialProxyResult(list(await unit.read_holding_registers(address, count)))
         except ModbusExceptionError as err:
             return SerialProxyResult(error=err)
 
     async def write_register(self, address: int, value: int, *, device_id: int | None = None) -> SerialProxyResult:
         """Write one holding register (FC06); the result echoes the value, as pymodbus's does."""
+        unit = await self._unit(device_id)
         try:
-            await self._unit(device_id).write_register(address, value)
+            await unit.write_register(address, value)
         except ModbusExceptionError as err:
             return SerialProxyResult(error=err)
         return SerialProxyResult([value])
 
     async def write_registers(self, address: int, values: list[int], *, device_id: int | None = None) -> SerialProxyResult:
         """Write consecutive holding registers (FC16)."""
+        unit = await self._unit(device_id)
         try:
-            await self._unit(device_id).write_registers(address, values)
+            await unit.write_registers(address, values)
         except ModbusExceptionError as err:
             return SerialProxyResult(error=err)
         return SerialProxyResult(list(values))

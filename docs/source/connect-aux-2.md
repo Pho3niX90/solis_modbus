@@ -32,8 +32,10 @@ RS-485 port   ── A / B ──▶    converter            ──RS-232──�
 ## Set up the AUX-2 in Home Assistant
 
 1. **Adopt the AUX-2 in ESPHome.** Do this as you would any ESPHome device: it shows up under **Settings → Devices & services** as discovered.
-2. **Check the ports are listed.** Open **Settings → Connectivity → Serial**. The AUX-2's ports appear under **Serial proxies**, with the device's name.
-   - A proxied port is only listed while the AUX-2 is online. If the ports are missing, check that it's powered and connected.
+2. **Check the ports are listed.**
+   - **Home Assistant 2026.9 or newer:** open **Settings → Connectivity → Serial**. The AUX-2's ports appear under **Serial proxies**, with the device's name.
+   - **Home Assistant 2026.5 to 2026.8:** there's no Serial page yet. You'll see the AUX-2's ports in the **Serial Port** list when you add the inverter (below).
+   - Either way, a proxied port is only listed while the AUX-2 is online. If the ports are missing, check that it's powered and connected.
 
 ## Add the inverter
 
@@ -45,7 +47,7 @@ RS-485 port   ── A / B ──▶    converter            ──RS-232──�
 6. Fill in the inverter serial number and model, then submit.
    - The integration reads one register to check the link before it creates the entry.
 
-Once added, the port shows under **Settings → Connectivity → Serial** as used by Solis Modbus.
+On Home Assistant 2026.9 or newer, the port then shows under **Settings → Connectivity → Serial** as used by Solis Modbus.
 
 ### Several inverters on one AUX-2 port
 
@@ -59,7 +61,7 @@ RS-485 is a bus, so several inverters can share one AUX-2 port:
 
 | Symptom | Likely cause |
 |---|---|
-| The AUX-2 port isn't in the Serial Port list | The AUX-2 is offline or not adopted yet, or Home Assistant is older than 2026.5. Check **Settings → Connectivity → Serial**. |
+| The AUX-2 port isn't in the Serial Port list | The AUX-2 is offline or not adopted yet, or Home Assistant is older than 2026.5. On 2026.9 or newer, check **Settings → Connectivity → Serial**. |
 | "This serial port can't be used" | Solis Modbus is older than 4.4.0, which can't open serial proxy ports. Update the integration. |
 | "Failed to connect" when adding the inverter | Try these in order: <br>1. Swap A and B. <br>2. Check that the line settings and slave address match the inverter. <br>3. Make sure the converter is powered and nothing else (such as the datalogger stick) is on the same RS-485 port. |
 | Works, then drops out | On long cable runs, add a 120 Ω termination resistor across A and B at each end of the bus. If the AUX-2 uses Wi-Fi, check its signal. |
