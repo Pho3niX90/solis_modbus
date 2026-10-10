@@ -85,7 +85,7 @@
       "serial_required": "Se requiere el número de serie del inversor.",
       "model_required": "Seleccione un modelo de inversor.",
       "tcp_port_closed": "Nada acepta conexiones Modbus en esa dirección y puerto. El dispositivo puede ser accesible (responde al ping) pero no está sirviendo Modbus — compruebe que Modbus TCP esté habilitado en el registrador. Se sabe que el firmware reciente del registrador Solis cierra el puerto local 502; un puente RS485 a TCP es una solución alternativa.",
-      "serial_port_unsupported": "Este puerto serie no se puede usar. Los proxies serie de ESPHome (esphome-hass://) aún no son compatibles; use un adaptador USB-RS485, una pasarela socket:// o rfc2217://, o el tipo de conexión TCP.",
+      "serial_port_unsupported": "Este puerto serie no se puede usar. Use una ruta de dispositivo (p. ej. /dev/ttyUSB0), una pasarela socket:// o rfc2217://, un proxy serie de ESPHome como Home Assistant Connect AUX-2 (Home Assistant 2026.5 o posterior), o el tipo de conexión TCP.",
       "poll_interval_below_floor": "El intervalo de sondeo rápido está por debajo del mínimo para el perfil seleccionado. Solo el perfil extremo permite intervalos inferiores a 10s (mínimo 2s)."
     },
     "abort": {
