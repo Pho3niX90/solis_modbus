@@ -457,7 +457,7 @@ class ModbusController:
                 _LOGGER.debug("(%s.%s) Opening connection to %s (attempt %d)", self.host, self.device_id, self.connection_id, self.connect_failures + 1)
                 await self.client.connect()
                 if self._closed:
-                    self._safe_close()
+                    self._client_manager.close_if_released(self.connection_id, self.client)
                     return False
                 if self.connected():
                     _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")

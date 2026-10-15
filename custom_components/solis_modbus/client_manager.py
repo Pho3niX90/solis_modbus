@@ -137,3 +137,9 @@ class ModbusClientManager:
                 except Exception as e:
                     _LOGGER.debug(f"Error closing client for {connection_id}: {e}")
                 del self._clients[connection_id]
+
+    def close_if_released(self, connection_id: str, client) -> None:
+        """Close a client the manager no longer holds; a client other controllers still share is left open."""
+        entry = self._clients.get(connection_id)
+        if entry is None or entry["client"] is not client:
+            client.close()

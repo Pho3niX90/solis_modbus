@@ -196,6 +196,21 @@ async def test_connect_in_flight_when_closed_is_closed_again(rig):
     assert client.connected is False
 
 
+async def test_connect_in_flight_when_closed_leaves_a_shared_client_open(rig):
+    retrieval, controller, client = rig
+    other = ModbusController(MagicMock(), MagicMock(), connection_type=CONN_TYPE_TCP, host=HOST, port=502, device_id=2)
+    client.connected = False
+    client.connect_gate = asyncio.Event()
+
+    connecting = asyncio.create_task(controller.connect())
+    await _settle()
+    controller.close_connection()
+    client.connect_gate.set()
+
+    assert await connecting is False
+    assert other.connected()
+
+
 async def test_reload_leaves_no_connection_parked_on_a_one_connection_gateway(socket_enabled):
     accepted: list[asyncio.StreamWriter] = []
     request_seen = asyncio.Event()
