@@ -4700,6 +4700,27 @@ hybrid_sensors_derived = [
         "state_class": SensorStateClass.MEASUREMENT,
     },
     {
+        # Grid power split by direction (#524); the trailing flag picks the side: 0 export, 1 import.
+        "name": "Grid Export Power",
+        "category": Category.METER_INFORMATION,
+        "unique": "solis_modbus_inverter_grid_export_power",
+        "register": ["33263", "33264", "0"],
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    {
+        "name": "Grid Import Power",
+        "category": Category.METER_INFORMATION,
+        "unique": "solis_modbus_inverter_grid_import_power",
+        "register": ["33263", "33264", "1"],
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    {
         "name": "Today Net Grid Energy",
         "unique": "solis_modbus_inverter_today_net_grid_energy",
         "device_class": SensorDeviceClass.ENERGY,
