@@ -177,6 +177,12 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             if 33263 in self._register and len(self._register) == 2:
                 new_value = new_value * -1
 
+            if 33263 in self._register and len(self._register) == 3:
+                # Meter total active power is positive when exporting; flag 0 = export, 1 = import.
+                meter_power = self.base_sensor.convert_value([self._received_values[33263], self._received_values[33264]])
+                if meter_power is not None:
+                    new_value = max(meter_power if self._register[2] == 0 else -meter_power, 0)
+
             if 33175 in self._register or 33171 in self._register:
                 # 33175 - to grid
                 # 33171 - from grid
