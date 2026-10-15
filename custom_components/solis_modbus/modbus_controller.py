@@ -447,10 +447,10 @@ class ModbusController:
         Raises:
             Exception: If there is an error during the connection attempt.
         """
-        if self.connected():
-            return True
         if self._closed:
             return False
+        if self.connected():
+            return True
 
         async def _try_connect() -> bool:
             try:
@@ -477,6 +477,8 @@ class ModbusController:
         lock = self.poll_lock
         if lock:
             async with lock:
+                if self._closed:
+                    return False
                 if self.connected():
                     return True
                 return await _try_connect()

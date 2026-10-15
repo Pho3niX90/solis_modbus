@@ -211,6 +211,29 @@ async def test_connect_in_flight_when_closed_leaves_a_shared_client_open(rig):
     assert other.connected()
 
 
+async def test_connect_queued_on_the_lock_when_closed_opens_nothing(rig):
+    retrieval, controller, client = rig
+    client.connected = False
+    await controller.poll_lock.acquire()
+
+    connecting = asyncio.create_task(controller.connect())
+    await _settle()
+    controller.close_connection()
+    controller.poll_lock.release()
+
+    assert await connecting is False
+    assert client.connects == 0
+
+
+async def test_closed_controller_does_not_report_a_shared_link(rig):
+    retrieval, controller, client = rig
+    ModbusController(MagicMock(), MagicMock(), connection_type=CONN_TYPE_TCP, host=HOST, port=502, device_id=2)
+    controller.close_connection()
+
+    assert client.connected is True
+    assert await controller.connect() is False
+
+
 async def test_reload_leaves_no_connection_parked_on_a_one_connection_gateway(socket_enabled):
     accepted: list[asyncio.StreamWriter] = []
     request_seen = asyncio.Event()
