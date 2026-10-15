@@ -377,6 +377,8 @@ Editable number entities (hybrid).
 | Solis Meter Active Power A                                | POWER          | WATT                 | MEASUREMENT      | 33257, 33258                                    |
 | Solis Meter Active Power B                                | POWER          | WATT                 | MEASUREMENT      | 33259, 33260                                    |
 | Solis Meter Active Power C                                | POWER          | WATT                 | MEASUREMENT      | 33261, 33262                                    |
+| Solis Grid Export Power                                   | POWER          | WATT                 | MEASUREMENT      | 33263, 33264, 0                                 |
+| Solis Grid Import Power                                   | POWER          | WATT                 | MEASUREMENT      | 33263, 33264, 1                                 |
 | Solis Grid Power Net                                      | POWER          | WATT                 | MEASUREMENT      | 33263, 33264                                    |
 | Solis Meter Total Active Power                            | POWER          | WATT                 | MEASUREMENT      | 33263, 33264                                    |
 | Solis Meter Reactive Power A                              | REACTIVE_POWER | VOLT_AMPERE_REACTIVE | MEASUREMENT      | 33265, 33266                                    |
