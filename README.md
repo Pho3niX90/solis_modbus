@@ -7,8 +7,13 @@ The Solis Modbus Integration for Home Assistant is a streamlined solution to con
 https://solis-modbus.readthedocs.io/
 
 ## Solis cloud
-You will lose access, unless you use a waveshare device. You will still have the option to disable the modbus, when updates are required.
-https://github.com/Pho3niX90/solis_modbus/discussions/154
+With older datalogger firmware, Solis Cloud loses its connection while this integration is polling the inverter.
+Recent datalogger firmware (for example `100121cf`, `100121d0` and the `100141dx` releases on the S2-WL-ST) lets
+Solis Cloud and Modbus work at the same time. If you are affected, ask Solis support to update your datalogger firmware;
+they may need to be asked for a version that supports Modbus alongside the cloud.
+
+Alternatively, use a Waveshare (or similar RS485) device. You will still have the option to disable the modbus when
+updates are required. See https://github.com/Pho3niX90/solis_modbus/discussions/154 for user reports.
 
 ## Installation
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Pho3niX90&repository=solis_modbus&category=integration)
