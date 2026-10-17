@@ -130,6 +130,7 @@ class ModbusController:
         self.inverter_config = inverter_config
         self._sw_version = "N/A"
         self.enabled = True
+        self._closed = False
         self._last_attempt = 0  # Track last connection attempt time
         self._sensor_groups = sensor_groups
         self._derived_sensors = derived_sensors
@@ -446,12 +447,18 @@ class ModbusController:
         Raises:
             Exception: If there is an error during the connection attempt.
         """
+        if self._closed:
+            return False
         if self.connected():
             return True
 
         async def _try_connect() -> bool:
             try:
+                _LOGGER.debug("(%s.%s) Opening connection to %s (attempt %d)", self.host, self.device_id, self.connection_id, self.connect_failures + 1)
                 await self.client.connect()
+                if self._closed:
+                    self._client_manager.close_if_released(self.connection_id, self.client)
+                    return False
                 if self.connected():
                     _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")
                     self.connect_failures = 0
@@ -470,6 +477,8 @@ class ModbusController:
         lock = self.poll_lock
         if lock:
             async with lock:
+                if self._closed:
+                    return False
                 if self.connected():
                     return True
                 return await _try_connect()
@@ -536,6 +545,7 @@ class ModbusController:
         Returns:
             None
         """
+        self._closed = True
         manager = ModbusClientManager.get_instance()
         manager.release_client(self.connection_id)
         _LOGGER.info(f"({self.host}.{self.device_id}) Modbus connection closed")
