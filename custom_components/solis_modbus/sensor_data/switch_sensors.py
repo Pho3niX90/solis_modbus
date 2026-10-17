@@ -12,7 +12,7 @@ def get_switch_sensors(inverter_config):
         }
     ]
 
-    if inverter_config.type == InverterType.HYBRID:
+    if inverter_config.type in (InverterType.HYBRID, InverterType.ENERGY):
         switch_sensors.extend(
             [
                 {

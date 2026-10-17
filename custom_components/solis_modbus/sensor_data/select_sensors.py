@@ -12,7 +12,7 @@ STORAGE_MODE_BITS = [0, 1, 2, 4, 6, 11]
 def get_select_sensors(inverter_config):
     sensor_groups = []
 
-    if inverter_config.type == InverterType.HYBRID:
+    if inverter_config.type in (InverterType.HYBRID, InverterType.ENERGY):
         sensor_groups = [
             {
                 "register": 43132,
