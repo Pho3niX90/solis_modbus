@@ -70,6 +70,18 @@ class TestModbusClientManager(unittest.TestCase):
         self.assertNotIn("1.2.3.4:502", self.manager._clients)
         mock_client.close.assert_called_once()
 
+    @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+    def test_release_closes_a_client_that_is_down(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.connected = False
+        mock_client_cls.return_value = mock_client
+
+        self.manager.get_tcp_client("1.2.3.4", 502)
+        self.manager.release_client("1.2.3.4:502")
+
+        self.assertNotIn("1.2.3.4:502", self.manager._clients)
+        mock_client.close.assert_called_once()
+
     def test_release_non_existent_client(self):
         # Should not raise
         self.manager.release_client("9.9.9.9:502")

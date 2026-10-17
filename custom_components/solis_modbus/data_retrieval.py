@@ -83,7 +83,14 @@ class DataRetrieval:
             # Store the unsub function separately so we can manage its lifecycle
             self._startup_unsub = self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self.poll_controller)
 
+    def _can_poll(self) -> bool:
+        """True while a poll batch may keep reading."""
+        return not self._stopping and self.controller.enabled and self.controller.connected()
+
     async def _read_register_block_with_exception(self, start_register: int, count: int, is_holding: bool) -> tuple[list[int] | None, int | None]:
+        # The controller's read wrappers reconnect; only check_connection may.
+        if not self._can_poll():
+            return None, None
         if is_holding:
             return await self.controller.async_read_holding_registers_with_exception(start_register, count)
         return await self.controller.async_read_input_registers_with_exception(start_register, count)
@@ -522,7 +529,7 @@ class DataRetrieval:
         Returns:
             None
         """
-        if not self.controller.enabled or not self.controller.connected():
+        if not self._can_poll():
             return
 
         group_hash = frozenset({group.start_register for group in groups})
@@ -569,12 +576,12 @@ class DataRetrieval:
                                 f"⚠️ Received None for register {start_register} - {end_register}, "
                                 f"for ({self.controller.host}.{self.controller.slave}), skipping."
                             )
-                        if not self.controller.connected():
+                        if not self._can_poll():
                             # A failed read closes the link. Reading the remaining groups would
                             # each retry the connection and fail again (issue #478); leave
                             # reconnection to the check_connection watchdog.
                             _LOGGER.debug(
-                                f"⚠️ Link to ({self.controller.host}.{self.controller.slave}) dropped during {speed.name} poll, skipping remaining groups."
+                                f"⚠️ Link to ({self.controller.host}.{self.controller.slave}) down or stopping, skipping remaining {speed.name} groups."
                             )
                             break
                         continue
