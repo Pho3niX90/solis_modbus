@@ -307,6 +307,8 @@ Solis and equivalent Axitec, Zonneplan inverters
 - - S6-EH3P10K-H-EU (https://github.com/Pho3niX90/solis_modbus/issues/202)
 - **S6-GR1P**
 - - S6-GR1P4K (https://github.com/Pho3niX90/solis_modbus/issues/84)
+- **S6-EA1P**
+- - S6-EA1P5K-L (https://github.com/Pho3niX90/solis_modbus/discussions/433)
 - **S5-EH1**
 - - S5-EH1(3-6)K-L (https://github.com/Pho3niX90/solis_modbus/issues/89)
 - - S5-EH1P5K-L (https://github.com/Pho3niX90/solis_modbus/issues/94)
