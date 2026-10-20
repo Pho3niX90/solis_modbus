@@ -1,7 +1,10 @@
 {
   "domain": "solis_modbus",
   "name": "Solis Modbus",
-  "after_dependencies": ["esphome", "usb"],
+  "after_dependencies": [
+    "esphome",
+    "usb"
+  ],
   "codeowners": [
     "@pho3nix90"
   ],
