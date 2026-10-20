@@ -5,6 +5,7 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solis_modbus.const import DOMAIN
+from custom_components.solis_modbus.data.enums import InverterFeature
 
 
 @pytest.fixture(autouse=True)
@@ -13,7 +14,8 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 
 @pytest.mark.asyncio
-async def test_setup_entry(hass: HomeAssistant):
+@pytest.mark.parametrize("model", ["S6-EH1P", "S6-EA1P"])
+async def test_setup_entry(hass: HomeAssistant, model):
     """Test setting up the integration."""
     config_entry = MockConfigEntry(
         domain=DOMAIN,
@@ -23,7 +25,11 @@ async def test_setup_entry(hass: HomeAssistant):
             "port": 502,
             "slave": 1,
             "inverter_serial": "SN123456",
-            "model": "S6-EH1P",
+            "model": model,
+            "has_pv": model == "S6-EH1P",
+            "has_generator": False,
+            "has_hv_battery": False,
+            "has_v2": True,
             "poll_interval_fast": 10,
             "poll_interval_normal": 15,
             "poll_interval_slow": 30,
@@ -59,6 +65,17 @@ async def test_setup_entry(hass: HomeAssistant):
         assert runtime.controller is not None
         assert runtime.data_retrieval is not None
         assert len(runtime.entities.get("sensor", [])) > 0
+
+        if model == "S6-EA1P":
+            # S6-EA1P6K-L is AC-coupled: use the ENERGY profile without
+            # falling back to a PV hybrid to obtain storage controls.
+            config = runtime.controller.inverter_config
+            assert config.wattage_chosen == 6000
+            assert InverterFeature.PV not in config.features
+            assert not any(33049 in sensor.registrars for group in runtime.controller.sensor_groups for sensor in group.sensors)
+            assert any(entity.name == "Storage Mode" for entity in runtime.entities["select"])
+            time_registers = {entity._register for entity in runtime.entities["time"]}
+            assert {43143, 43145, 43711, 43713} <= time_registers
 
         # Test unload
         assert await hass.config_entries.async_unload(config_entry.entry_id)

@@ -293,6 +293,10 @@ view_layout:
 ```
 Card inspiration from https://github.com/slipx06/Sunsynk-Home-Assistant-Dash
 
+## Model notes
+
+- [S6-EA1P6K-L compatibility and validation status](https://solis-modbus.readthedocs.io/en/latest/s6-ea1p6k-l.html)
+
 ## Tested
 **Inverters Tested**
 Solis and equivalent Axitec, Zonneplan inverters
