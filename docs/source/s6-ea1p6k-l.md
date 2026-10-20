@@ -6,9 +6,9 @@ variant. A separate model profile is not required for product code `0x4105`.
 
 ## Device identity
 
-The following identity values were observed on an S6-EA1P6K-L installation
-on 20 October 2026. Product and family values came from the integration's
-existing cache; their original sampling times were unavailable.
+The following identity values were read from an S6-EA1P6K-L installation
+on 20 October 2026 at 11:28 UTC, using input-register requests through the
+existing integration connection. They agree with earlier cached observations.
 
 | Input register | Decimal value | Hexadecimal value | Meaning |
 | --- | --- | --- | --- |
@@ -65,9 +65,10 @@ physical measurements or a clean upstream live deployment.
 
 ## Remote dispatch firmware versions
 
-The three passive snapshots report `34502 = 0xAA55` and `34503 = 1`.
-The first word advertises remote dispatch; the second is its function
-version. It is distinct from the time-of-use flag in register 33289.
+A fresh read returned `34502 = 0xAA55` and `34503 = 1`, matching the
+three earlier passive snapshots. The first word advertises remote dispatch;
+the second is its function version. It is distinct from the time-of-use flag
+in register 33289.
 
 The protocol's version history assigns different features to each version:
 
@@ -88,16 +89,33 @@ The checks are covered by mocked service tests. Successful physical
 dispatch and restoration on this inverter remain to be qualified in a
 controlled live test.
 
+## Time of use flag
+
+A fresh input-register read returned `33289 = 0x0000`. The protocol defines
+`0xAA55` as the active V2 time-of-use marker, so that marker was absent on
+this firmware at the time of the read. Zero alone does not distinguish an
+unimplemented register from an implemented inactive function. The configured
+`has_v2` option and zero-filled schedule words do not independently establish
+support for the V2 scheduling controls.
+
 ## Qualification summary
 
 | Area | Evidence and remaining qualification |
 | --- | --- |
-| Product and family identity | Cached words agree with the matching cloud device record and the protocol's AC-coupled family definition |
-| DSP/HMI version fields | Major fields observed in cache; minor fields read through the existing connection |
+| Product and family identity | Fresh words agree with earlier cache, the matching cloud device record and the protocol's AC-coupled family definition |
+| DSP/HMI version fields | Major words freshly read as 9 and 13; minor words previously read as 14 and 6 through the existing connection |
 | Sensor decoding | Three captured snapshots reproduce twelve observed sensor values each; physical accuracy still needs independent comparison |
 | Storage controls | Available in current upstream code; behavior on this device needs a controlled live test |
-| Time-of-use and remote dispatch | Firmware capability and behavior must be established separately; zero-filled registers alone do not prove support |
+| Time-of-use and remote dispatch | Dispatch advertises V1; the active V2 TOU marker is absent. Physical control and schedule behavior remain to be tested |
 | Clean upstream operation | Live qualification under the S6-EA1P profile remains outstanding |
+
+Four read-only service requests succeeded during a 23-second collection
+window, including two passive preflight observations twenty seconds apart.
+The global polling heartbeat advanced before the requests; post-read checks
+showed no new failures or unavailable states. Seven pre-existing unavailable
+entities remained unchanged. This bounded observation does not establish
+their runtime attachment, continuous link reliability or freshness of every
+cached register.
 
 The battery is owner-reported as a 32 kWh Fogstar LiFePO4 unit emulating
 Pylontech communication. The observed battery model setting is `PYLON_LV`.
