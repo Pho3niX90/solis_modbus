@@ -54,11 +54,47 @@ default inverter rating differed. The setup regression test also exercises
 the ENERGY profile with direct PV disabled and checks storage control and
 time entity creation. These checks do not exercise physical control writes.
 
+Three additional passive snapshots were replayed through clean S6-EA1P
+sensor entities. Each reproduced twelve observed values, including battery
+voltage/current/power/SOC, BMS voltage/current, grid frequency, meter power,
+and derived battery/grid power. One snapshot includes a signed meter value
+of -62 W, which the net-grid sensor presents as 62 W import. The storage
+selector also interprets the observed word 33 as Self-Use. These are cached
+observations from the existing installation, rather than independent
+physical measurements or a clean upstream live deployment.
+
+## Remote dispatch firmware versions
+
+The three passive snapshots report `34502 = 0xAA55` and `34503 = 1`.
+The first word advertises remote dispatch; the second is its function
+version. It is distinct from the time-of-use flag in register 33289.
+
+The protocol's version history assigns different features to each version:
+
+| Function version in 34503 | Dispatch features |
+| --- | --- |
+| V01 | Battery hold/charge/discharge and grid-point/AC-port power targets |
+| V02 | Adds Self-Use/Feed-in Priority dispatch modes, battery reserve, and discharge prohibition |
+| V03 | Adds PV output percentage limiting |
+
+Dispatch services reject requests for newer features before writing any
+registers. If the version is absent from cache, an advanced request reads
+34503 through the existing controller; an unknown or insufficient version
+raises a validation error. Base V01 requests do not need that additional
+version read. The ordinary Storage Mode selector uses register 43110 and
+is separate from these versioned dispatch commands.
+
+The checks are covered by mocked service tests. Successful physical
+dispatch and restoration on this inverter remain to be qualified in a
+controlled live test.
+
+## Qualification summary
+
 | Area | Evidence and remaining qualification |
 | --- | --- |
 | Product and family identity | Cached words agree with the matching cloud device record and the protocol's AC-coupled family definition |
 | DSP/HMI version fields | Major fields observed in cache; minor fields read through the existing connection |
-| Sensor decoding | Clean upstream definitions can decode the copied cache; individual sensor accuracy still needs comparison with independent readings |
+| Sensor decoding | Three captured snapshots reproduce twelve observed sensor values each; physical accuracy still needs independent comparison |
 | Storage controls | Available in current upstream code; behavior on this device needs a controlled live test |
 | Time-of-use and remote dispatch | Firmware capability and behavior must be established separately; zero-filled registers alone do not prove support |
 | Clean upstream operation | Live qualification under the S6-EA1P profile remains outstanding |
@@ -73,13 +109,18 @@ or establish compatibility with every Pylontech-compatible battery.
 Compare the installed integration with its reported upstream release and
 check automations for dependencies on local services or entities. The
 observed installation includes local charge/export control services absent
-from upstream; replacing its files could remove those services.
+from upstream. Four stored scripts call these services, with related
+automations and dashboard actions; replacing the integration would remove
+service implementations they depend on.
 
-A reload can briefly interrupt telemetry, and a profile change can alter
-the available entities and rating-dependent advice. Prepare a backup and
-restoration procedure before live changes. Read-only register requests also
-add traffic: use the existing connection and pacing, and stop extra queries
-if communication degrades.
+Testing replacement Python code requires planning for a Home Assistant
+restart, as in the project's
+[production development workflow](https://contributors.home-assistant.io/core/development/tips/#try-a-change-on-your-production-system).
+This interrupts Home Assistant processing, including other automations,
+while it restarts. A profile change can also alter available entities and
+rating-dependent advice. Prepare a backup and restoration procedure before
+live changes. Read-only register requests also add traffic: use the existing
+connection and pacing, and stop extra queries if communication degrades.
 
 ## Manufacturer references
 
@@ -87,7 +128,8 @@ if communication degrades.
   technical data for the 5 kW and 6 kW variants, PDF pages 48–49.
 - *Communication Protocol for Energy Storage Inverters*, Ver3.5:
   input register identity definitions on page 7, inverter family table on
-  page 133, and handling of unimplemented registers on page 5.
+  page 133, dispatch function version history on page 114, and handling of
+  unimplemented registers on page 5.
 
 The communication protocol states that unimplemented reads can return zero
 and unimplemented writes can receive normal acknowledgements. Establish
