@@ -298,40 +298,46 @@ Card inspiration from https://github.com/slipx06/Sunsynk-Home-Assistant-Dash
 - [S6-EA1P6K-L compatibility and validation status](https://solis-modbus.readthedocs.io/en/latest/s6-ea1p6k-l.html)
 
 ## Tested
-**Inverters Tested**
-Solis and equivalent Axitec, Zonneplan inverters
+### Inverters
+Solis and equivalent Axitec and Zonneplan inverters that users have confirmed working. **Setup model** is the model to pick in the config flow.
 
-- **S6-EH3P**
-- - S6-EH3P20K-H (https://github.com/Pho3niX90/solis_modbus/issues/93)
-- - S6-EH3P15K-H
-- - S6-EH3P(12-20)K-H
-- - S6-EH1P6K-L-PRO
-- - S6-EH1P6K-L-PLUS
-- - S6-EH3P10K-H-ZP (https://github.com/Pho3niX90/solis_modbus/issues/191)
-- - S6-EH3P10K-H-EU (https://github.com/Pho3niX90/solis_modbus/issues/202)
-- **S6-GR1P**
-- - S6-GR1P4K (https://github.com/Pho3niX90/solis_modbus/issues/84)
-- **S6-EA1P**
-- - S6-EA1P5K-L (https://github.com/Pho3niX90/solis_modbus/discussions/433)
-- **S5-EH1**
-- - S5-EH1(3-6)K-L (https://github.com/Pho3niX90/solis_modbus/issues/89)
-- - S5-EH1P5K-L (https://github.com/Pho3niX90/solis_modbus/issues/94)
-- - S5-EH1P6K-L (https://github.com/Pho3niX90/solis_modbus/issues/94#issuecomment-2656512651)
-- **S5-GC**
-- - S5-GC30K (https://github.com/Pho3niX90/solis_modbus/issues/173)
-- - S5-GC60K (https://github.com/Pho3niX90/solis_modbus/issues/180#issuecomment-2887414843)
-- **RAI-***
-- - RAI-3K-48ES-5G (https://github.com/Pho3niX90/solis_modbus/issues/174)
-- **RHI-***
-- - RHI-3K-48ES-5G (https://github.com/Pho3niX90/solis_modbus/issues/97#issuecomment-2639807764)
-- **3P(3-20)K-4G**
-- - 3P6K-4G (https://github.com/Pho3niX90/solis_modbus/issues/210)
-- **1P(2.5-6)K-4G**
-- - https://github.com/Pho3niX90/solis_modbus/issues/230
+| Inverter | Setup model | Notes | Report |
+|-|-|-|-|
+| **Hybrid** | | | |
+| S6-EH3P(12-20)K-H, incl. S6-EH3P12K-H, S6-EH3P15K-H, S6-EH3P20K-H | `S6-EH3P` | | [#93](https://github.com/Pho3niX90/solis_modbus/issues/93), [#474](https://github.com/Pho3niX90/solis_modbus/issues/474) |
+| S6-EH3P10K-H-EU | `S6-EH3P` | | [#202](https://github.com/Pho3niX90/solis_modbus/issues/202) |
+| S6-EH3P10K-H-ZP (Zonneplan) | `S6-EH3P10K-H-ZP` | | [#191](https://github.com/Pho3niX90/solis_modbus/issues/191) |
+| S6-EH1P6K-L-PRO | `S6-EH1P` | | |
+| S6-EH1P6K-L-PLUS | `S6-EH1P` | In a parallel pair, use Modbus slave ID 1 to reach the master | [#208](https://github.com/Pho3niX90/solis_modbus/pull/208), [#489](https://github.com/Pho3niX90/solis_modbus/issues/489) |
+| S6-EH1P8K-L-PLUS | `S6-EH1P` | AC-coupling sensors may read 0 | [#423](https://github.com/Pho3niX90/solis_modbus/issues/423) |
+| S5-EH1P(3-6)K-L, incl. S5-EH1P5K-L, S5-EH1P6K-L | `S5-EH1P` | Some control registers revert on some firmware | [#89](https://github.com/Pho3niX90/solis_modbus/issues/89), [#94](https://github.com/Pho3niX90/solis_modbus/issues/94), [#475](https://github.com/Pho3niX90/solis_modbus/issues/475) |
+| RHI-3K-48ES-5G | `RHI-1P` | Other single-phase 48ES-5G sizes should work the same way | [#97](https://github.com/Pho3niX90/solis_modbus/issues/97#issuecomment-2639807764), [#529](https://github.com/Pho3niX90/solis_modbus/issues/529) |
+| RHI-3P10K-HVES-5G | `RHI-3P` | Inverter ignores the per-slot TOU charge current | [#249](https://github.com/Pho3niX90/solis_modbus/issues/249), [#393](https://github.com/Pho3niX90/solis_modbus/issues/393) |
+| RAI-3K-48ES-5G | `RAI-3K-48ES-5G` | | [#174](https://github.com/Pho3niX90/solis_modbus/issues/174) |
+| **Energy storage (AC-coupled)** | | | |
+| S6-EA1P5K-L | `S6-EA1P` | | [#433](https://github.com/Pho3niX90/solis_modbus/discussions/433), [#514](https://github.com/Pho3niX90/solis_modbus/issues/514) |
+| S6-EA1P6K-L | `S6-EA1P` | Disable direct PV input; see the [model notes](https://solis-modbus.readthedocs.io/en/latest/s6-ea1p6k-l.html) | [#531](https://github.com/Pho3niX90/solis_modbus/pull/531) |
+| **Grid-tied (string)** | | | |
+| S6-GR1P4K | `S6-GR1P` | | [#84](https://github.com/Pho3niX90/solis_modbus/issues/84) |
+| S5-GR1P8K | `S5-GR1P` | Reading works; power-limit control not confirmed | [#321](https://github.com/Pho3niX90/solis_modbus/issues/321) |
+| S5-GR3P | `S5-GR3P` | Has no EPM; grid totals come from the attached meter | [#410](https://github.com/Pho3niX90/solis_modbus/issues/410), [#466](https://github.com/Pho3niX90/solis_modbus/issues/466) |
+| S5-GC30K, S5-GC60K | `S5-GC` | | [#173](https://github.com/Pho3niX90/solis_modbus/issues/173), [#180](https://github.com/Pho3niX90/solis_modbus/issues/180#issuecomment-2887414843) |
+| 3P6K-4G | `3P(3-20)K-4G` | Some energy totals and clock entities unavailable | [#210](https://github.com/Pho3niX90/solis_modbus/issues/210) |
+| 1P3.6K-4G | `1P(2.5-6)K-4G` | | [#230](https://github.com/Pho3niX90/solis_modbus/issues/230) |
 
-**Wifi Dongles Tested**
-- S2_WL_ST
-- Waveshare
+Have a model that works but isn't listed? Open an issue or discussion so it can be added.
+
+### Connections
+| Connection | Works | Notes |
+|-|-|-|
+| Solis S2-WL-ST WiFi stick | ✅ | Some newer firmware closes local port 502; see [Troubleshooting](#troubleshooting) |
+| Waveshare RS485-to-Ethernet | ✅ | |
+| Elfin EW11 RS485-to-WiFi | ✅ | [#179](https://github.com/Pho3niX90/solis_modbus/issues/179), [#432](https://github.com/Pho3niX90/solis_modbus/issues/432) |
+| USB-RS485 adapter | ✅ | [#410](https://github.com/Pho3niX90/solis_modbus/issues/410) |
+| ESPHome serial proxy, e.g. Home Assistant Connect AUX-2 | ✅ | [Connect AUX-2 guide](https://solis-modbus.readthedocs.io/en/latest/connect-aux-2.html) |
+| Solis S5-WiFi-ST | ⚠️ | Worked until firmware updates closed port 502; see [Troubleshooting](#troubleshooting) |
+| Solis S3-WIFI-ST | ❌ | No Modbus TCP; replace it or [modify it](https://github.com/Pho3niX90/solis_modbus/discussions/39) ([#265](https://github.com/Pho3niX90/solis_modbus/issues/265), [#347](https://github.com/Pho3niX90/solis_modbus/issues/347)) |
+| Solis DLS-W | ❌ | [#242](https://github.com/Pho3niX90/solis_modbus/issues/242) |
 
 ## Troubleshooting
 
