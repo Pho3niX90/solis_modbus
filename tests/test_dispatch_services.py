@@ -83,6 +83,133 @@ def single_writes(controller):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+@pytest.mark.parametrize(
+    ("version", "features", "required"),
+    [
+        (1, {"mode": "self_consumption"}, 2),
+        (1, {"mode": "feed_in_priority"}, 2),
+        (1, {"battery_reserve_soc": 30}, 2),
+        (1, {"disable_discharge": True}, 2),
+        (1, {"disable_discharge": False}, 2),
+        (1, {"pv_limit_percent": 50}, 3),
+        (2, {"pv_limit_percent": 0}, 3),
+    ],
+)
+async def test_dispatch_rejects_features_newer_than_firmware(hass, controller, service, version, features, required):
+    """A V1 S6-EA1P must not receive unsupported V2/V3 control requests."""
+    controller.inverter_config.type = InverterType.ENERGY
+    await setup_services(hass, controller)
+    data = {"mode": "battery_hold", **features}
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
+    with patch(
+        "custom_components.solis_modbus.helpers.cache_get",
+        side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: version}.get(register),
+    ):
+        with pytest.raises(ServiceValidationError, match=f"require Remote Dispatch V{required:02d}"):
+            await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    controller.async_write_holding_register.assert_not_awaited()
+    controller.async_write_holding_registers.assert_not_awaited()
+    controller.async_read_holding_register.assert_not_awaited()
+    controller.async_read_input_register.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+@pytest.mark.parametrize("version", [None, 0, 4, 0xAA55])
+async def test_dispatch_unknown_function_version_writes_nothing(hass, controller, service, version):
+    controller.async_read_input_register = AsyncMock(return_value=[] if version is None else [version])
+    await setup_services(hass, controller)
+    data = {"mode": "self_consumption"}
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
+    with patch(
+        "custom_components.solis_modbus.helpers.cache_get",
+        side_effect=lambda _hass, _controller, register: {34502: 0xAA55}.get(register),
+    ):
+        with pytest.raises(ServiceValidationError, match="Cannot verify Remote Dispatch function version"):
+            await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    controller.async_read_input_register.assert_awaited_once_with(34503, 1)
+    controller.async_write_holding_register.assert_not_awaited()
+    controller.async_write_holding_registers.assert_not_awaited()
+    controller.async_read_holding_register.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+@pytest.mark.parametrize(
+    ("version", "features"),
+    [
+        (1, {"mode": "battery_charge", "power_watts": 500}),
+        (2, {"mode": "self_consumption", "battery_reserve_soc": 30, "disable_discharge": True}),
+        (3, {"mode": "self_consumption", "pv_limit_percent": 50}),
+    ],
+)
+async def test_dispatch_accepts_features_available_in_firmware(hass, controller, service, version, features):
+    controller.inverter_config.type = InverterType.ENERGY
+    await setup_services(hass, controller)
+    data = dict(features)
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
+    with patch(
+        "custom_components.solis_modbus.helpers.cache_get",
+        side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: version}.get(register),
+    ):
+        await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    assert controller.async_write_holding_registers.await_count == (2 if service == "solis_dispatch" else 1)
+    controller.async_read_input_register.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+async def test_dispatch_reads_missing_version_before_advanced_control(hass, controller, service):
+    controller.async_read_input_register = AsyncMock(return_value=[2])
+    await setup_services(hass, controller)
+    data = {"mode": "self_consumption"}
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
+    with patch(
+        "custom_components.solis_modbus.helpers.cache_get",
+        side_effect=lambda _hass, _controller, register: {34502: 0xAA55}.get(register),
+    ):
+        await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    controller.async_read_input_register.assert_awaited_once_with(34503, 1)
+    assert controller.async_write_holding_registers.await_count == (2 if service == "solis_dispatch" else 1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+@pytest.mark.parametrize("mode", ["battery_charge", "grid_port_import", "grid_export"])
+async def test_household_dispatch_modes_need_no_function_version(hass, controller, service, mode):
+    """Existing V1 charging/export calls work without a function-version lookup."""
+    controller.inverter_config.type = InverterType.ENERGY
+    await setup_services(hass, controller)
+    data = {
+        "mode": mode,
+        "power_watts": 500,
+        "pv_shutdown": False,
+        "allow_grid_charge": mode != "grid_export",
+        "soc_min": 10,
+        "soc_max": 100,
+        "failsafe_minutes": 3,
+    }
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
+    else:
+        data["export_limit_watts"] = 100 if mode == "grid_export" else 0
+
+    def capability_only(_hass, _controller, register):
+        assert register == 34502, "V1 requests must not require function-version metadata"
+        return 0xAA55
+
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=capability_only):
+        await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    controller.async_read_input_register.assert_not_awaited()
+    assert controller.async_write_holding_registers.await_count == (2 if service == "solis_dispatch" else 1)
+
+
+@pytest.mark.asyncio
 async def test_dispatch_grid_import_sequence(hass: HomeAssistant, controller):
     """The exact live-verified order: failsafe, master on, power pair, function, mode LAST."""
     await setup_services(hass, controller)
@@ -105,7 +232,7 @@ async def test_dispatch_grid_import_sequence(hass: HomeAssistant, controller):
 @pytest.mark.asyncio
 async def test_dispatch_battery_charge_positive_sign(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_charge", "power_watts": 3000}, blocking=True)
     blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
     # battery_charge => mode 2, positive power 3000 W -> raw 300
@@ -116,7 +243,7 @@ async def test_dispatch_battery_charge_positive_sign(hass: HomeAssistant, contro
 @pytest.mark.asyncio
 async def test_dispatch_battery_charge_with_import_export_limits(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(
             DOMAIN,
             "solis_dispatch",
@@ -148,7 +275,7 @@ async def test_dispatch_stop_verified_revert(hass: HomeAssistant, controller):
 @pytest.mark.asyncio
 async def test_dispatch_schedule_period_block(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(
             DOMAIN,
             "solis_dispatch_schedule",
@@ -176,7 +303,7 @@ async def test_dispatch_schedule_period_block(hass: HomeAssistant, controller):
 @pytest.mark.asyncio
 async def test_dispatch_schedule_disable_leaves_master_alone(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(DOMAIN, "solis_dispatch_schedule", {"period": 1, "enabled": False}, blocking=True)
     block = controller.async_write_holding_registers.await_args.args
     assert block[0] == 44116 and block[1][0] == 0
@@ -188,7 +315,7 @@ async def test_dispatch_preserves_reserve_and_pv_limit(hass: HomeAssistant, cont
     """#500: omitted reserve SOC / PV limit must be written back unchanged, never zeroed."""
     controller.async_read_holding_register = AsyncMock(return_value=[25, 8000])
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold"}, blocking=True)
     controller.async_read_holding_register.assert_awaited_once_with(44111, 2)
     blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
@@ -199,7 +326,7 @@ async def test_dispatch_preserves_reserve_and_pv_limit(hass: HomeAssistant, cont
 @pytest.mark.asyncio
 async def test_dispatch_sets_reserve_and_pv_limit(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(
             DOMAIN,
             "solis_dispatch",
@@ -215,7 +342,7 @@ async def test_dispatch_sets_reserve_and_pv_limit(hass: HomeAssistant, controlle
 @pytest.mark.asyncio
 async def test_dispatch_sets_one_and_preserves_the_other(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "pv_limit_percent": 0}, blocking=True)
     blocks = [c.args for c in controller.async_write_holding_registers.await_args_list]
     assert blocks[1] == (44105, [1, 0, 0, 2 << 14, 0, 100, 40, 0])
@@ -225,7 +352,7 @@ async def test_dispatch_sets_one_and_preserves_the_other(hass: HomeAssistant, co
 async def test_dispatch_read_failure_writes_nothing(hass: HomeAssistant, controller):
     controller.async_read_holding_register = AsyncMock(return_value=None)
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         with pytest.raises(HomeAssistantError):
             await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "grid_import", "power_watts": 1000}, blocking=True)
     controller.async_write_holding_registers.assert_not_awaited()
@@ -235,7 +362,7 @@ async def test_dispatch_read_failure_writes_nothing(hass: HomeAssistant, control
 @pytest.mark.asyncio
 async def test_dispatch_schedule_sets_reserve_and_pv_limit(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(
             DOMAIN,
             "solis_dispatch_schedule",
@@ -254,7 +381,7 @@ async def test_dispatch_drains_write_queue_before_read_back(hass: HomeAssistant,
     controller.write_queue.join = AsyncMock(side_effect=lambda: order.append("join"))
     controller.async_read_holding_register = AsyncMock(side_effect=lambda *a: order.append("read") or [40, 10000])
     await setup_services(hass, controller)
-    with patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55):
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)):
         await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold"}, blocking=True)
     assert order == ["join", "read"]
 
@@ -264,7 +391,7 @@ async def test_dispatch_pending_writes_timeout_writes_nothing(hass: HomeAssistan
     controller.write_queue.put_nowait((44105, 1, False))  # never processed
     await setup_services(hass, controller)
     with (
-        patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55),
+        patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)),
         patch("custom_components.solis_modbus.DISPATCH_WRITE_FLUSH_TIMEOUT", 0.01),
     ):
         with pytest.raises(HomeAssistantError):
@@ -290,7 +417,7 @@ async def test_stalled_inverter_does_not_block_dispatch_to_another(hass: HomeAss
     await setup_services(hass, controller)
 
     with (
-        patch("custom_components.solis_modbus.helpers.cache_get", return_value=0xAA55),
+        patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: 3}.get(register)),
         patch("custom_components.solis_modbus.DISPATCH_WRITE_FLUSH_TIMEOUT", 5),
     ):
         stalled_call = hass.async_create_task(hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "battery_hold", "host": "5.6.7.8"}, blocking=True))

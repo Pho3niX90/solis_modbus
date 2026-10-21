@@ -204,7 +204,7 @@ solis_dispatch:
   fields:
     mode:
       name: Mode
-      description: What to control. grid_import/grid_export target the meter (PCC); battery_charge/discharge command battery power; battery_hold freezes the battery
+      description: What to control. grid_import/grid_export target the meter (PCC); battery_charge/discharge command battery power; battery_hold freezes the battery. self_consumption/feed_in_priority require Remote Dispatch V02 or later
       required: true
       example: grid_import
       selector:
@@ -242,7 +242,7 @@ solis_dispatch:
         boolean:
     disable_discharge:
       name: Disable discharge
-      description: Inhibit battery discharge during the dispatch (omit = leave unchanged)
+      description: Requires Remote Dispatch V02 or later. Inhibit battery discharge during the dispatch (omit = leave unchanged)
       selector:
         boolean:
     soc_min:
@@ -263,7 +263,7 @@ solis_dispatch:
           mode: box
     battery_reserve_soc:
       name: Battery reserve SOC
-      description: Keep this much battery in reserve during the dispatch; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
+      description: Requires Remote Dispatch V02 or later. Keep this much battery in reserve during the dispatch; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
       selector:
         number:
           min: 0
@@ -272,7 +272,7 @@ solis_dispatch:
           mode: box
     pv_limit_percent:
       name: PV power limit
-      description: Cap PV output at this percentage during the dispatch; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
+      description: Requires Remote Dispatch V03 or later. Cap PV output at this percentage during the dispatch; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
       selector:
         number:
           min: 0
@@ -366,6 +366,7 @@ solis_dispatch_schedule:
         time:
     mode:
       name: Mode
+      description: Self-consumption and feed-in priority require Remote Dispatch V02 or later (register 34503)
       default: battery_hold
       selector:
         select:
@@ -399,6 +400,7 @@ solis_dispatch_schedule:
         boolean:
     disable_discharge:
       name: Disable discharge
+      description: Requires Remote Dispatch V02 or later
       selector:
         boolean:
     soc_min:
@@ -421,7 +423,7 @@ solis_dispatch_schedule:
           mode: box
     battery_reserve_soc:
       name: Battery reserve SOC
-      description: Keep this much battery in reserve during this period; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
+      description: Requires Remote Dispatch V02 or later. Keep this much battery in reserve during this period; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
       selector:
         number:
           min: 0
@@ -430,7 +432,7 @@ solis_dispatch_schedule:
           mode: box
     pv_limit_percent:
       name: PV power limit
-      description: Cap PV output at this percentage during this period; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
+      description: Requires Remote Dispatch V03 or later. Cap PV output at this percentage during this period; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
       selector:
         number:
           min: 0

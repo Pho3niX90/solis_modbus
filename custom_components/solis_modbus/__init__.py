@@ -114,6 +114,7 @@ RC_POWER_MULTIPLIER = 10
 # write order: failsafe -> master on -> power/function/SOC -> control mode LAST
 # (the function field is re-initialized by the inverter unless dispatch is on).
 DISPATCH_CAPABILITY_REG = 34502
+DISPATCH_VERSION_REG = 34503
 DISPATCH_CAPABLE_MAGIC = 0xAA55
 DISPATCH_MASTER_REG = 44100
 DISPATCH_FAILSAFE_REG = 44101
@@ -393,6 +394,41 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         if capability != DISPATCH_CAPABLE_MAGIC:
             raise ServiceValidationError(f"This inverter does not support Remote Dispatch (register 34502 reads {capability}, expected 0xAA55)")
 
+    async def _ensure_dispatch_function_version(controller, call: ServiceCall) -> None:
+        """Reject newer dispatch features before any writes (Ver3.5, section 6.2.1).
+
+        The 0xAA55 capability flag alone does not qualify every function. V1
+        supports modes 1-4; V2 adds modes 5/6, reserve and discharge prohibition;
+        V3 adds PV limiting. Base V1 calls need no additional metadata read.
+        """
+        required = 1
+        if (
+            call.data.get("mode") in ("self_consumption", "feed_in_priority")
+            or call.data.get("battery_reserve_soc") is not None
+            or call.data.get("disable_discharge") is not None
+        ):
+            required = 2
+        if call.data.get("pv_limit_percent") is not None:
+            required = 3
+        if required == 1:
+            return
+
+        from .helpers import cache_get
+
+        version = cache_get(hass, controller, DISPATCH_VERSION_REG)
+        if version is None:
+            values = await controller.async_read_input_register(DISPATCH_VERSION_REG, 1)
+            version = values[0] if values else None
+        if version not in (1, 2, 3):
+            raise ServiceValidationError(
+                f"Cannot verify Remote Dispatch function version (register 34503 reads {version}); "
+                f"the requested features require V{required:02d}. Nothing was written"
+            )
+        if version < required:
+            raise ServiceValidationError(
+                f"The requested features require Remote Dispatch V{required:02d}, but register 34503 reports V{version:02d}. Nothing was written"
+            )
+
     # Serializes read-back + enqueue so two overlapping dispatch calls cannot
     # read the same stale value and overwrite each other. One lock per inverter:
     # a stalled link waiting out the flush timeout must not block the others.
@@ -439,6 +475,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controller = _resolve_controller(call)
         _require_hybrid(controller)
         await _ensure_dispatch_capable(controller)
+        await _ensure_dispatch_function_version(controller, call)
 
         mode_value, sign = DISPATCH_MODES[call.data["mode"]]
         power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
@@ -481,6 +518,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controller = _resolve_controller(call)
         _require_hybrid(controller)
         await _ensure_dispatch_capable(controller)
+        await _ensure_dispatch_function_version(controller, call)
 
         def packed_time(value: str) -> int:
             parsed = datetime.strptime(value, "%H:%M")
