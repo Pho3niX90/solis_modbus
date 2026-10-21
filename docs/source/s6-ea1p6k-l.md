@@ -66,31 +66,45 @@ selector also interprets the observed word 33 as Self-Use. These are cached
 observations from the earlier modified installation, rather than independent
 physical measurements.
 
-### Bounded stock 4.4.0 observations
+### Bounded live observations
 
-The following tests used the standard public services on 21 October 2026,
-with the unchanged S6-EH1P configuration:
+The following tests used the public services on 21 October 2026, with the
+unchanged S6-EH1P configuration. The PR build used the exact 41-file runtime
+tree from commit `78259cb7252617ec25a050d35cd527e2e0818e14` on HA 2026.10.2.
 
-| Test | Observed behavior |
-| --- | --- |
-| `battery_charge`, 500 W DC | Native charging power reached 492 W and 497 W; the ordinary stop call returned operation to Self-Use |
-| `grid_port_import`, up to 6000 W AC | The AC port tracked approximately 5980–6000 W import, with battery charging up to approximately 5.5 kW |
-| Overnight-script daylight rehearsal | Mechanically equivalent temporary copies, using a synthetic window, exercised minute renewals, five-minute resampling, holding at 96% SOC, manual stop, same-window recovery suppression, and window expiry |
-| `grid_export`, 100 W net grid target | A roughly 51-second trial produced approximately 95–123 W export at the household meter; the ordinary stop call and native export-limit restoration returned operation to zero export |
+| Test | Stock 4.4.0 | PR build |
+| --- | --- | --- |
+| Firmware guard | Release checks dispatch capability only | Fresh capability/version words were `0xAA55`/`1`; explicit discharge-prohibition and PV-limit requests returned the expected V02/V03 validation errors |
+| `battery_charge`, 500 W DC | Native charging power reached 492 W and 497 W | Settled native charging power was 493 W during a roughly 41-second pulse |
+| `grid_port_import` | At a 6000 W AC target, the port tracked approximately 5980–6000 W import, with up to approximately 5.5 kW battery charging | At a 500 W AC target, the port tracked 500 W import, with 444–445 W battery charging |
+| Overnight-script daylight rehearsal | Mechanically equivalent temporary copies with a synthetic window exercised minute renewals, five-minute resampling, holding at 96% SOC, manual stop, same-window recovery suppression, and window expiry | Rehearsal was on stock only |
+| `grid_export`, 100 W net grid target | Approximately 95–123 W export at the household meter during a roughly 51-second trial | Approximately 117–132 W export during a roughly 41-second pulse |
 
-The rehearsal's temporary entities were removed and the normal automation
-states restored. Polling remained connected with zero connection failures
-at the recorded checks. These observations cover stock V1 dispatch under
-S6-EH1P; the PR's new function-version rejection is tested offline. An actual
-scheduled overnight session, full-power export with heating restoration,
-native inverter schedules, and live S6-EA1P operation remain unobserved.
+Ordinary dispatch stop calls completed without errors after the power trials.
+The PR build was then replaced with the exact saved stock 4.4.0 tree, using
+two Core restarts for the install/restore procedure. Normal automation states,
+the original export limit, household configuration and helpers were restored;
+polling was healthy with zero connection failures at the recorded checks.
+The stock rehearsal's temporary entities were also removed.
+
+After the PR AC-port import stop, one house-meter sample showed 605 W export;
+the native meter sample about one second later showed zero. Before proceeding,
+an extra passive check found 14 W export at the house meter and zero at the
+native meter. These asynchronous observations do not establish the duration
+of any physical excursion.
+
+These trials qualify bounded V1 behavior and the new V2/V3 rejection on the
+device under S6-EH1P. Actual overnight scheduling, full-power export/heating
+restoration, native inverter schedules, and live S6-EA1P operation remain
+unobserved.
 
 ## Remote dispatch firmware versions
 
 A fresh read on 20 October 2026 returned `34502 = 0xAA55` and `34503 = 1`,
 matching the three earlier passive snapshots. The first word advertises remote dispatch;
 the second is its function version. It is distinct from the time-of-use flag
-in register 33289.
+in register 33289. A fresh read during the PR live test on 21 October returned
+the same capability/version values.
 
 The protocol's version history assigns different features to each version:
 
@@ -133,7 +147,7 @@ time-of-use or dispatch schedules.
 | Stock integration operation | Unmodified 4.4.0 source verified; bounded charge/import/export and stop observations under the unchanged S6-EH1P configuration |
 | S6-EA1P profile | Included in 4.4.0; setup and telemetry covered offline. Live profile qualification remains outstanding |
 | Real-time remote dispatch | V1 charge, AC-port import, low-power grid export, and ordinary stop observed. Full-power export remains unobserved |
-| Firmware-version check | Advanced V2/V3 requests rejected offline when the advertised version is insufficient or unknown; no physical V2/V3 qualification |
+| Firmware-version check | V02/V03 requests rejected on the live V1 device; supported/unknown versions also covered offline. V2/V3-capable hardware remains unqualified |
 | Native schedules | Active V2 TOU marker absent; zero does not establish non-implementation. Native TOU/dispatch schedule behavior remains untested |
 | Household scheduling | Daylight rehearsal passed; actual overnight and full export/heating cycles remain unobserved |
 
