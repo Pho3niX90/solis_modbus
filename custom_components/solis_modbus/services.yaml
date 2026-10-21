@@ -204,7 +204,6 @@ solis_dispatch:
   fields:
     mode:
       name: Mode
-      description: Self-consumption and feed-in priority require Remote Dispatch V02 or later (register 34503)
       description: What to control. grid_import/grid_export target the meter (PCC); battery_charge/discharge command battery power; battery_hold freezes the battery. self_consumption/feed_in_priority require Remote Dispatch V02 or later
       required: true
       example: grid_import

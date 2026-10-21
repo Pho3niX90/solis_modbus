@@ -116,16 +116,20 @@ async def test_dispatch_rejects_features_newer_than_firmware(hass, controller, s
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
 @pytest.mark.parametrize("version", [None, 0, 4, 0xAA55])
-async def test_dispatch_unknown_function_version_writes_nothing(hass, controller, version):
+async def test_dispatch_unknown_function_version_writes_nothing(hass, controller, service, version):
     controller.async_read_input_register = AsyncMock(return_value=[] if version is None else [version])
     await setup_services(hass, controller)
+    data = {"mode": "self_consumption"}
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
     with patch(
         "custom_components.solis_modbus.helpers.cache_get",
         side_effect=lambda _hass, _controller, register: {34502: 0xAA55}.get(register),
     ):
         with pytest.raises(ServiceValidationError, match="Cannot verify Remote Dispatch function version"):
-            await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "self_consumption"}, blocking=True)
+            await hass.services.async_call(DOMAIN, service, data, blocking=True)
     controller.async_read_input_register.assert_awaited_once_with(34503, 1)
     controller.async_write_holding_register.assert_not_awaited()
     controller.async_write_holding_registers.assert_not_awaited()
@@ -133,6 +137,7 @@ async def test_dispatch_unknown_function_version_writes_nothing(hass, controller
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
 @pytest.mark.parametrize(
     ("version", "features"),
     [
@@ -141,29 +146,67 @@ async def test_dispatch_unknown_function_version_writes_nothing(hass, controller
         (3, {"mode": "self_consumption", "pv_limit_percent": 50}),
     ],
 )
-async def test_dispatch_accepts_features_available_in_firmware(hass, controller, version, features):
+async def test_dispatch_accepts_features_available_in_firmware(hass, controller, service, version, features):
     controller.inverter_config.type = InverterType.ENERGY
     await setup_services(hass, controller)
+    data = dict(features)
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
     with patch(
         "custom_components.solis_modbus.helpers.cache_get",
         side_effect=lambda _hass, _controller, register: {34502: 0xAA55, 34503: version}.get(register),
     ):
-        await hass.services.async_call(DOMAIN, "solis_dispatch", features, blocking=True)
-    assert controller.async_write_holding_registers.await_count == 2
+        await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    assert controller.async_write_holding_registers.await_count == (2 if service == "solis_dispatch" else 1)
     controller.async_read_input_register.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_dispatch_reads_missing_version_before_advanced_control(hass, controller):
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+async def test_dispatch_reads_missing_version_before_advanced_control(hass, controller, service):
     controller.async_read_input_register = AsyncMock(return_value=[2])
     await setup_services(hass, controller)
+    data = {"mode": "self_consumption"}
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
     with patch(
         "custom_components.solis_modbus.helpers.cache_get",
         side_effect=lambda _hass, _controller, register: {34502: 0xAA55}.get(register),
     ):
-        await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "self_consumption"}, blocking=True)
+        await hass.services.async_call(DOMAIN, service, data, blocking=True)
     controller.async_read_input_register.assert_awaited_once_with(34503, 1)
-    assert controller.async_write_holding_registers.await_count == 2
+    assert controller.async_write_holding_registers.await_count == (2 if service == "solis_dispatch" else 1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("service", ["solis_dispatch", "solis_dispatch_schedule"])
+@pytest.mark.parametrize("mode", ["battery_charge", "grid_port_import", "grid_export"])
+async def test_household_dispatch_modes_need_no_function_version(hass, controller, service, mode):
+    """Existing V1 charging/export calls work without a function-version lookup."""
+    controller.inverter_config.type = InverterType.ENERGY
+    await setup_services(hass, controller)
+    data = {
+        "mode": mode,
+        "power_watts": 500,
+        "pv_shutdown": False,
+        "allow_grid_charge": mode != "grid_export",
+        "soc_min": 10,
+        "soc_max": 100,
+        "failsafe_minutes": 3,
+    }
+    if service == "solis_dispatch_schedule":
+        data.update(period=1, enabled=True)
+    else:
+        data["export_limit_watts"] = 100 if mode == "grid_export" else 0
+
+    def capability_only(_hass, _controller, register):
+        assert register == 34502, "V1 requests must not require function-version metadata"
+        return 0xAA55
+
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=capability_only):
+        await hass.services.async_call(DOMAIN, service, data, blocking=True)
+    controller.async_read_input_register.assert_not_awaited()
+    assert controller.async_write_holding_registers.await_count == (2 if service == "solis_dispatch" else 1)
 
 
 @pytest.mark.asyncio

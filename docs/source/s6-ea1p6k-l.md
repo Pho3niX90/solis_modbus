@@ -31,28 +31,31 @@ disabled; the inverter can operate alongside a separate PV inverter on the
 AC side. Configure battery, generator, meter, and time-of-use options for
 the actual installation and firmware.
 
-Current upstream gives ENERGY inverters the storage selectors, switches,
-and time entities also available to hybrid inverters. This change is in
-[PR #530](https://github.com/Pho3niX90/solis_modbus/pull/530).
-Version 4.2.6 does not include that change, so availability of controls on a
-locally modified 4.2.6 installation cannot establish their availability in
-an unmodified release.
+Version 4.4.0 includes ENERGY storage selectors, switches, and time entities
+through [PR #530](https://github.com/Pho3niX90/solis_modbus/pull/530). These
+controls and the existing public dispatch services provide the integration
+interfaces used by the observed household charging/export scripts.
 
 ## Validation status
 
-The observed installation runs Home Assistant 2026.10.2 with a locally
-modified integration reporting version 4.2.6. It is configured as S6-EH1P,
-with direct PV, generator, and high-voltage battery options disabled. That
-profile defaults to 8000 W; this is a configuration default, not the physical
-rating of the S6-EA1P6K-L.
+On 21 October 2026, the observed installation was migrated to **unmodified
+Solis Modbus 4.4.0** on Home Assistant 2026.10.2. All 41 integration source
+files matched release commit `80456a036ee4f817c18acd22f1074da4f021cba7`.
+Seven existing household scripts were adapted to ordinary public dispatch
+and stop calls. They no longer depend on private integration services.
 
-An offline comparison at upstream commit
-`011e31196ad2ac110d55b356869af03a3b6e7733` constructed the S6-EA1P and
-S6-EH1P profiles with those same feature options. Their register groups,
-named sensor definitions, and storage control definitions matched; the
-default inverter rating differed. The setup regression test also exercises
-the ENERGY profile with direct PV disabled and checks storage control and
-time entity creation. These checks do not exercise physical control writes.
+The live configuration remains **S6-EH1P**, with direct PV, generator, and
+high-voltage battery options disabled. That profile defaults to 8000 W;
+the physical inverter rating and household request ceiling are 6000 W.
+Live operation with the S6-EA1P profile has not yet been tested.
+
+An earlier offline comparison of the two profiles found matching register
+groups, named sensor definitions, and storage control definitions with those
+feature options. A repeated comparison against release 4.4.0 confirmed equal
+features, selectors, switches, and time controls, with default ratings of
+6000 W and 8000 W respectively. The setup regression test exercises the
+ENERGY profile with direct PV disabled and checks storage control and time
+entity creation. These offline checks do not qualify a live profile change.
 
 Three additional passive snapshots were replayed through clean S6-EA1P
 sensor entities. Each reproduced twelve observed values, including battery
@@ -60,13 +63,32 @@ voltage/current/power/SOC, BMS voltage/current, grid frequency, meter power,
 and derived battery/grid power. One snapshot includes a signed meter value
 of -62 W, which the net-grid sensor presents as 62 W import. The storage
 selector also interprets the observed word 33 as Self-Use. These are cached
-observations from the existing installation, rather than independent
-physical measurements or a clean upstream live deployment.
+observations from the earlier modified installation, rather than independent
+physical measurements.
+
+### Bounded stock 4.4.0 observations
+
+The following tests used the standard public services on 21 October 2026,
+with the unchanged S6-EH1P configuration:
+
+| Test | Observed behavior |
+| --- | --- |
+| `battery_charge`, 500 W DC | Native charging power reached 492 W and 497 W; the ordinary stop call returned operation to Self-Use |
+| `grid_port_import`, up to 6000 W AC | The AC port tracked approximately 5980–6000 W import, with battery charging up to approximately 5.5 kW |
+| Overnight-script daylight rehearsal | Mechanically equivalent temporary copies, using a synthetic window, exercised minute renewals, five-minute resampling, holding at 96% SOC, manual stop, same-window recovery suppression, and window expiry |
+| `grid_export`, 100 W net grid target | A roughly 51-second trial produced approximately 95–123 W export at the household meter; the ordinary stop call and native export-limit restoration returned operation to zero export |
+
+The rehearsal's temporary entities were removed and the normal automation
+states restored. Polling remained connected with zero connection failures
+at the recorded checks. These observations cover stock V1 dispatch under
+S6-EH1P; the PR's new function-version rejection is tested offline. An actual
+scheduled overnight session, full-power export with heating restoration,
+native inverter schedules, and live S6-EA1P operation remain unobserved.
 
 ## Remote dispatch firmware versions
 
-A fresh read returned `34502 = 0xAA55` and `34503 = 1`, matching the
-three earlier passive snapshots. The first word advertises remote dispatch;
+A fresh read on 20 October 2026 returned `34502 = 0xAA55` and `34503 = 1`,
+matching the three earlier passive snapshots. The first word advertises remote dispatch;
 the second is its function version. It is distinct from the time-of-use flag
 in register 33289.
 
@@ -78,25 +100,28 @@ The protocol's version history assigns different features to each version:
 | V02 | Adds Self-Use/Feed-in Priority dispatch modes, battery reserve, and discharge prohibition |
 | V03 | Adds PV output percentage limiting |
 
-Dispatch services reject requests for newer features before writing any
-registers. If the version is absent from cache, an advanced request reads
-34503 through the existing controller; an unknown or insufficient version
+The function-version check in this change rejects requests for newer features
+before writing any registers. If the version is absent from cache, an advanced
+request reads 34503 through the existing controller; an unknown or insufficient version
 raises a validation error. Base V01 requests do not need that additional
 version read. The ordinary Storage Mode selector uses register 43110 and
 is separate from these versioned dispatch commands.
 
-The checks are covered by mocked service tests. Successful physical
-dispatch and restoration on this inverter remain to be qualified in a
-controlled live test.
+Mocked service tests cover supported, insufficient, and unknown versions for
+both real-time and scheduled calls. They also check that existing V1 household
+charging/export requests require no function-version lookup. The stock V1
+physical observations above do not exercise V2/V3 features.
 
 ## Time of use flag
 
-A fresh input-register read returned `33289 = 0x0000`. The protocol defines
-`0xAA55` as the active V2 time-of-use marker, so that marker was absent on
+A fresh input-register read on 20 October 2026 returned `33289 = 0x0000`.
+The protocol defines `0xAA55` as the active V2 time-of-use marker, so that marker was absent on
 this firmware at the time of the read. Zero alone does not distinguish an
 unimplemented register from an implemented inactive function. The configured
 `has_v2` option and zero-filled schedule words do not independently establish
-support for the V2 scheduling controls.
+support for the V2 scheduling controls. The household rehearsal used Home
+Assistant-managed windows and real-time dispatch; it did not qualify native
+time-of-use or dispatch schedules.
 
 ## Qualification summary
 
@@ -105,12 +130,15 @@ support for the V2 scheduling controls.
 | Product and family identity | Fresh words agree with earlier cache, the matching cloud device record and the protocol's AC-coupled family definition |
 | DSP/HMI version fields | Major words freshly read as 9 and 13; minor words previously read as 14 and 6 through the existing connection |
 | Sensor decoding | Three captured snapshots reproduce twelve observed sensor values each; physical accuracy still needs independent comparison |
-| Storage controls | Available in current upstream code; behavior on this device needs a controlled live test |
-| Time-of-use and remote dispatch | Dispatch advertises V1; the active V2 TOU marker is absent. Physical control and schedule behavior remain to be tested |
-| Clean upstream operation | Live qualification under the S6-EA1P profile remains outstanding |
+| Stock integration operation | Unmodified 4.4.0 source verified; bounded charge/import/export and stop observations under the unchanged S6-EH1P configuration |
+| S6-EA1P profile | Included in 4.4.0; setup and telemetry covered offline. Live profile qualification remains outstanding |
+| Real-time remote dispatch | V1 charge, AC-port import, low-power grid export, and ordinary stop observed. Full-power export remains unobserved |
+| Firmware-version check | Advanced V2/V3 requests rejected offline when the advertised version is insufficient or unknown; no physical V2/V3 qualification |
+| Native schedules | Active V2 TOU marker absent; zero does not establish non-implementation. Native TOU/dispatch schedule behavior remains untested |
+| Household scheduling | Daylight rehearsal passed; actual overnight and full export/heating cycles remain unobserved |
 
-Four read-only service requests succeeded during a 23-second collection
-window, including two passive preflight observations twenty seconds apart.
+On 20 October 2026, four read-only service requests succeeded during a
+23-second collection window, including two passive preflight observations twenty seconds apart.
 The global polling heartbeat advanced before the requests; post-read checks
 showed no new failures or unavailable states. Seven pre-existing unavailable
 entities remained unchanged. This bounded observation does not establish
@@ -122,14 +150,14 @@ Pylontech communication. The observed battery model setting is `PYLON_LV`.
 That setting does not independently confirm battery hardware or capacity,
 or establish compatibility with every Pylontech-compatible battery.
 
-## Before testing a replacement build
+## Changing an existing installation
 
-Compare the installed integration with its reported upstream release and
-check automations for dependencies on local services or entities. The
-observed installation includes local charge/export control services absent
-from upstream. Four stored scripts call these services, with related
-automations and dashboard actions; replacing the integration would remove
-service implementations they depend on.
+The observed household now runs standard 4.4.0 with ordinary Home Assistant
+scripts; daily operation does not depend on this PR build. An existing
+S6-EH1P configuration should be reviewed before switching to S6-EA1P because
+entity identities and rating-dependent advice may change. Offline profile
+equivalence does not establish that an in-place switch preserves every
+automation reference.
 
 Testing replacement Python code requires planning for a Home Assistant
 restart, as in the project's
