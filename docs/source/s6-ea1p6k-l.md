@@ -44,10 +44,11 @@ files matched release commit `80456a036ee4f817c18acd22f1074da4f021cba7`.
 Seven existing household scripts were adapted to ordinary public dispatch
 and stop calls. They no longer depend on private integration services.
 
-The live configuration remains **S6-EH1P**, with direct PV, generator, and
-high-voltage battery options disabled. That profile defaults to 8000 W;
-the physical inverter rating and household request ceiling are 6000 W.
-Live operation with the S6-EA1P profile has not yet been tested.
+The initial stock and PR-build trials used **S6-EH1P**, whose default rating
+is 8000 W, with direct PV, generator, and high-voltage battery options disabled.
+The physical inverter rating and household request ceiling are 6000 W.
+The installation now uses **S6-EA1P**, retained after the separate stock-profile
+test below, with the other effective configuration settings preserved.
 
 An earlier offline comparison of the two profiles found matching register
 groups, named sensor definitions, and storage control definitions with those
@@ -95,8 +96,28 @@ of any physical excursion.
 
 These trials qualify bounded V1 behavior and the new V2/V3 rejection on the
 device under S6-EH1P. Actual overnight scheduling, full-power export/heating
-restoration, native inverter schedules, and live S6-EA1P operation remain
-unobserved.
+restoration, and native inverter schedules remain unobserved.
+
+### S6-EA1P profile on stock 4.4.0
+
+After restoring stock 4.4.0, the model was changed through the integration's
+options flow to S6-EA1P. It initialized as single-phase ENERGY with a 6000 W
+rating. All 552 registry entries preserved their unique IDs, entity IDs and device mappings, along with the
+existing household script and dashboard references. This used one Solis
+integration reload and no Core restart.
+
+Three further roughly 41-second pulses passed: a 500 W DC charge request
+settled at 493 W; 500 W AC-port import tracked 500 W with 444 W battery
+charging; a 100 W net-export request produced 104–105 W export at the house
+meter. Ordinary stops completed and subsequent native observations returned
+to normal Self-Use with zero charging and zero net grid flow. The normal
+polling cadence means the first post-stop snapshot can retain pre-stop values.
+
+The S6-EA1P profile was retained. All four battery automations were enabled,
+the original export limit and helpers were preserved, and Watchman reported
+zero missing entities/actions. The source remained the exact 41-file stock
+release and household YAML was unchanged. This profile test used released
+4.4.0; the PR guard's live tests above used S6-EH1P.
 
 ## Remote dispatch firmware versions
 
@@ -144,8 +165,8 @@ time-of-use or dispatch schedules.
 | Product and family identity | Fresh words agree with earlier cache, the matching cloud device record and the protocol's AC-coupled family definition |
 | DSP/HMI version fields | Major words freshly read as 9 and 13; minor words previously read as 14 and 6 through the existing connection |
 | Sensor decoding | Three captured snapshots reproduce twelve observed sensor values each; physical accuracy still needs independent comparison |
-| Stock integration operation | Unmodified 4.4.0 source verified; bounded charge/import/export and stop observations under the unchanged S6-EH1P configuration |
-| S6-EA1P profile | Included in 4.4.0; setup and telemetry covered offline. Live profile qualification remains outstanding |
+| Stock integration operation | Exact unmodified 4.4.0 source; bounded charge/import/export and ordinary stops observed under both S6-EH1P and S6-EA1P |
+| S6-EA1P profile | Live 6 kW ENERGY profile retained after bounded tests; all 552 entity identities and household references preserved |
 | Real-time remote dispatch | V1 charge, AC-port import, low-power grid export, and ordinary stop observed. Full-power export remains unobserved |
 | Firmware-version check | V02/V03 requests rejected on the live V1 device; supported/unknown versions also covered offline. V2/V3-capable hardware remains unqualified |
 | Native schedules | Active V2 TOU marker absent; zero does not establish non-implementation. Native TOU/dispatch schedule behavior remains untested |
@@ -166,8 +187,8 @@ or establish compatibility with every Pylontech-compatible battery.
 
 ## Changing an existing installation
 
-The observed household now runs standard 4.4.0 with ordinary Home Assistant
-scripts; daily operation does not depend on this PR build. An existing
+The observed household now runs standard 4.4.0 with S6-EA1P and ordinary Home
+Assistant scripts; daily operation does not depend on this PR build. An existing
 S6-EH1P configuration should be reviewed before switching to S6-EA1P because
 entity identities and rating-dependent advice may change. Offline profile
 equivalence does not establish that an in-place switch preserves every
