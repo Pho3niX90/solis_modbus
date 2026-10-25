@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -37,6 +38,13 @@ def is_number(value) -> bool:
 
 # Modbus exception codes we treat as address/map issues worth splitting reads (see data_retrieval recovery).
 RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})
+
+# Queued writes older than this are dropped instead of sent late (#534): after a
+# link outage, a backlog of control setpoints must not replay minutes later.
+WRITE_MAX_AGE = 30  # s
+# Writes queued within this window of the first in a burst (e.g. the RC mode,
+# power and timeout combo) share its verdict, so a combo is never half-sent.
+WRITE_BURST_WINDOW = 1  # s
 
 
 def _exception_code_from_modbus_result(result) -> int | None:
@@ -138,6 +146,8 @@ class ModbusController:
 
         # Modbus Write Queue
         self.write_queue = asyncio.Queue()
+        self._write_burst_start: float | None = None
+        self._write_burst_stale = False
         self._last_modbus_success = datetime.now(UTC)
         # Whether this inverter has answered a read since startup (unlike
         # _last_modbus_success, which starts at "now").
@@ -163,7 +173,18 @@ class ModbusController:
                     # still disconnected — which could silently drop a control write.
                     while not self.connected():
                         await asyncio.sleep(5)
-                    register, value, multiple = write_request
+                    register, value, multiple, queued_at = write_request
+
+                    if self._is_stale_write(queued_at):
+                        _LOGGER.warning(
+                            "(%s.%s) Dropped stale queued write to register %s (value %s, %.0f s old)",
+                            self.host,
+                            self.device_id,
+                            register,
+                            value,
+                            time.monotonic() - queued_at,
+                        )
+                        continue
 
                     if multiple:
                         await self._execute_write_holding_registers(register, value)
@@ -174,6 +195,13 @@ class ModbusController:
         except asyncio.CancelledError:
             # Clean shutdown on entry unload/reload.
             raise
+
+    def _is_stale_write(self, queued_at: float) -> bool:
+        """Whether a queued write is too old to send, judged once per burst."""
+        if self._write_burst_start is None or queued_at - self._write_burst_start > WRITE_BURST_WINDOW:
+            self._write_burst_start = queued_at
+            self._write_burst_stale = time.monotonic() - queued_at > WRITE_MAX_AGE
+        return self._write_burst_stale
 
     async def _execute_write_holding_register(self, register, value):
         """Executes a single register write with interframe delay.
@@ -266,7 +294,7 @@ class ModbusController:
         Returns:
             None
         """
-        await self.write_queue.put((register, value, False))
+        await self.write_queue.put((register, value, False, time.monotonic()))
 
     async def async_write_holding_registers(self, start_register, values):
         """Queues a write request to the Modbus device (write multiple registers).
@@ -278,7 +306,7 @@ class ModbusController:
         Returns:
             None
         """
-        await self.write_queue.put((start_register, values, True))
+        await self.write_queue.put((start_register, values, True, time.monotonic()))
 
     async def inter_frame_wait(self, is_write=False):
         """Spacing between Modbus frames on this link (shared across parallel inverters on the same host:port)."""

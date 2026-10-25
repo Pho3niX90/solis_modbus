@@ -1,7 +1,9 @@
+import asyncio
+import time
 import unittest
 from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from pymodbus.client import AsyncModbusSerialClient
 
@@ -14,7 +16,7 @@ from custom_components.solis_modbus.const import (
     DEFAULT_STOPBITS,
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
-from custom_components.solis_modbus.modbus_controller import ModbusController
+from custom_components.solis_modbus.modbus_controller import WRITE_MAX_AGE, ModbusController
 
 
 class TestModbusControllerTCP(IsolatedAsyncioTestCase):
@@ -173,7 +175,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_register(100, 42)
 
-        self.controller.write_queue.put.assert_called_once_with((100, 42, False))
+        self.controller.write_queue.put.assert_called_once_with((100, 42, False, ANY))
 
     async def test_async_write_holding_registers(self):
         """Test queuing a write to multiple holding registers."""
@@ -183,7 +185,53 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_registers(100, [42, 43])
 
-        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True))
+        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True, ANY))
+
+    async def _drain_write_queue(self, items, write_duration=0.0):
+        """Run process_write_queue over items; return the writes it executed."""
+        executed = []
+
+        async def execute(register, value):
+            await asyncio.sleep(write_duration)
+            executed.append((register, value))
+
+        self.mock_client.connected = True
+        self.controller._execute_write_holding_register = AsyncMock(side_effect=execute)
+        self.controller._execute_write_holding_registers = AsyncMock(side_effect=execute)
+        for item in items:
+            self.controller.write_queue.put_nowait(item)
+        task = asyncio.create_task(self.controller.process_write_queue())
+        await asyncio.wait_for(self.controller.write_queue.join(), 5)
+        task.cancel()
+        return executed
+
+    async def test_process_write_queue_drops_stale_backlog(self):
+        """Writes queued during an outage are dropped, not replayed late (#534)."""
+        now = time.monotonic()
+        backlog = [(43129, 218 + i, False, now - 100 + i * 5) for i in range(5)]
+        fresh = (43129, 0, False, now)
+
+        executed = await self._drain_write_queue([*backlog, fresh])
+
+        self.assertEqual(executed, [(43129, 0)])
+
+    async def test_process_write_queue_keeps_fresh_writes_in_order(self):
+        """With no outage every write is sent, in order."""
+        now = time.monotonic()
+        items = [(43135, 2, False, now), (43136, 30, False, now), (43110, [1, 2], True, now)]
+
+        executed = await self._drain_write_queue(items)
+
+        self.assertEqual(executed, [(43135, 2), (43136, 30), (43110, [1, 2])])
+
+    async def test_process_write_queue_keeps_burst_together(self):
+        """A combo straddling the age limit is sent whole, not half-sent."""
+        queued_at = time.monotonic() - WRITE_MAX_AGE + 0.05  # head is just fresh; the rest age out while it runs
+        combo = [(43135, 2, False, queued_at), (43136, 30, False, queued_at + 0.001), (43138, 5, False, queued_at + 0.002)]
+
+        executed = await self._drain_write_queue(combo, write_duration=0.1)
+
+        self.assertEqual(executed, [(43135, 2), (43136, 30), (43138, 5)])
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
@@ -369,7 +417,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_register(100, 42)
 
-        self.controller.write_queue.put.assert_called_once_with((100, 42, False))
+        self.controller.write_queue.put.assert_called_once_with((100, 42, False, ANY))
 
     async def test_async_write_holding_registers(self):
         """Test queuing a write to multiple holding registers."""
@@ -379,7 +427,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_registers(100, [42, 43])
 
-        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True))
+        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True, ANY))
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
