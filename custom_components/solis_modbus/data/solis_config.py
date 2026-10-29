@@ -165,7 +165,7 @@ SOLIS_INVERTERS = [
     InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RHI-3P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RAI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.ENERGY, features=[]),
-    InverterConfig(model="RAI-3K-48ES-5G", wattage=[3000], phases=1, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="RAI-3K-48ES-5G", wattage=[3000], phases=1, type=InverterType.ENERGY, features=[]),
     InverterConfig(
         model="3P(3-20)K-4G",
         wattage=[3000, 4000, 5000, 6000, 8000, 9000, 10000, 12000, 15000, 17000, 20000],
