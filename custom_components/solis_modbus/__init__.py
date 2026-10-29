@@ -361,17 +361,19 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controller = _resolve_controller(call)
         _require_hybrid(controller)
 
-        await controller.async_write_holding_register(RC_FORCE_MODE_REG, mode)
+        # One batch: sent whole or, after an outage, dropped whole (#534).
+        async with controller.write_batch():
+            await controller.async_write_holding_register(RC_FORCE_MODE_REG, mode)
 
-        power_watts = call.data.get("power_watts")
-        if power_watts is not None:
-            max_watts = getattr(controller.inverter_config, "wattage_chosen", 60000) or 60000
-            watts = min(int(power_watts), int(max_watts))
-            await controller.async_write_holding_register(power_register, round(watts / RC_POWER_MULTIPLIER))
+            power_watts = call.data.get("power_watts")
+            if power_watts is not None:
+                max_watts = getattr(controller.inverter_config, "wattage_chosen", 60000) or 60000
+                watts = min(int(power_watts), int(max_watts))
+                await controller.async_write_holding_register(power_register, round(watts / RC_POWER_MULTIPLIER))
 
-        duration = call.data.get("duration_minutes")
-        if duration is not None:
-            await controller.async_write_holding_register(RC_TIMEOUT_REG, int(duration))
+            duration = call.data.get("duration_minutes")
+            if duration is not None:
+                await controller.async_write_holding_register(RC_TIMEOUT_REG, int(duration))
 
     async def service_force_battery_charge(call: ServiceCall) -> None:
         await _force_battery(call, 1, RC_CHARGE_POWER_REG)
@@ -498,16 +500,18 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             # Read before any write so a failed read leaves the inverter untouched.
             reserve_words = await _dispatch_reserve_words(controller, DISPATCH_RESERVE_SOC_REG, call)
             realtime_block = [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, *reserve_words]
-            await controller.async_write_holding_registers(DISPATCH_MASTER_REG, global_block)
-            await controller.async_write_holding_registers(DISPATCH_MODE_REG, realtime_block)
+            async with controller.write_batch():
+                await controller.async_write_holding_registers(DISPATCH_MASTER_REG, global_block)
+                await controller.async_write_holding_registers(DISPATCH_MODE_REG, realtime_block)
 
     async def service_dispatch_stop(call: ServiceCall) -> None:
         """Release Remote Dispatch (live-verified revert sequence)."""
         controller = _resolve_controller(call)
         _require_hybrid(controller)
-        await controller.async_write_holding_register(DISPATCH_MODE_REG, 1)
-        await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, 1)
-        await controller.async_write_holding_register(DISPATCH_MASTER_REG, 0)
+        async with controller.write_batch():
+            await controller.async_write_holding_register(DISPATCH_MODE_REG, 1)
+            await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, 1)
+            await controller.async_write_holding_register(DISPATCH_MASTER_REG, 0)
 
     async def service_dispatch_schedule(call: ServiceCall) -> None:
         """Program one of the six inverter-resident scheduled dispatch periods.
@@ -548,13 +552,14 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         async with _dispatch_lock(controller):
             # battery reserve SOC + PV power-limit percentage complete the block
             block += await _dispatch_reserve_words(controller, base + DISPATCH_SCHEDULE_RESERVE_OFFSET, call)
-            await controller.async_write_holding_registers(base, block)
+            async with controller.write_batch():
+                await controller.async_write_holding_registers(base, block)
 
-        if call.data["enabled"]:
-            # Schedules need the dispatch master on; long failsafe by default so
-            # the plan survives HA restarts (re-push daily to keep it alive).
-            await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 1440)))
-            await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
+                if call.data["enabled"]:
+                    # Schedules need the dispatch master on; long failsafe by default so
+                    # the plan survives HA restarts (re-push daily to keep it alive).
+                    await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 1440)))
+                    await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
 
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)
