@@ -139,6 +139,25 @@ async def test_failed_probe_keeps_the_last_verdict(rig):
     assert await rig.poll() == [33029, 33030]
 
 
+async def test_failed_first_probe_holds_until_the_model_is_read(rig):
+    rig.probe_ok, rig.block = False, [0, 0]
+    assert await rig.poll() == []
+    assert await rig.poll() == []
+
+    rig.probe_ok = True
+    assert await rig.poll() == [33029, 33030]
+
+
+async def test_unreadable_model_number_stops_holding_after_a_few_tries(rig):
+    """An inverter that rejects the model register must not hold readings forever."""
+    rig.probe_ok = False
+    assert await rig.poll() == []
+    assert await rig.poll() == []
+    assert await rig.poll() == [33029, 33030]
+    assert await rig.poll() == [33029, 33030]
+    assert rig.probes == 3
+
+
 def test_identity_register_is_the_model_number():
     by_type = {config.type: config.identity_register for config in SOLIS_INVERTERS}
     assert by_type[InverterType.HYBRID] == 33000

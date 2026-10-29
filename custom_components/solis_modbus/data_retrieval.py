@@ -38,6 +38,10 @@ _NIGHT_GRACE = timedelta(hours=1)
 # whether it answers at unit 1 instead of its configured slave ID.
 _SLAVE_PROBE_AFTER = timedelta(minutes=1)
 
+# Failed model-number probes on one connection before polling goes ahead without
+# the blank image check (an inverter that rejects the register mustn't stall).
+_MAX_INCONCLUSIVE_IMAGE_PROBES = 3
+
 
 class DataRetrieval:
     def __init__(
@@ -65,6 +69,7 @@ class DataRetrieval:
         # was last found real on, and when the current blank image was first seen.
         self._image_checked_on: int | None = None
         self._blank_since: float | None = None
+        self._inconclusive_image_probes = 0
         self.poll_lock = asyncio.Lock()
         self.connection_check = False
         self.first_poll = True
@@ -130,7 +135,7 @@ class DataRetrieval:
                 return start + off
         return None
 
-    async def _image_is_blank(self) -> bool:
+    async def _image_is_blank(self) -> bool | None:
         """Whether the datalogger answers from a blank register image (issue #540).
 
         A WiFi datalogger that has just rebooted can answer every read with zeros
@@ -138,11 +143,16 @@ class DataRetrieval:
         a lifetime energy counter at 0 is recorded as a meter reset. The model
         number tells them apart: it is never 0 on a real inverter, unlike the
         clock, which reads 0 on an inverter whose RTC lost power. A failed probe
-        proves nothing, so the previous verdict stands.
+        proves nothing: during a blank image it stays blank, otherwise the
+        result is None (unknown).
         """
         ok, vals = await self._probe_register_block_quiet(self.controller.inverter_config.identity_register, 1, False)
         if not ok:
-            return self._blank_since is not None
+            if self._blank_since is not None:
+                return True
+            self._inconclusive_image_probes += 1
+            return None
+        self._inconclusive_image_probes = 0
         if vals == [0]:
             if self._blank_since is None:
                 self._blank_since = time.monotonic()
@@ -586,7 +596,16 @@ class DataRetrieval:
                 # A fresh link may front a datalogger that has just rebooted.
                 connection = self.controller.connection_count
                 if self._image_checked_on != connection:
-                    if await self._image_is_blank():
+                    blank = await self._image_is_blank()
+                    if blank is None and self._inconclusive_image_probes >= _MAX_INCONCLUSIVE_IMAGE_PROBES:
+                        _LOGGER.debug(
+                            "(%s.%s) Model number unreadable after %s tries; polling without the blank image check.",
+                            self.controller.host,
+                            self.controller.slave,
+                            self._inconclusive_image_probes,
+                        )
+                        self._inconclusive_image_probes = 0
+                    elif blank is not False:
                         return
                     self._image_checked_on = connection
                 image_checked = False
@@ -641,7 +660,8 @@ class DataRetrieval:
                         # A block that read non-zero before is all zeros now: real
                         # (PV at dusk) or a blank image. Check at most once a batch.
                         image_checked = True
-                        if await self._image_is_blank():
+                        if await self._image_is_blank() is not False:
+                            # Blank or unknown: re-check before the next batch applies anything.
                             self._image_checked_on = None
                             break
 
