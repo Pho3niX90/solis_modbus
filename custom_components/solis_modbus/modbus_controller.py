@@ -122,6 +122,8 @@ class ModbusController:
             self.poll_lock = manager.get_client_lock(self.connection_id)
 
         self.connect_failures = 0
+        # Successful connects so far: tells callers the link was re-established.
+        self.connection_count = 0
         self._data_received = False
         self._poll_interval_fast = fast_poll
         self._poll_interval_normal = normal_poll
@@ -462,6 +464,7 @@ class ModbusController:
                 if self.connected():
                     _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")
                     self.connect_failures = 0
+                    self.connection_count += 1
                     _LOGGER.debug("(%s.%s) serial number: %s", self.host, self.device_id, self.serial_number)
                     return True
                 self.connect_failures += 1
