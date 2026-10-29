@@ -111,8 +111,10 @@ class SolisSelectEntity(RestoreEntity, SelectEntity):
                     )
                     return
                 if on_value is not None:
-                    await self._modbus_controller.async_write_holding_register(self._register, on_value)
-                    await self._write_companions()
+                    # The primary write and its companions form one combo (#534).
+                    async with self._modbus_controller.write_batch():
+                        await self._modbus_controller.async_write_holding_register(self._register, on_value)
+                        await self._write_companions()
                     self._attr_current_option = option
                     self.async_write_ha_state()
                     break

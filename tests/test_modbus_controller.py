@@ -175,7 +175,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_register(100, 42)
 
-        self.controller.write_queue.put.assert_called_once_with((100, 42, False, ANY))
+        self.controller.write_queue.put.assert_called_once_with((((100, 42, False),), ANY))
 
     async def test_async_write_holding_registers(self):
         """Test queuing a write to multiple holding registers."""
@@ -185,17 +185,20 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_registers(100, [42, 43])
 
-        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True, ANY))
+        self.controller.write_queue.put.assert_called_once_with((((100, [42, 43], True),), ANY))
 
-    async def _drain_write_queue(self, items, write_duration=0.0):
-        """Run process_write_queue over items; return the writes it executed."""
+    async def _drain_write_queue(self, items, write_duration=0.0, connected=None):
+        """Run process_write_queue over (writes, queued_at) items; return the writes it executed."""
         executed = []
 
         async def execute(register, value):
-            await asyncio.sleep(write_duration)
+            if write_duration:
+                await asyncio.sleep(write_duration)
             executed.append((register, value))
 
         self.mock_client.connected = True
+        if connected is not None:
+            self.controller.connected = connected
         self.controller._execute_write_holding_register = AsyncMock(side_effect=execute)
         self.controller._execute_write_holding_registers = AsyncMock(side_effect=execute)
         for item in items:
@@ -208,8 +211,8 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
     async def test_process_write_queue_drops_stale_backlog(self):
         """Writes queued during an outage are dropped, not replayed late (#534)."""
         now = time.monotonic()
-        backlog = [(43129, 218 + i, False, now - 100 + i * 5) for i in range(5)]
-        fresh = (43129, 0, False, now)
+        backlog = [(((43129, 218 + i, False),), now - 100 + i * 5) for i in range(5)]
+        fresh = (((43129, 0, False),), now)
 
         executed = await self._drain_write_queue([*backlog, fresh])
 
@@ -218,20 +221,112 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
     async def test_process_write_queue_keeps_fresh_writes_in_order(self):
         """With no outage every write is sent, in order."""
         now = time.monotonic()
-        items = [(43135, 2, False, now), (43136, 30, False, now), (43110, [1, 2], True, now)]
+        items = [(((43135, 2, False),), now), (((43136, 30, False),), now), (((43110, [1, 2], True),), now)]
 
         executed = await self._drain_write_queue(items)
 
         self.assertEqual(executed, [(43135, 2), (43136, 30), (43110, [1, 2])])
 
-    async def test_process_write_queue_keeps_burst_together(self):
-        """A combo straddling the age limit is sent whole, not half-sent."""
-        queued_at = time.monotonic() - WRITE_MAX_AGE + 0.05  # head is just fresh; the rest age out while it runs
-        combo = [(43135, 2, False, queued_at), (43136, 30, False, queued_at + 0.001), (43138, 5, False, queued_at + 0.002)]
+    async def test_process_write_queue_judges_each_write_on_its_own_age(self):
+        """A stale write just before a fresh combo doesn't take part of it down with it."""
+        now = time.monotonic()
+        items = [
+            (((1, 0, False),), now - WRITE_MAX_AGE - 0.5),
+            (((43135, 2, False),), now - WRITE_MAX_AGE + 0.5),
+            (((43136, 30, False),), now - WRITE_MAX_AGE + 0.501),
+        ]
 
-        executed = await self._drain_write_queue(combo, write_duration=0.1)
+        executed = await self._drain_write_queue(items)
+
+        self.assertEqual(executed, [(43135, 2), (43136, 30)])
+
+    async def test_process_write_queue_checks_age_after_an_outage(self):
+        """A write that waits out an outage behind a sent one is judged after the wait."""
+        polls = iter([True, False, True])  # first write sent, then the link drops
+        clock = [time.monotonic()]
+        items = [(((43135, 2, False),), clock[0]), (((43136, 47, False),), clock[0] + 0.5)]
+
+        async def outage(_seconds):
+            clock[0] += 900
+
+        with patch("custom_components.solis_modbus.modbus_controller.time") as mock_time, patch("asyncio.sleep", side_effect=outage):
+            mock_time.monotonic.side_effect = lambda: clock[0]
+            executed = await self._drain_write_queue(items, connected=lambda: next(polls, True))
+
+        self.assertEqual(executed, [(43135, 2)])
+
+    async def test_write_batch_is_sent_whole(self):
+        """A batch is one queue item, sent in order."""
+        async with self.controller.write_batch():
+            await self.controller.async_write_holding_register(43135, 2)
+            await self.controller.async_write_holding_registers(43136, [30, 5])
+        self.assertEqual(self.controller.write_queue.qsize(), 1)
+
+        executed = await self._drain_write_queue([])
+
+        self.assertEqual(executed, [(43135, 2), (43136, [30, 5])])
+
+    async def test_write_batch_is_dropped_whole_when_stale(self):
+        """An outage drops a whole batch, never half of it."""
+        stale = time.monotonic() - WRITE_MAX_AGE - 1
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), stale)]
+
+        executed = await self._drain_write_queue(items)
+
+        self.assertEqual(executed, [])
+
+    async def test_write_batch_that_ages_out_while_sending_is_finished(self):
+        """A batch fresh when it starts on a healthy link is sent whole."""
+        queued_at = time.monotonic() - WRITE_MAX_AGE + 0.05
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), queued_at)]
+
+        executed = await self._drain_write_queue(items, write_duration=0.1)
 
         self.assertEqual(executed, [(43135, 2), (43136, 30), (43138, 5)])
+
+    async def test_write_batch_interrupted_by_an_outage_drops_the_rest(self):
+        """If the link drops part-way through a batch, the rest isn't sent after the outage."""
+        polls = iter([True, False, True])
+        clock = [time.monotonic()]
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), clock[0])]
+
+        async def outage(_seconds):
+            clock[0] += 900
+
+        with patch("custom_components.solis_modbus.modbus_controller.time") as mock_time, patch("asyncio.sleep", side_effect=outage):
+            mock_time.monotonic.side_effect = lambda: clock[0]
+            with self.assertLogs("custom_components.solis_modbus.modbus_controller", "WARNING") as logs:
+                executed = await self._drain_write_queue(items, connected=lambda: next(polls, True))
+
+        self.assertEqual(executed, [(43135, 2)])
+        self.assertIn("43136=30, 43138=5", logs.output[0])
+        self.assertIn("part-way", logs.output[0])
+
+    async def test_write_batch_raising_queues_nothing(self):
+        """If the block raises, none of its writes are queued."""
+        with self.assertRaises(ValueError):
+            async with self.controller.write_batch():
+                await self.controller.async_write_holding_register(43135, 2)
+                raise ValueError
+        self.assertTrue(self.controller.write_queue.empty())
+
+    async def test_write_batch_leaves_other_writes_alone(self):
+        """Writes from other tasks, other controllers or after the block are queued on their own."""
+        other = ModbusController(
+            hass=self.hass, connection_type=CONN_TYPE_TCP, host="192.168.1.101", port=502, inverter_config=self.inverter_config, device_id=1
+        )
+        async with self.controller.write_batch():
+            await self.controller.async_write_holding_register(43135, 2)
+            later = asyncio.create_task(self.controller.async_write_holding_register(1, 1))  # runs after the block closes
+            await other.async_write_holding_register(2, 2)
+            async with self.controller.write_batch():  # nested blocks join the outer batch
+                await self.controller.async_write_holding_register(43136, 30)
+        await later
+        await self.controller.async_write_holding_register(3, 3)
+
+        items = [self.controller.write_queue.get_nowait()[0] for _ in range(self.controller.write_queue.qsize())]
+        self.assertEqual(items, [((43135, 2, False), (43136, 30, False)), ((1, 1, False),), ((3, 3, False),)])
+        self.assertEqual(other.write_queue.get_nowait()[0], ((2, 2, False),))
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
@@ -417,7 +512,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_register(100, 42)
 
-        self.controller.write_queue.put.assert_called_once_with((100, 42, False, ANY))
+        self.controller.write_queue.put.assert_called_once_with((((100, 42, False),), ANY))
 
     async def test_async_write_holding_registers(self):
         """Test queuing a write to multiple holding registers."""
@@ -427,7 +522,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_registers(100, [42, 43])
 
-        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True, ANY))
+        self.controller.write_queue.put.assert_called_once_with((((100, [42, 43], True),), ANY))
 
     def test_poll_speed(self):
         """Test the poll_speed property."""

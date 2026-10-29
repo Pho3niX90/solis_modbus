@@ -1,6 +1,8 @@
 import asyncio
+import contextvars
 import logging
 import time
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -42,9 +44,18 @@ RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})
 # Queued writes older than this are dropped instead of sent late (#534): after a
 # link outage, a backlog of control setpoints must not replay minutes later.
 WRITE_MAX_AGE = 30  # s
-# Writes queued within this window of the first in a burst (e.g. the RC mode,
-# power and timeout combo) share its verdict, so a combo is never half-sent.
-WRITE_BURST_WINDOW = 1  # s
+
+# The write batch open in the current task (see ModbusController.write_batch).
+_current_write_batch: contextvars.ContextVar = contextvars.ContextVar("solis_write_batch", default=None)
+
+
+class _WriteBatch:
+    """Writes collected by ModbusController.write_batch, queued as one item."""
+
+    def __init__(self, controller):
+        self.controller = controller
+        self.writes = []
+        self.open = True
 
 
 def _exception_code_from_modbus_result(result) -> int | None:
@@ -145,9 +156,9 @@ class ModbusController:
         # self.poll_lock = asyncio.Lock() # Replaced by shared lock from manager
 
         # Modbus Write Queue
+        # Items are (writes, queued_at): writes is a tuple of (register, value,
+        # multiple), sent in order or dropped together once queued_at is too old.
         self.write_queue = asyncio.Queue()
-        self._write_burst_start: float | None = None
-        self._write_burst_stale = False
         self._last_modbus_success = datetime.now(UTC)
         # Whether this inverter has answered a read since startup (unlike
         # _last_modbus_success, which starts at "now").
@@ -166,42 +177,44 @@ class ModbusController:
         try:
             while True:
                 # Block until a write is queued instead of busy-polling.
-                write_request = await self.write_queue.get()
+                writes, queued_at = await self.write_queue.get()
                 try:
-                    # Wait for the link BEFORE processing, so a write queued during a
-                    # reconnect window isn't executed (and acked via task_done) while
-                    # still disconnected — which could silently drop a control write.
-                    while not self.connected():
-                        await asyncio.sleep(5)
-                    register, value, multiple, queued_at = write_request
-
-                    if self._is_stale_write(queued_at):
-                        _LOGGER.warning(
-                            "(%s.%s) Dropped stale queued write to register %s (value %s, %.0f s old)",
-                            self.host,
-                            self.device_id,
-                            register,
-                            value,
-                            time.monotonic() - queued_at,
-                        )
-                        continue
-
-                    if multiple:
-                        await self._execute_write_holding_registers(register, value)
-                    else:
-                        await self._execute_write_holding_register(register, value)
+                    for index, (register, value, multiple) in enumerate(writes):
+                        # Wait for the link BEFORE each write, so a write queued during a
+                        # reconnect window isn't executed (and acked via task_done) while
+                        # still disconnected — which could silently drop a control write.
+                        waited = False
+                        while not self.connected():
+                            waited = True
+                            await asyncio.sleep(5)
+                        # Judged at the start of the item and after any wait, so the age
+                        # covers an outage; a batch already running on a healthy link is
+                        # finished even if it crosses the limit while it is sent.
+                        age = time.monotonic() - queued_at
+                        if (index == 0 or waited) and age > WRITE_MAX_AGE:
+                            self._log_dropped_writes(writes[index:], age, partial=index > 0)
+                            break
+                        if multiple:
+                            await self._execute_write_holding_registers(register, value)
+                        else:
+                            await self._execute_write_holding_register(register, value)
                 finally:
                     self.write_queue.task_done()
         except asyncio.CancelledError:
             # Clean shutdown on entry unload/reload.
             raise
 
-    def _is_stale_write(self, queued_at: float) -> bool:
-        """Whether a queued write is too old to send, judged once per burst."""
-        if self._write_burst_start is None or queued_at - self._write_burst_start > WRITE_BURST_WINDOW:
-            self._write_burst_start = queued_at
-            self._write_burst_stale = time.monotonic() - queued_at > WRITE_MAX_AGE
-        return self._write_burst_stale
+    def _log_dropped_writes(self, writes, age: float, partial: bool) -> None:
+        """Warn about queued writes dropped for being older than WRITE_MAX_AGE."""
+        _LOGGER.warning(
+            "(%s.%s) Dropped %s queued write(s) %.0f s old: %s%s",
+            self.host,
+            self.device_id,
+            len(writes),
+            age,
+            ", ".join(f"{register}={value}" for register, value, _ in writes),
+            " (the link dropped part-way through this batch; its earlier writes were sent)" if partial else "",
+        )
 
     async def _execute_write_holding_register(self, register, value):
         """Executes a single register write with interframe delay.
@@ -294,7 +307,7 @@ class ModbusController:
         Returns:
             None
         """
-        await self.write_queue.put((register, value, False, time.monotonic()))
+        await self._queue_write((register, value, False))
 
     async def async_write_holding_registers(self, start_register, values):
         """Queues a write request to the Modbus device (write multiple registers).
@@ -306,7 +319,37 @@ class ModbusController:
         Returns:
             None
         """
-        await self.write_queue.put((start_register, values, True, time.monotonic()))
+        await self._queue_write((start_register, values, True))
+
+    async def _queue_write(self, write) -> None:
+        """Queue one write, or add it to the write batch open in this task."""
+        batch = _current_write_batch.get()
+        if batch is not None and batch.open and batch.controller is self:
+            batch.writes.append(write)
+        else:
+            await self.write_queue.put(((write,), time.monotonic()))
+
+    @asynccontextmanager
+    async def write_batch(self):
+        """Queue the writes made inside this block as one item (#534).
+
+        For combos whose writes depend on each other (e.g. the RC mode, power and
+        timeout): the item is sent in order or, once older than WRITE_MAX_AGE,
+        dropped whole. If the block raises, nothing is queued.
+        """
+        outer = _current_write_batch.get()
+        if outer is not None and outer.open and outer.controller is self:
+            yield  # nested: the outer batch queues these writes
+            return
+        batch = _WriteBatch(self)
+        token = _current_write_batch.set(batch)
+        try:
+            yield
+        finally:
+            batch.open = False
+            _current_write_batch.reset(token)
+        if batch.writes:
+            await self.write_queue.put((tuple(batch.writes), time.monotonic()))
 
     async def inter_frame_wait(self, is_write=False):
         """Spacing between Modbus frames on this link (shared across parallel inverters on the same host:port)."""
