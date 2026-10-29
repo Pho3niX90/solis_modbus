@@ -83,6 +83,11 @@ class InverterConfig:
         """An input register every inverter of this type answers, for checking a unit responds."""
         return 3041 if self.type in [InverterType.GRID, InverterType.STRING] else 35000
 
+    @property
+    def identity_register(self) -> int:
+        """The model-number input register, which never reads 0 on a real inverter."""
+        return 2999 if self.type in [InverterType.GRID, InverterType.STRING] else 33000
+
     def clone_with_options(self, options: InverterOptions, connection: str) -> InverterConfig:
         """Copy this model definition with user-chosen options (does not mutate SOLIS_INVERTERS templates)."""
         return InverterConfig(
