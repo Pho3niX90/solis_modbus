@@ -2,7 +2,7 @@
 
 import asyncio
 import contextlib
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pymodbus.client import AsyncModbusTcpClient
@@ -80,6 +80,13 @@ def _groups(speed: PollSpeed, *starts: int) -> list[SolisSensorGroup]:
         group.registrar_count = 1
         groups.append(group)
     return groups
+
+
+@pytest.fixture(autouse=True)
+def _real_register_image():
+    """The fake client reads zeros; tests for the blank image probe are in test_blank_register_image.py."""
+    with patch.object(DataRetrieval, "_image_is_blank", AsyncMock(return_value=False)):
+        yield
 
 
 @pytest.fixture(autouse=True)

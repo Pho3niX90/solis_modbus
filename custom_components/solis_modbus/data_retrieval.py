@@ -61,6 +61,10 @@ class DataRetrieval:
         # Set once its issue is raised: stop probing, but keep checking whether to clear it.
         self._slave_id_issue_raised = False
         self._polling_since: float | None = None
+        # Blank register image guard (issue #540): the connection_count the image
+        # was last found real on, and when the current blank image was first seen.
+        self._image_checked_on: int | None = None
+        self._blank_since: float | None = None
         self.poll_lock = asyncio.Lock()
         self.connection_check = False
         self.first_poll = True
@@ -125,6 +129,39 @@ class DataRetrieval:
             if not ok_one:
                 return start + off
         return None
+
+    async def _image_is_blank(self) -> bool:
+        """Whether the datalogger answers from a blank register image (issue #540).
+
+        A WiFi datalogger that has just rebooted can answer every read with zeros
+        for minutes before it relays the inverter again. Those aren't readings:
+        a lifetime energy counter at 0 is recorded as a meter reset. The model
+        number tells them apart: it is never 0 on a real inverter, unlike the
+        clock, which reads 0 on an inverter whose RTC lost power. A failed probe
+        proves nothing, so the previous verdict stands.
+        """
+        ok, vals = await self._probe_register_block_quiet(self.controller.inverter_config.identity_register, 1, False)
+        if not ok:
+            return self._blank_since is not None
+        if vals == [0]:
+            if self._blank_since is None:
+                self._blank_since = time.monotonic()
+                _LOGGER.warning(
+                    "(%s.%s) The datalogger answers with a blank register image (model number 0); "
+                    "keeping the last readings until it relays the inverter again.",
+                    self.controller.host,
+                    self.controller.slave,
+                )
+            return True
+        if self._blank_since is not None:
+            _LOGGER.warning(
+                "(%s.%s) The datalogger relays the inverter again after %.0f s of a blank register image; readings resume.",
+                self.controller.host,
+                self.controller.slave,
+                time.monotonic() - self._blank_since,
+            )
+            self._blank_since = None
+        return False
 
     def _apply_register_read_to_cache(self, sensor_group: SolisSensorGroup, values: list[int], marked_for_removal: list) -> None:
         start_register = sensor_group.start_register
@@ -546,6 +583,14 @@ class DataRetrieval:
                 total_registrars, total_groups = 0, 0
                 marked_for_removal = []
 
+                # A fresh link may front a datalogger that has just rebooted.
+                connection = self.controller.connection_count
+                if self._image_checked_on != connection:
+                    if await self._image_is_blank():
+                        return
+                    self._image_checked_on = connection
+                image_checked = False
+
                 for sensor_group in groups:
                     start_register = sensor_group.start_register
                     count = sensor_group.registrar_count
@@ -591,6 +636,14 @@ class DataRetrieval:
                             f"for register {start_register} - {end_register}. Skipping because linking them is uncertain."
                         )
                         continue
+
+                    if not image_checked and not any(values) and any(cache_get(self.hass, self.controller, start_register + i) for i in range(count)):
+                        # A block that read non-zero before is all zeros now: real
+                        # (PV at dusk) or a blank image. Check at most once a batch.
+                        image_checked = True
+                        if await self._image_is_blank():
+                            self._image_checked_on = None
+                            break
 
                     self._apply_register_read_to_cache(sensor_group, values, marked_for_removal)
 

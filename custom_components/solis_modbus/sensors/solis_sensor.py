@@ -1,7 +1,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from homeassistant.components.sensor import RestoreSensor, SensorEntity
+from homeassistant.components.sensor import RestoreSensor, SensorEntity, SensorStateClass
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -31,6 +31,10 @@ class SolisSensor(RestoreSensor, SensorEntity):
         self._unit_of_measurement = sensor.unit_of_measurement
         self._attr_device_class = sensor.device_class
         self._attr_state_class = sensor.state_class
+        # A lifetime counter never returns to 0: a 0 comes from a blank register
+        # image and would be recorded as a meter reset (issue #540). Periodic
+        # counters (today, month, ...) do reset to 0, so they aren't held.
+        self._is_lifetime_counter = sensor.state_class == SensorStateClass.TOTAL_INCREASING and "total" in (sensor.unique_id or "")
         self._attr_native_unit_of_measurement = sensor.unit_of_measurement
         self._attr_available = not sensor.hidden and sensor.enabled
         # Don't register hidden/disabled sensors as enabled entities — otherwise
@@ -118,6 +122,10 @@ class SolisSensor(RestoreSensor, SensorEntity):
             new_value = self.base_sensor.convert_value(values)
             # Clear received values after update
             self._received_values.clear()
+
+            if new_value == 0 and self._is_lifetime_counter and self._attr_native_value:
+                _LOGGER.debug("Ignoring a drop to 0 of lifetime counter %s; keeping %s", self._attr_unique_id, self._attr_native_value)
+                return
 
             # Update state if valid value exists
             if new_value is not None:

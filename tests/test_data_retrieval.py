@@ -2,10 +2,19 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from custom_components.solis_modbus.const import DOMAIN, VALUES
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data_retrieval import DataRetrieval
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
+
+
+@pytest.fixture(autouse=True)
+def _real_register_image():
+    """These mocks don't answer the blank image probe; tests for it are in test_blank_register_image.py."""
+    with patch.object(DataRetrieval, "_image_is_blank", AsyncMock(return_value=False)):
+        yield
 
 
 class TestDataRetrieval(unittest.TestCase):
