@@ -313,10 +313,10 @@ Solis and equivalent Axitec and Zonneplan inverters that users have confirmed wo
 | S5-EH1P(3-6)K-L, incl. S5-EH1P5K-L, S5-EH1P6K-L | `S5-EH1P` | Some control registers revert on some firmware | [#89](https://github.com/Pho3niX90/solis_modbus/issues/89), [#94](https://github.com/Pho3niX90/solis_modbus/issues/94), [#475](https://github.com/Pho3niX90/solis_modbus/issues/475) |
 | RHI-3K-48ES-5G | `RHI-1P` | Other single-phase 48ES-5G sizes should work the same way | [#97](https://github.com/Pho3niX90/solis_modbus/issues/97#issuecomment-2639807764), [#529](https://github.com/Pho3niX90/solis_modbus/issues/529) |
 | RHI-3P10K-HVES-5G | `RHI-3P` | Inverter ignores the per-slot TOU charge current | [#249](https://github.com/Pho3niX90/solis_modbus/issues/249), [#393](https://github.com/Pho3niX90/solis_modbus/issues/393) |
-| RAI-3K-48ES-5G | `RAI-3K-48ES-5G` | | [#174](https://github.com/Pho3niX90/solis_modbus/issues/174) |
 | **Energy storage (AC-coupled)** | | | |
 | S6-EA1P5K-L | `S6-EA1P` | | [#433](https://github.com/Pho3niX90/solis_modbus/discussions/433), [#514](https://github.com/Pho3niX90/solis_modbus/issues/514) |
 | S6-EA1P6K-L | `S6-EA1P` | Disable direct PV input; see the [model notes](https://solis-modbus.readthedocs.io/en/latest/s6-ea1p6k-l.html) | [#531](https://github.com/Pho3niX90/solis_modbus/pull/531) |
+| RAI-3K-48ES-5G | `RAI-3K-48ES-5G` | Monitoring confirmed; controls not yet tested | [#174](https://github.com/Pho3niX90/solis_modbus/issues/174), [#539](https://github.com/Pho3niX90/solis_modbus/issues/539) |
 | **Grid-tied (string)** | | | |
 | S6-GR1P4K | `S6-GR1P` | | [#84](https://github.com/Pho3niX90/solis_modbus/issues/84) |
 | S5-GR1P8K | `S5-GR1P` | Reading works; power-limit control not confirmed | [#321](https://github.com/Pho3niX90/solis_modbus/issues/321) |
