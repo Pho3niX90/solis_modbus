@@ -1,6 +1,7 @@
 """Remote Dispatch services (44100 block) — live-verified write sequences."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -80,6 +81,33 @@ async def setup_services(hass, controller):
 
 def single_writes(controller):
     return [c.args for c in controller.async_write_holding_register.await_args_list]
+
+
+def record_write_batches(controller):
+    """Make controller.write_batch() group the writes made inside it; return the groups (#534)."""
+    batches = []
+    state = {"open": False}
+
+    @asynccontextmanager
+    async def write_batch():
+        batches.append([])
+        state["open"] = True
+        try:
+            yield
+        finally:
+            state["open"] = False
+
+    def record(*args):
+        if state["open"]:
+            batches[-1].append(args)
+        else:
+            batches.append([args])
+
+    controller.write_batch = write_batch
+    controller.async_write_holding_register.side_effect = record
+    if isinstance(getattr(controller, "async_write_holding_registers", None), AsyncMock):
+        controller.async_write_holding_registers.side_effect = record
+    return batches
 
 
 @pytest.mark.asyncio
@@ -270,6 +298,20 @@ async def test_dispatch_stop_verified_revert(hass: HomeAssistant, controller):
     await setup_services(hass, controller)
     await hass.services.async_call(DOMAIN, "solis_dispatch_stop", {}, blocking=True)
     assert single_writes(controller) == [(44105, 1), (44108, 1), (44100, 0)]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_services_queue_each_combo_as_one_batch(hass: HomeAssistant, controller):
+    """Each service's writes are sent whole or dropped whole after an outage (#534)."""
+    batches = record_write_batches(controller)
+    await setup_services(hass, controller)
+    cache = {34502: 0xAA55, 34503: 3}
+    with patch("custom_components.solis_modbus.helpers.cache_get", side_effect=lambda _hass, _controller, register: cache.get(register)):
+        await hass.services.async_call(DOMAIN, "solis_dispatch", {"mode": "grid_import", "power_watts": 6000, "failsafe_minutes": 30}, blocking=True)
+        await hass.services.async_call(DOMAIN, "solis_dispatch_schedule", {"period": 1, "enabled": True}, blocking=True)
+    await hass.services.async_call(DOMAIN, "solis_dispatch_stop", {}, blocking=True)
+
+    assert [[write[0] for write in batch] for batch in batches] == [[44100, 44105], [44116, 44101, 44100], [44105, 44108, 44100]]
 
 
 @pytest.mark.asyncio

@@ -175,6 +175,9 @@ async def test_companion_writes_after_on_value_select(mock_hass, mock_controller
             ((43129, cached[43129]), {}),
             ((43282, cached[43282]), {}),
         ]
+        # ...queued as one batch, so an outage can't send the primary without them (#534)
+        calls = [name for name, _, _ in mock_controller.mock_calls if name.startswith(("write_batch", "async_write"))]
+        assert calls == ["write_batch", "write_batch().__aenter__", *["async_write_holding_register"] * 4, "write_batch().__aexit__"]
 
 
 @pytest.mark.asyncio
