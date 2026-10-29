@@ -187,13 +187,13 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         self.controller.write_queue.put.assert_called_once_with((((100, [42, 43], True),), ANY))
 
-    async def _drain_write_queue(self, items, write_duration=0.0, connected=None):
+    async def _drain_write_queue(self, items, connected=None, on_write=None):
         """Run process_write_queue over (writes, queued_at) items; return the writes it executed."""
         executed = []
 
         async def execute(register, value):
-            if write_duration:
-                await asyncio.sleep(write_duration)
+            if on_write:
+                on_write()
             executed.append((register, value))
 
         self.mock_client.connected = True
@@ -277,10 +277,15 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
     async def test_write_batch_that_ages_out_while_sending_is_finished(self):
         """A batch fresh when it starts on a healthy link is sent whole."""
-        queued_at = time.monotonic() - WRITE_MAX_AGE + 0.05
-        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), queued_at)]
+        clock = [1000.0]
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), clock[0] - WRITE_MAX_AGE + 1)]
 
-        executed = await self._drain_write_queue(items, write_duration=0.1)
+        def slow_write():
+            clock[0] += 10  # the batch crosses WRITE_MAX_AGE after its first write
+
+        with patch("custom_components.solis_modbus.modbus_controller.time") as mock_time:
+            mock_time.monotonic.side_effect = lambda: clock[0]
+            executed = await self._drain_write_queue(items, on_write=slow_write)
 
         self.assertEqual(executed, [(43135, 2), (43136, 30), (43138, 5)])
 
