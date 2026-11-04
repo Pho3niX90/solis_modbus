@@ -781,13 +781,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             for entity in supported_derived
         ]
 
+        # Dedicated RC controls are independent of the telemetry polling profile.
+        from .dispatch_control import SolisDispatchCoordinator
         set_controller(hass, controller, entry)
+        if inverter_config.type in (InverterType.HYBRID, InverterType.ENERGY):
+            entry.runtime_data.dispatch_control = SolisDispatchCoordinator(hass, controller)
 
         _LOGGER.debug(f"Config entry setup for {connection_type} connection: {connection_id}, slave {slave}")
 
         # Set up all platforms in one call (concurrent) — matches the unload side,
         # which already unloads [Platform.SENSOR, *PLATFORMS] together.
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
+
+        if entry.runtime_data.dispatch_control is not None:
+            await entry.runtime_data.dispatch_control.start()
 
         entry.runtime_data.data_retrieval = DataRetrieval(
             hass,
@@ -1153,6 +1160,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     if unload_ok:
         runtime = getattr(entry, "runtime_data", None)
         if runtime is not None:
+            if runtime.dispatch_control is not None:
+                await runtime.dispatch_control.stop()
             if runtime.data_retrieval is not None:
                 await runtime.data_retrieval.async_stop()
             _LOGGER.debug("Closing Modbus connection for entry %s", entry.entry_id)
