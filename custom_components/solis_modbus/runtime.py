@@ -27,5 +27,6 @@ class SolisRuntimeData:
 
     controller: ModbusController
     data_retrieval: DataRetrieval | None = None
+    dispatch_control: object | None = None
     # platform key ("sensor", "number", "switch", "select", "time") -> entity list
     entities: dict[str, list] = field(default_factory=dict)
