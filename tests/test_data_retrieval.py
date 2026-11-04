@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -374,3 +375,33 @@ async def test_poll_continues_after_failure_when_link_up():
         await retrieval.get_modbus_updates(groups, PollSpeed.SLOW)
 
     assert controller.async_read_holding_registers_with_exception.await_count == 3
+
+
+async def test_poll_controller_starts_write_queue_as_background_task():
+    """Issue #546: process_write_queue() runs until it is cancelled, and entries are not
+    unloaded at shutdown, so as a tracked task it kept Home Assistant waiting ("was still
+    running after final writes shutdown stage"). A background task is cancelled by HA
+    when it stops instead."""
+    retrieval, controller = _make_stale_watchdog_fixture(None)
+    hass = retrieval.hass
+    retrieval.check_connection = AsyncMock()
+
+    with patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval"):
+        await retrieval.poll_controller()
+
+    hass.async_create_background_task.assert_called_once()
+    assert hass.async_create_background_task.call_args.args[0] is controller.process_write_queue.return_value
+    hass.async_create_task.assert_not_called()
+    assert retrieval._write_task is hass.async_create_background_task.return_value
+
+
+async def test_async_stop_cancels_write_queue_task():
+    """Unload/reload still cancels the write queue task itself and waits for it."""
+    retrieval, _ = _make_stale_watchdog_fixture(None)
+    task = asyncio.create_task(asyncio.Event().wait())
+    retrieval._write_task = task
+
+    await retrieval.async_stop()
+
+    assert task.cancelled()
+    assert retrieval._write_task is None
