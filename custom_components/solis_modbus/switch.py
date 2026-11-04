@@ -34,6 +34,12 @@ async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_devices):
             child_entity["write_register"] = main_entity.get("write_register", None)
             switch_entities.append(SolisBinaryEntity(hass, modbus_controller, child_entity))
 
+    dispatch = getattr(config_entry.runtime_data, "dispatch_control", None)
+    if dispatch is not None:
+        from .dispatch_control import SolisDispatchSelfUse
+        entity = SolisDispatchSelfUse(dispatch)
+        dispatch.entities.append(entity)
+        switch_entities.append(entity)
     config_entry.runtime_data.entities["switch"] = switch_entities
     async_add_devices(switch_entities, True)
 
