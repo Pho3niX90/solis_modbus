@@ -48,6 +48,11 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._keep_alive = entity_definition.get("keep_alive", False)
         self._keep_alive_unsub = None
         self._tou_v1 = entity_definition.get("tou_v1", False)
+        # Split read/write switches (string 3089 feedback / 3069 control): some models
+        # never fill the feedback register (#538), so fall back to reading the control
+        # register itself. Disabled after a failed read so it can't spam the log.
+        self._write_fallback_enabled = self._write_register != self._register
+        self._write_fallback_pending = False
 
     @property
     def available(self) -> bool:
@@ -108,8 +113,42 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
                 raw_bit = get_bit_bool(value, self._bit_position)
                 self._attr_is_on = (not raw_bit) if self._inverted else raw_bit
             if self._on_value is not None:
-                self._attr_is_on = value == self._on_value
+                if self._off_value is None or value in (self._on_value, self._off_value):
+                    self._attr_is_on = value == self._on_value
+                else:
+                    # Neither on nor off: the register doesn't report this switch's
+                    # state (#538). Keep the last known state rather than flip to off.
+                    self._schedule_write_register_fallback(value)
             _LOGGER.debug(f"switch {self.unique_id} set to {self._attr_is_on}, value = {updated_value}")
+
+    def _schedule_write_register_fallback(self, feedback_value: int) -> None:
+        if not self._write_fallback_enabled or self._write_fallback_pending:
+            return
+        _LOGGER.debug(
+            f"switch {self.unique_id}: register {self._register} = {feedback_value} is neither on nor off, reading write register {self._write_register}"
+        )
+        self._write_fallback_pending = True
+        self._hass.async_create_task(self._read_write_register_fallback())
+
+    async def _read_write_register_fallback(self) -> None:
+        try:
+            registers = await self._modbus_controller.async_read_holding_register(self._write_register, 1)
+        finally:
+            self._write_fallback_pending = False
+
+        value = registers[0] if registers else None
+        if value not in (self._on_value, self._off_value):
+            # Unreadable, or it doesn't hold the state either: stop trying and keep
+            # the last written/known state.
+            self._write_fallback_enabled = False
+            _LOGGER.info(
+                f"switch {self.unique_id}: write register {self._write_register} returned {value}; keeping the last known state instead of reading it back"
+            )
+            return
+
+        self._attr_is_on = value == self._on_value
+        if self.hass is not None:
+            self.async_write_ha_state()
 
     @property
     def is_on(self):
