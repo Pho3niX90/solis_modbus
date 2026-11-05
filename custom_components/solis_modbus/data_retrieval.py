@@ -502,7 +502,14 @@ class DataRetrieval:
             )
         )
 
-        self._write_task = self.hass.async_create_task(self.controller.process_write_queue())
+        # A background task, not a tracked one: process_write_queue() never ends on
+        # its own, and HA waits for tracked tasks at shutdown ("was still running
+        # after final writes shutdown stage", issue #546). HA cancels background
+        # tasks when it stops; async_stop still cancels this one on unload/reload.
+        self._write_task = self.hass.async_create_background_task(
+            self.controller.process_write_queue(),
+            f"{DOMAIN} write queue {self.controller.host}.{self.controller.slave}",
+        )
 
     async def modbus_update_all(self):
         """Updates all sensor groups regardless of their poll speed.
