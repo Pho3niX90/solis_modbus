@@ -18,6 +18,7 @@ from .const import (
     CONF_PARITY,
     CONF_POLL_PROFILE,
     CONF_SERIAL_PORT,
+    CONF_SKIP_CONN_CHECK,
     CONF_STOPBITS,
     CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
     CONN_TYPE_SERIAL,
@@ -104,6 +105,7 @@ TCP_CONFIG_SCHEMA = {
     vol.Required("host", default=""): str,
     vol.Required("port", default=502): int,
     vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
+    vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
 }
 
 # Serial-specific fields (no WiFi dongle type needed)
@@ -114,6 +116,7 @@ SERIAL_CONFIG_SCHEMA = {
     vol.Required(CONF_BYTESIZE, default=DEFAULT_BYTESIZE): vol.In([7, 8]),
     vol.Required(CONF_PARITY, default=DEFAULT_PARITY): vol.In(PARITY_OPTIONS),
     vol.Required(CONF_STOPBITS, default=DEFAULT_STOPBITS): vol.In([1, 2]),
+    vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
 }
 
 OPTIONS_SCHEMA = vol.Schema(
@@ -259,6 +262,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Update existing entry data with new input
             data = {**entry.data, **user_input}
+            data.pop(CONF_SKIP_CONN_CHECK, None)
             serial = (data.get(CONF_INVERTER_SERIAL) or "").strip()
 
             # Require serial and model so the form always collects them
@@ -272,7 +276,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             elif interval_error := _validate_poll_interval(data):
                 errors["base"] = interval_error
             else:
-                valid, err_key = await self._validate_config(data)
+                valid, err_key = await self._validate_config({**data, CONF_SKIP_CONN_CHECK: user_input.get(CONF_SKIP_CONN_CHECK, False)})
                 if valid:
                     # Strip reconfigured keys from options: setup merges
                     # {**data, **options}, so stale option values would silently
@@ -322,7 +326,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
         # 4. Create the Config Entry
-        return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=data)
+        entry_data = {k: v for k, v in data.items() if k != CONF_SKIP_CONN_CHECK}
+        return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=entry_data)
 
     async def _validate_config(self, user_input):
         """Validate the configuration by probing the Modbus device.
@@ -342,10 +347,18 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning("Invalid or unknown inverter model: %s", inverter_model)
             return False, "invalid_model"
 
+        conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
+        if conn_type != CONN_TYPE_TCP and not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
+            _LOGGER.error("Serial port %s cannot be opened", user_input[CONF_SERIAL_PORT])
+            return False, "serial_port_unsupported"
+
+        if user_input.get(CONF_SKIP_CONN_CHECK, False):
+            _LOGGER.info("Skipping initial connectivity check by user request (%s)", conn_type)
+            return True, None
+
         user_options = inverter_options_from_config(user_input, inverter_template)
         inverter_config = inverter_template.clone_with_options(user_options, user_input.get("connection", "S2_WL_ST"))
 
-        conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
         device_id = user_input.get("slave", 1)
         probe_register = inverter_config.probe_register
 
@@ -362,9 +375,6 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return False, "tcp_port_closed"
             client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
-            if not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
-                _LOGGER.error("Serial port %s cannot be opened", user_input[CONF_SERIAL_PORT])
-                return False, "serial_port_unsupported"
             client_cls = SerialProxyClient if is_serial_proxy(user_input[CONF_SERIAL_PORT]) else AsyncModbusSerialClient
             client = client_cls(
                 port=user_input[CONF_SERIAL_PORT],
