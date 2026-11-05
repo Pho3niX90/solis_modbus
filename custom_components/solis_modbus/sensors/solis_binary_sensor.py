@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
@@ -8,7 +9,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.solis_modbus import ModbusController
-from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.const import CONTROLLER, MODBUS_ILLEGAL_DATA_ADDRESS, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.helpers import (
     cache_get,
     cache_save,
@@ -19,6 +20,7 @@ from custom_components.solis_modbus.helpers import (
     tou_v2_active,
     unique_id_generator_binary,
 )
+from custom_components.solis_modbus.modbus_controller import WRITE_MAX_AGE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,9 +52,10 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
         self._tou_v1 = entity_definition.get("tou_v1", False)
         # Split read/write switches (string 3089 feedback / 3069 control): some models
         # never fill the feedback register (#538), so fall back to reading the control
-        # register itself. Disabled after a failed read so it can't spam the log.
+        # register itself. Disabled only if the inverter rejects that address.
         self._write_fallback_enabled = self._write_register != self._register
         self._write_fallback_pending = False
+        self._last_write_queued: float | None = None
 
     @property
     def available(self) -> bool:
@@ -132,18 +135,26 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
     async def _read_write_register_fallback(self) -> None:
         try:
-            registers = await self._modbus_controller.async_read_holding_register(self._write_register, 1)
+            registers, exception_code = await self._modbus_controller.async_read_holding_registers_with_exception(self._write_register, 1)
         finally:
             self._write_fallback_pending = False
 
-        value = registers[0] if registers else None
+        if not registers:
+            # Anything else may be a link blip: try again at the next poll.
+            if exception_code == MODBUS_ILLEGAL_DATA_ADDRESS:
+                self._write_fallback_enabled = False
+                _LOGGER.info(f"switch {self.unique_id}: inverter has no holding register {self._write_register}; keeping the last known state")
+            return
+
+        value = registers[0]
         if value not in (self._on_value, self._off_value):
-            # Unreadable, or it doesn't hold the state either: stop trying and keep
-            # the last written/known state.
-            self._write_fallback_enabled = False
-            _LOGGER.info(
-                f"switch {self.unique_id}: write register {self._write_register} returned {value}; keeping the last known state instead of reading it back"
-            )
+            _LOGGER.debug(f"switch {self.unique_id}: write register {self._write_register} = {value} is neither on nor off")
+            return
+
+        # Writes are queued, so this read may have overtaken one. A write older than
+        # WRITE_MAX_AGE has been sent or dropped; until then, trust the commanded state.
+        if self._last_write_queued is not None and time.monotonic() - self._last_write_queued <= WRITE_MAX_AGE:
+            _LOGGER.debug(f"switch {self.unique_id}: ignoring write register {self._write_register} = {value}, a write may still be pending")
             return
 
         self._attr_is_on = value == self._on_value
@@ -261,6 +272,7 @@ class SolisBinaryEntity(RestoreEntity, SwitchEntity):
 
         if (force or current_register_value != new_register_value) and controller.connected():
             target_register = self._write_register
+            self._last_write_queued = time.monotonic()
             await controller.async_write_holding_register(target_register, new_register_value)
             cache_save(self._hass, self._modbus_controller, target_register, new_register_value)
 
