@@ -74,6 +74,7 @@ CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE = "suppress_night_offline_issue"
 # Adjustment" sensor, the only thing that writes without a user action, so
 # monitoring-only installs never touch the inverter.
 CONF_CLOCK_SYNC = "clock_sync"
+CONF_SKIP_CONN_CHECK = "skip_conn_check"
 
 POLL_PROFILES = {
     POLL_PROFILE_FULL: "Full (all sensors)",

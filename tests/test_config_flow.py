@@ -306,3 +306,195 @@ async def test_serial_probe_passes_device_id(hass: HomeAssistant):
 
     assert (valid, err) == (True, None)
     assert mock_client.read_input_registers.await_args.kwargs["device_id"] == 7
+
+
+@pytest.mark.asyncio
+async def test_skip_conn_check_bypasses_tcp_and_modbus_probe(hass: HomeAssistant):
+    """When skip_conn_check is True, neither the TCP port probe nor the Modbus
+    client is opened, preventing single-connection dataloggers from locking up."""
+    from unittest.mock import AsyncMock
+
+    from custom_components.solis_modbus.config_flow import ModbusConfigFlow
+    from custom_components.solis_modbus.const import CONF_SKIP_CONN_CHECK
+
+    flow = ModbusConfigFlow()
+    flow.hass = hass
+
+    with (
+        patch("asyncio.open_connection", AsyncMock()) as mock_probe,
+        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient") as mock_tcp_client,
+    ):
+        valid, err = await flow._validate_config(
+            {
+                "connection_type": CONN_TYPE_TCP,
+                "host": "1.2.3.4",
+                "port": 502,
+                "slave": 1,
+                "model": "S6-EH1P",
+                "inverter_serial": "SN123",
+                CONF_SKIP_CONN_CHECK: True,
+            }
+        )
+
+    assert (valid, err) == (True, None)
+    mock_probe.assert_not_called()
+    mock_tcp_client.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_skip_conn_check_still_validates_model_and_serial_port(hass: HomeAssistant):
+    """Even with skip_conn_check enabled, local config validation (model and
+    serial port URL scheme) still runs."""
+    from custom_components.solis_modbus.config_flow import ModbusConfigFlow
+    from custom_components.solis_modbus.const import CONF_SERIAL_PORT, CONF_SKIP_CONN_CHECK, CONN_TYPE_SERIAL
+
+    flow = ModbusConfigFlow()
+    flow.hass = hass
+
+    valid, err = await flow._validate_config(
+        {
+            "connection_type": CONN_TYPE_TCP,
+            "host": "1.2.3.4",
+            "slave": 1,
+            "model": "NONEXISTENT_MODEL",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+    )
+    assert (valid, err) == (False, "invalid_model")
+
+    valid, err = await flow._validate_config(
+        {
+            "connection_type": CONN_TYPE_SERIAL,
+            CONF_SERIAL_PORT: "tcp://1.2.3.4:502",
+            "slave": 1,
+            "model": "S6-EH1P",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+    )
+    assert (valid, err) == (False, "serial_port_unsupported")
+
+    valid, err = await flow._validate_config(
+        {
+            "connection_type": CONN_TYPE_TCP,
+            "host": "1.2.3.4",
+            "slave": 1,
+            "model": "S6-EH1P",
+            "inverter_serial": "   ",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+    )
+    assert (valid, err) == (False, "serial_required")
+
+    valid, err = await flow._validate_config(
+        {
+            "connection_type": CONN_TYPE_TCP,
+            "host": "   ",
+            "slave": 1,
+            "model": "S6-EH1P",
+            "inverter_serial": "SN123",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+    )
+    assert (valid, err) == (False, "cannot_connect")
+
+
+@pytest.mark.asyncio
+async def test_flow_user_with_skip_conn_check_does_not_persist_flag(hass: HomeAssistant):
+    """Full user setup flow with skip_conn_check succeeds without probing and
+    does not store the one-shot skip_conn_check flag in entry.data."""
+    from unittest.mock import AsyncMock
+
+    from custom_components.solis_modbus.const import CONF_SKIP_CONN_CHECK
+
+    with (
+        patch("asyncio.open_connection", AsyncMock()) as mock_probe,
+        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient") as mock_tcp_client,
+        patch("custom_components.solis_modbus.async_setup_entry", return_value=True),
+    ):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input={"connection_type": CONN_TYPE_TCP})
+
+        config_input = {
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "model": "S6-EH1P",
+            "connection": "S2_WL_ST",
+            "has_v2": True,
+            "has_pv": True,
+            "has_ac_coupling": False,
+            "has_parallel": False,
+            "has_battery": True,
+            "has_hv_battery": False,
+            "has_generator": False,
+            "inverter_serial": "sn_skip_1",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input=config_input)
+
+        assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+        assert result["title"] == "Solis: SN_SKIP_1"
+        assert CONF_SKIP_CONN_CHECK not in result["data"]
+        mock_probe.assert_not_called()
+        mock_tcp_client.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_flow_reconfigure_with_skip_conn_check(hass: HomeAssistant):
+    """Reconfigure flow respects skip_conn_check and strips the flag from entry.data."""
+    from unittest.mock import AsyncMock
+
+    from custom_components.solis_modbus.const import CONF_SKIP_CONN_CHECK
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="SNRECONF1",
+        version=5,
+        data={
+            "connection_type": CONN_TYPE_TCP,
+            "inverter_serial": "SNRECONF1",
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "model": "S6-EH1P",
+            "connection": "S2_WL_ST",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    with (
+        patch("asyncio.open_connection", AsyncMock()) as mock_probe,
+        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient") as mock_tcp_client,
+        patch("custom_components.solis_modbus.async_setup_entry", return_value=True),
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        assert result["type"] == data_entry_flow.FlowResultType.FORM
+        assert result["step_id"] == "reconfigure"
+
+        reconf_input = {
+            "connection_type": CONN_TYPE_TCP,
+            "host": "1.2.3.5",
+            "port": 502,
+            "slave": 1,
+            "model": "S6-EH1P",
+            "connection": "S2_WL_ST",
+            "has_v2": True,
+            "has_pv": True,
+            "has_ac_coupling": False,
+            "has_parallel": False,
+            "has_battery": True,
+            "has_hv_battery": False,
+            "has_generator": False,
+            "inverter_serial": "SNRECONF1",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input=reconf_input)
+        assert result["type"] == data_entry_flow.FlowResultType.ABORT
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.data["host"] == "1.2.3.5"
+        assert CONF_SKIP_CONN_CHECK not in entry.data
+        mock_probe.assert_not_called()
+        mock_tcp_client.assert_not_called()
