@@ -371,6 +371,11 @@ Known workarounds:
 
 See [issue #432](https://github.com/Pho3niX90/solis_modbus/issues/432) for the thread.
 
+If the TCP test passes but setup still fails, or the port only stops answering after a few
+tries, the logger may be out of connections rather than closed. Stop any other Modbus client
+using it (another integration, a LAN scanner), reboot the logger and try once more. See
+[issue #545](https://github.com/Pho3niX90/solis_modbus/issues/545).
+
 ### Restoring Sensor History
 If a sensor's entity ID changes (e.g., during migration) and you lose its history, you can manually restore it using Home Assistant's statistics tool:
 

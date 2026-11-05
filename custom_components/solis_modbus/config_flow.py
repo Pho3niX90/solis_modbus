@@ -157,32 +157,6 @@ def _validate_poll_interval(config: dict) -> str | None:
     return None
 
 
-async def _probe_tcp_port(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str | None]:
-    """Check that something is actually accepting TCP connections on host:port.
-
-    A plain socket open is far cheaper than a Modbus handshake and separates the two
-    failure modes cleanly: a refused/timed-out connect means nothing is listening,
-    whereas a successful connect that then fails the register probe means Modbus (or
-    the slave id) is the problem. Returns (reachable, reason).
-    """
-    writer = None
-    try:
-        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
-        return True, None
-    except TimeoutError:
-        return False, "timeout"
-    except OSError as e:
-        # ConnectionRefusedError, host unreachable, DNS failure — all OSError subclasses.
-        return False, type(e).__name__
-    finally:
-        if writer is not None:
-            writer.close()
-            try:
-                await writer.wait_closed()
-            except OSError:  # pragma: no cover - best-effort cleanup
-                pass
-
-
 def clean_identification(iden: str | None) -> str | None:
     if not iden or not iden.strip():
         return None
@@ -333,6 +307,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry's connection out from under it during reconfigure or when adding a
         second inverter on the same datalogger.
 
+        Opens one connection at a time and no separate reachability socket, because
+        dataloggers such as the S2-WL-ST are reported to allow few clients (issue #545).
+
         Returns (True, None) on success, (False, error_key) on failure.
         """
         inverter_model = user_input.get("model")
@@ -351,15 +328,6 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if conn_type == CONN_TYPE_TCP:
             host, port = user_input["host"], user_input.get("port", 502)
-            reachable, reason = await _probe_tcp_port(host, port)
-            if not reachable:
-                # Distinguish "nothing is listening on 502" from "Modbus itself failed".
-                # Recent Solis datalogger firmware closes the local TCP services while
-                # cloud upload keeps working, which otherwise surfaces as a generic
-                # "check your configuration" and sends people hunting the wrong problem
-                # (issue #432).
-                _LOGGER.error("TCP pre-probe of %s:%s failed (%s) — nothing is serving Modbus there", host, port, reason)
-                return False, "tcp_port_closed"
             client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
             if not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
@@ -376,29 +344,41 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 retries=1,
             )
 
-        try:
-            for attempt in range(3):
-                try:
-                    await client.connect()
-                    if not client.connected:
-                        raise ConnectionError("Failed to connect")
-                    # Both client types take the target unit as `device_id` on the
-                    # request itself. Assigning `client.slave` did nothing on the
-                    # serial client, so the probe always read device 1 regardless
-                    # of the configured slave.
-                    result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
-                    if result.isError():
-                        raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
-                    return True, None
-                except Exception as e:
-                    _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
-                    if attempt < 2:
-                        await asyncio.sleep(1)
-        finally:
+        for attempt in range(3):
             try:
-                client.close()
-            except Exception:  # noqa: BLE001 - best-effort cleanup of a throwaway client
-                pass
+                await client.connect()
+                if not client.connected:
+                    # Distinguish "can't open a connection" from "Modbus itself failed".
+                    # Recent Solis datalogger firmware closes the local TCP services while
+                    # cloud upload keeps working, which otherwise surfaces as a generic
+                    # "check your configuration" and sends people hunting the wrong problem
+                    # (issue #432). Later attempts don't qualify: the port just accepted a
+                    # connection, so a refusal there is the logger, not a closed port.
+                    if conn_type == CONN_TYPE_TCP and attempt == 0:
+                        _LOGGER.error("Could not open a TCP connection to %s:%s", host, port)
+                        return False, "tcp_port_closed"
+                    raise ConnectionError("Failed to connect")
+                # Both client types take the target unit as `device_id` on the
+                # request itself. Assigning `client.slave` did nothing on the
+                # serial client, so the probe always read device 1 regardless
+                # of the configured slave.
+                result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
+                if result.isError():
+                    raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
+                return True, None
+            except Exception as e:
+                _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
+            finally:
+                # Close after every attempt, not just the last. pymodbus's connect() replaces
+                # its transport without closing the old one, so retrying on an open client
+                # leaves that socket open, which can use up a datalogger's client slots
+                # (issue #545).
+                try:
+                    client.close()
+                except Exception:  # noqa: BLE001 - best-effort cleanup of a throwaway client
+                    pass
+            if attempt < 2:
+                await asyncio.sleep(1)
 
         _LOGGER.error("Connection validation failed after 3 attempts (%s)", conn_type)
         return False, "cannot_connect"
