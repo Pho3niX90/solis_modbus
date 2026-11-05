@@ -304,7 +304,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 1. Sanitize Serial (Convert to Uppercase)
         if CONF_INVERTER_SERIAL in data:
-            data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).upper()
+            data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).strip().upper()
 
         # 2. Validate Connection
         interval_error = _validate_poll_interval(data)
@@ -353,6 +353,10 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return False, "serial_port_unsupported"
 
         if user_input.get(CONF_SKIP_CONN_CHECK, False):
+            if not str(user_input.get(CONF_INVERTER_SERIAL) or "").strip():
+                return False, "serial_required"
+            if conn_type == CONN_TYPE_TCP and not str(user_input.get("host") or "").strip():
+                return False, "cannot_connect"
             _LOGGER.info("Skipping initial connectivity check by user request (%s)", conn_type)
             return True, None
 

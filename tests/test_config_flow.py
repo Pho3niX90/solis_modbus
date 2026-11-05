@@ -340,6 +340,7 @@ async def test_skip_conn_check_bypasses_tcp_and_modbus_probe(hass: HomeAssistant
                 "port": 502,
                 "slave": 1,
                 "model": "S6-EH1P",
+                "inverter_serial": "SN123",
                 CONF_SKIP_CONN_CHECK: True,
             }
         )
@@ -380,6 +381,30 @@ async def test_skip_conn_check_still_validates_model_and_serial_port(hass: HomeA
         }
     )
     assert (valid, err) == (False, "serial_port_unsupported")
+
+    valid, err = await flow._validate_config(
+        {
+            "connection_type": CONN_TYPE_TCP,
+            "host": "1.2.3.4",
+            "slave": 1,
+            "model": "S6-EH1P",
+            "inverter_serial": "   ",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+    )
+    assert (valid, err) == (False, "serial_required")
+
+    valid, err = await flow._validate_config(
+        {
+            "connection_type": CONN_TYPE_TCP,
+            "host": "   ",
+            "slave": 1,
+            "model": "S6-EH1P",
+            "inverter_serial": "SN123",
+            CONF_SKIP_CONN_CHECK: True,
+        }
+    )
+    assert (valid, err) == (False, "cannot_connect")
 
 
 @pytest.mark.asyncio
