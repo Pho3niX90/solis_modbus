@@ -233,13 +233,9 @@ async def test_validate_config_uses_throwaway_client(hass: HomeAssistant):
 
     manager_clients_before = dict(ModbusClientManager.get_instance()._clients)
 
-    with (
-        patch(
-            "custom_components.solis_modbus.config_flow.AsyncModbusTcpClient",
-            return_value=mock_client,
-        ),
-        # Port is open — this test is about the Modbus probe, not reachability.
-        patch("custom_components.solis_modbus.config_flow._probe_tcp_port", AsyncMock(return_value=(True, None))),
+    with patch(
+        "custom_components.solis_modbus.config_flow.AsyncModbusTcpClient",
+        return_value=mock_client,
     ):
         valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
 
@@ -251,7 +247,7 @@ async def test_validate_config_uses_throwaway_client(hass: HomeAssistant):
 
 
 @pytest.mark.asyncio
-async def test_validate_config_cannot_connect(hass: HomeAssistant):
+async def test_validate_config_connect_failure(hass: HomeAssistant):
     from unittest.mock import AsyncMock, MagicMock
 
     from custom_components.solis_modbus.config_flow import ModbusConfigFlow
@@ -263,15 +259,10 @@ async def test_validate_config_cannot_connect(hass: HomeAssistant):
     mock_client.connect = AsyncMock()
     mock_client.connected = False
 
-    with (
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=mock_client),
-        patch("custom_components.solis_modbus.config_flow.asyncio.sleep", new=AsyncMock()),
-        # Port is open — the failure under test is the Modbus connect, not the port.
-        patch("custom_components.solis_modbus.config_flow._probe_tcp_port", AsyncMock(return_value=(True, None))),
-    ):
+    with patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=mock_client):
         valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
 
-    assert (valid, err) == (False, "cannot_connect")
+    assert (valid, err) == (False, "tcp_port_closed")
     mock_client.close.assert_called()
 
 

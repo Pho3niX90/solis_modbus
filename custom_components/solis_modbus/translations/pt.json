@@ -84,7 +84,7 @@
       "invalid_model": "Modelo de inversor inválido ou desconhecido. Selecione um modelo da lista.",
       "serial_required": "O número de série do inversor é obrigatório.",
       "model_required": "Selecione um modelo de inversor.",
-      "tcp_port_closed": "Nada aceita ligações Modbus nesse endereço e porta. O dispositivo pode estar acessível (responde a ping) mas não está a servir Modbus — verifique se o Modbus TCP está ativado no registador. Sabe-se que o firmware recente dos registadores Solis fecha a porta local 502; uma ponte RS485 para TCP é uma solução alternativa.",
+      "tcp_port_closed": "Não foi possível abrir uma ligação Modbus nesse endereço e porta. Se o endereço estiver correto, o registador pode não ter ligações livres: pare outros clientes Modbus, reinicie-o e tente novamente. Caso contrário, verifique se o Modbus TCP está ativado no registador. Sabe-se que o firmware recente dos registadores Solis fecha a porta local 502; uma ponte RS485 para TCP é uma solução alternativa.",
       "serial_port_unsupported": "Esta porta série não pode ser usada. Use um caminho de dispositivo (p. ex. /dev/ttyUSB0), um gateway socket:// ou rfc2217://, um proxy série ESPHome como o Home Assistant Connect AUX-2 (Home Assistant 2026.5 ou mais recente), ou o tipo de ligação TCP.",
       "poll_interval_below_floor": "O intervalo de sondagem rápida está abaixo do mínimo para o perfil selecionado. Apenas o perfil extremo permite intervalos inferiores a 10s (mínimo 2s)."
     },
