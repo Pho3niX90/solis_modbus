@@ -5,8 +5,11 @@ name: PR Pre-release
 # is rebuilt on every push and deleted when the PR is closed or merged.
 #
 # pull_request_target is used so fork PRs get a token that can create releases.
-# The PR code is never executed here: it is only checked out, zipped and uploaded,
-# and credentials are not persisted into the checkout.
+# The PR code is never executed here: it is only checked out, zipped and uploaded.
+# Everything from the PR is untrusted input, so the two halves are kept apart:
+#   - build checks out the PR with a read-only token and no secrets.
+#   - publish holds the write token and never sees the checkout, only the zip and
+#     a version string, which it validates before use.
 
 on:
   pull_request_target:
@@ -23,21 +26,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publish:
-    name: Publish pre-release
+  build:
+    name: Build test zip
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+    outputs:
+      version: ${{ steps.stamp.outputs.version }}
     steps:
+      # Safe to opt in: this job has a read-only token and no secrets, nothing from
+      # the checkout is run, and only the zip and version reach the publish job.
       - name: Checkout PR head
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
 
       - name: Stamp version in manifest.json
+        id: stamp
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -71,13 +79,44 @@ jobs:
           base="${base:-$(jq -r '.version' "$manifest")}"
           version="${base}-pr${PR_NUMBER}+${HEAD_SHA:0:7}"
           jq --arg v "$version" '.version = $v' "$manifest" > manifest.tmp.json && mv manifest.tmp.json "$manifest"
-          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Zip ${{ env.COMPONENT_NAME }} dir
         run: |
           cd "custom_components/${COMPONENT_NAME}"
           # -y stores symlinks as links rather than following them out of the checkout
           zip -r -y "${GITHUB_WORKSPACE}/${COMPONENT_NAME}.zip" ./ -x '__pycache__/*' '*/__pycache__/*'
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.COMPONENT_NAME }}-zip
+          path: ${{ env.COMPONENT_NAME }}.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish pre-release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - name: Validate version
+        run: |
+          # The version can come from the PR's manifest.json.
+          if [[ ! "$VERSION" =~ ^[0-9A-Za-z.+_-]+$ ]]; then
+            echo "::error::Refusing to publish: invalid version string"
+            exit 1
+          fi
+
+      - name: Download zip
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.COMPONENT_NAME }}-zip
 
       - name: Recreate pre-release
         env:
