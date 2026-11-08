@@ -16,10 +16,10 @@ name: Release Branch
 #
 # `rc.N`, not `rcN`: under SemVer, `rc10` sorts before `rc9`.
 #
-# The stable `vX.Y.Z` is cut by running the Release workflow on the branch.
-# Pushes after that (e.g. resolving conflicts on the PR merging it back into
-# master) are ignored. Deleting an unreleased release branch closes its milestone
-# if no open issues remain in it.
+# The stable `vX.Y.Z` is cut when the branch is merged into master, or earlier by
+# running the Release workflow on it. Pushes after that (e.g. resolving conflicts
+# on the PR merging it back into master) are ignored. Deleting an unreleased
+# release branch closes its milestone if no open issues remain in it.
 
 on:
   push:
