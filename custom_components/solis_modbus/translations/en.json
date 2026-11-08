@@ -27,6 +27,10 @@
           "poll_interval_slow": "Slow Poll Interval (seconds)",
           "poll_profile": "Poll profile (how much of the register map is polled)",
           "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
+          "extreme_include_smart_port": "Extreme: also poll Smart Port AC power (phase A/B/C, Smart Port models only)",
+          "suppress_night_offline_issue": "Suppress 'datalogger unreachable' repair issue while the sun is below the horizon",
+          "clock_sync": "Automatically correct inverter clock drift (writes the inverter clock; turn off for read-only monitoring)",
+          "skip_conn_check": "Skip initial connection check (allow offline setup)",
           "identification": "Identification Name",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -58,6 +62,10 @@
           "poll_interval_slow": "Slow Poll Interval (seconds)",
           "poll_profile": "Poll profile (how much of the register map is polled)",
           "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
+          "extreme_include_smart_port": "Extreme: also poll Smart Port AC power (phase A/B/C, Smart Port models only)",
+          "suppress_night_offline_issue": "Suppress 'datalogger unreachable' repair issue while the sun is below the horizon",
+          "clock_sync": "Automatically correct inverter clock drift (writes the inverter clock; turn off for read-only monitoring)",
+          "skip_conn_check": "Skip initial connection check (allow offline setup)",
           "identification": "Identification Name",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -78,7 +86,8 @@
       "invalid_model": "Invalid or unknown inverter model. Please select a model from the list.",
       "serial_required": "Inverter serial number is required.",
       "model_required": "Please select an inverter model.",
-      "tcp_port_closed": "Nothing is accepting Modbus connections on that address and port. The device may be reachable (it answers ping) but not serving Modbus — check that Modbus TCP is enabled on the datalogger. Recent Solis logger firmware is known to close local port 502; an RS485-to-TCP bridge is a workaround.",
+      "tcp_port_closed": "Could not open a Modbus connection on that address and port. If the address is right, the datalogger may be out of connections: stop any other Modbus clients, reboot it and try again. Otherwise check that Modbus TCP is enabled on the datalogger. Recent Solis logger firmware is known to close local port 502; an RS485-to-TCP bridge is a workaround.",
+      "serial_port_unsupported": "This serial port can't be used. Use a device path (e.g. /dev/ttyUSB0), a socket:// or rfc2217:// gateway, an ESPHome serial proxy such as Home Assistant Connect AUX-2 (Home Assistant 2026.5 or newer), or the TCP connection type.",
       "poll_interval_below_floor": "Fast poll interval is below the minimum for the selected poll profile. Only the extreme profile allows intervals below 10s (minimum 2s)."
     },
     "abort": {
@@ -96,6 +105,9 @@
           "poll_interval_slow": "Slow Poll Interval (seconds)",
           "poll_profile": "Poll profile (how much of the register map is polled)",
           "extreme_include_battery": "Extreme: also poll battery/load group (SOC, load, battery power)",
+          "extreme_include_smart_port": "Extreme: also poll Smart Port AC power (phase A/B/C, Smart Port models only)",
+          "suppress_night_offline_issue": "Suppress 'datalogger unreachable' repair issue while the sun is below the horizon",
+          "clock_sync": "Automatically correct inverter clock drift (writes the inverter clock; turn off for read-only monitoring)",
           "model": "Inverter Model",
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
@@ -182,6 +194,10 @@
     "datalogger_unreachable": {
       "title": "Solis datalogger unreachable",
       "description": "No successful Modbus read from {host} since {last_success}. The WiFi datalogger may be asleep, powered off or in a half-open state; the integration keeps retrying with backoff. Power-cycle the datalogger if this persists."
+    },
+    "serial_slave_id": {
+      "title": "Solis inverter not answering at slave ID {slave}",
+      "description": "The inverter on {port} doesn't answer at its configured Modbus slave ID {slave}, but a device on the bus answers at slave ID 1. Older versions of this integration sent every serial (RS485) request to slave ID 1 whatever ID was configured, so this setup may have worked until now. If the inverter is at slave ID 1, reconfigure the integration entry and set the slave ID to 1."
     }
   }
 }

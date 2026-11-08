@@ -1,0 +1,218 @@
+{
+  "provenance": {
+    "model": "S6-EA1P6K-L",
+    "product_word_hex": "0x4105",
+    "family_word_hex": "0x2091",
+    "collection_date": "2026-10-20",
+    "method": "Owner-provided passive cache and HA state snapshots, 20 seconds apart.",
+    "installation": "Locally modified integration reporting 4.2.6, configured as S6-EH1P, with direct PV disabled.",
+    "sample_time_limitation": "Individual register sample times unknown; cache and HA states are asynchronous. Expected states reproduce observed decoding, not independent physical measurements.",
+    "validation_scope": "Replay against the clean S6-EA1P profile; no hardware control or write behavior is established."
+  },
+  "snapshots": [
+    {
+      "id": "snapshot_1",
+      "registers": {
+        "33094": 5006,
+        "33133": 534,
+        "33134": 256,
+        "33135": 1,
+        "33139": 89,
+        "33141": 5309,
+        "33142": 256,
+        "33149": 0,
+        "33150": 1367,
+        "33263": 0,
+        "33264": 0,
+        "43110": 33
+      },
+      "expected": {
+        "Grid Frequency": {
+          "value": 50.06,
+          "unit": "Hz"
+        },
+        "Battery Voltage": {
+          "value": 53.4,
+          "unit": "V"
+        },
+        "Battery Current": {
+          "value": 25.6,
+          "unit": "A"
+        },
+        "Battery SOC": {
+          "value": 89.0,
+          "unit": "%"
+        },
+        "Battery Voltage (BMS)": {
+          "value": 53.09,
+          "unit": "V"
+        },
+        "Battery Current (BMS)": {
+          "value": 25.6,
+          "unit": "A"
+        },
+        "Battery Power": {
+          "value": 1367.0,
+          "unit": "W"
+        },
+        "Meter Total Active Power": {
+          "value": 0.0,
+          "unit": "W"
+        },
+        "Battery Charge Power": {
+          "value": 0.0,
+          "unit": "W"
+        },
+        "Battery Discharge Power": {
+          "value": 1367.0,
+          "unit": "W"
+        },
+        "Battery Power Net": {
+          "value": 1367.0,
+          "unit": "W"
+        },
+        "Grid Power Net": {
+          "value": 0.0,
+          "unit": "W"
+        }
+      },
+      "storage_mode": "Self-Use"
+    },
+    {
+      "id": "snapshot_2",
+      "registers": {
+        "33094": 5005,
+        "33133": 534,
+        "33134": 256,
+        "33135": 1,
+        "33139": 89,
+        "33141": 5309,
+        "33142": 256,
+        "33149": 0,
+        "33150": 1367,
+        "33263": 65535,
+        "33264": 65474,
+        "43110": 33
+      },
+      "expected": {
+        "Grid Frequency": {
+          "value": 50.05,
+          "unit": "Hz"
+        },
+        "Battery Voltage": {
+          "value": 53.4,
+          "unit": "V"
+        },
+        "Battery Current": {
+          "value": 25.6,
+          "unit": "A"
+        },
+        "Battery SOC": {
+          "value": 89.0,
+          "unit": "%"
+        },
+        "Battery Voltage (BMS)": {
+          "value": 53.09,
+          "unit": "V"
+        },
+        "Battery Current (BMS)": {
+          "value": 25.6,
+          "unit": "A"
+        },
+        "Battery Power": {
+          "value": 1367.0,
+          "unit": "W"
+        },
+        "Meter Total Active Power": {
+          "value": -62.0,
+          "unit": "W"
+        },
+        "Battery Charge Power": {
+          "value": 0.0,
+          "unit": "W"
+        },
+        "Battery Discharge Power": {
+          "value": 1367.0,
+          "unit": "W"
+        },
+        "Battery Power Net": {
+          "value": 1367.0,
+          "unit": "W"
+        },
+        "Grid Power Net": {
+          "value": 62.0,
+          "unit": "W"
+        }
+      },
+      "storage_mode": "Self-Use"
+    },
+    {
+      "id": "snapshot_3",
+      "registers": {
+        "33094": 5006,
+        "33133": 534,
+        "33134": 252,
+        "33135": 1,
+        "33139": 89,
+        "33141": 5309,
+        "33142": 252,
+        "33149": 0,
+        "33150": 1345,
+        "33263": 0,
+        "33264": 0,
+        "43110": 33
+      },
+      "expected": {
+        "Grid Frequency": {
+          "value": 50.06,
+          "unit": "Hz"
+        },
+        "Battery Voltage": {
+          "value": 53.4,
+          "unit": "V"
+        },
+        "Battery Current": {
+          "value": 25.2,
+          "unit": "A"
+        },
+        "Battery SOC": {
+          "value": 89.0,
+          "unit": "%"
+        },
+        "Battery Voltage (BMS)": {
+          "value": 53.09,
+          "unit": "V"
+        },
+        "Battery Current (BMS)": {
+          "value": 25.2,
+          "unit": "A"
+        },
+        "Battery Power": {
+          "value": 1345.0,
+          "unit": "W"
+        },
+        "Meter Total Active Power": {
+          "value": 0.0,
+          "unit": "W"
+        },
+        "Battery Charge Power": {
+          "value": 0.0,
+          "unit": "W"
+        },
+        "Battery Discharge Power": {
+          "value": 1345.0,
+          "unit": "W"
+        },
+        "Battery Power Net": {
+          "value": 1345.0,
+          "unit": "W"
+        },
+        "Grid Power Net": {
+          "value": 0.0,
+          "unit": "W"
+        }
+      },
+      "storage_mode": "Self-Use"
+    }
+  ]
+}

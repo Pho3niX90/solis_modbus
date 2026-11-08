@@ -38,6 +38,13 @@ DEFAULT_STOPBITS = 1
 # Distinguishes "you asked for the wrong thing" from "the read failed".
 MODBUS_ILLEGAL_DATA_ADDRESS = 2
 
+# Time-of-use function version (input register 33289, protocol Ver3.4 p18).
+# 0xAA55 = "Optimized Revenue V2": TOU runs off the 43707 period switches, and
+# 43110 bit 1 (the V1 enable) is acknowledged but cleared by the firmware within
+# ~15 s, so it can never stick (issue #475, bench-verified on an S6-EH1P).
+TOU_VERSION_REGISTER = 33289
+TOU_VERSION_V2 = 0xAA55
+
 # Poll profiles (issue #457): how much of the register map gets polled.
 #
 # FULL      — every group the inverter's features allow.
@@ -53,6 +60,21 @@ POLL_PROFILE_EXTREME = "extreme"
 
 CONF_POLL_PROFILE = "poll_profile"
 CONF_EXTREME_INCLUDE_BATTERY = "extreme_include_battery"
+CONF_EXTREME_INCLUDE_SMART_PORT = "extreme_include_smart_port"
+
+# Skip the "datalogger unreachable" repair issue while the sun is below the
+# horizon (issue #465): solar inverters normally power off overnight, so a
+# stale/absent Modbus link then is expected rather than a fault. Opt-in
+# because not everyone's setup is PV-only (e.g. battery/generator-backed
+# installs may legitimately expect to stay reachable at night).
+CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE = "suppress_night_offline_issue"
+
+# Write HA's clock to the inverter RTC (43000-43005) when it drifts (issue #516).
+# On by default to keep existing behaviour; turning it off drops the "Last Clock
+# Adjustment" sensor, the only thing that writes without a user action, so
+# monitoring-only installs never touch the inverter.
+CONF_CLOCK_SYNC = "clock_sync"
+CONF_SKIP_CONN_CHECK = "skip_conn_check"
 
 POLL_PROFILES = {
     POLL_PROFILE_FULL: "Full (all sensors)",

@@ -30,7 +30,7 @@ solis_write_holding_register:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, limits the write to inverters with this ID (omit to write to all)
       example: 1
       selector:
         number:
@@ -98,7 +98,7 @@ solis_read_register:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       example: 1
       selector:
         number:
@@ -137,7 +137,7 @@ solis_force_battery_charge:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       selector:
         number:
           min: 1
@@ -175,7 +175,7 @@ solis_force_battery_discharge:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       selector:
         number:
           min: 1
@@ -192,7 +192,7 @@ solis_stop_force_charge_discharge:
         text:
     slave:
       name: Slave
-      description: Modbus device/slave ID (defaults to 1)
+      description: Modbus device/slave ID. With a host, defaults to 1; without a host, picks the inverter with this ID (needed when several are configured)
       selector:
         number:
           min: 1
@@ -204,7 +204,7 @@ solis_dispatch:
   fields:
     mode:
       name: Mode
-      description: What to control. grid_import/grid_export target the meter (PCC); battery_charge/discharge command battery power; battery_hold freezes the battery
+      description: What to control. grid_import/grid_export target the meter (PCC); battery_charge/discharge command battery power; battery_hold freezes the battery. self_consumption/feed_in_priority require Remote Dispatch V02 or later
       required: true
       example: grid_import
       selector:
@@ -242,7 +242,7 @@ solis_dispatch:
         boolean:
     disable_discharge:
       name: Disable discharge
-      description: Inhibit battery discharge during the dispatch (omit = leave unchanged)
+      description: Requires Remote Dispatch V02 or later. Inhibit battery discharge during the dispatch (omit = leave unchanged)
       selector:
         boolean:
     soc_min:
@@ -260,6 +260,45 @@ solis_dispatch:
           min: 0
           max: 100
           unit_of_measurement: "%"
+          mode: box
+    battery_reserve_soc:
+      name: Battery reserve SOC
+      description: Requires Remote Dispatch V02 or later. Keep this much battery in reserve during the dispatch; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    pv_limit_percent:
+      name: PV power limit
+      description: Requires Remote Dispatch V03 or later. Cap PV output at this percentage during the dispatch; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.01
+          unit_of_measurement: "%"
+          mode: box
+    import_limit_watts:
+      name: Import limit
+      description: System power-draw (grid import) upper limit. Omit to leave the inverter default; 0 is a valid cap
+      selector:
+        number:
+          min: 0
+          max: 240000
+          step: 100
+          unit_of_measurement: W
+          mode: box
+    export_limit_watts:
+      name: Export limit
+      description: System feed-in (grid export) upper limit. Omit to leave the inverter default; 0 is a valid cap
+      selector:
+        number:
+          min: 0
+          max: 240000
+          step: 100
+          unit_of_measurement: W
           mode: box
     failsafe_minutes:
       name: Failsafe interval
@@ -327,6 +366,7 @@ solis_dispatch_schedule:
         time:
     mode:
       name: Mode
+      description: Self-consumption and feed-in priority require Remote Dispatch V02 or later (register 34503)
       default: battery_hold
       selector:
         select:
@@ -360,6 +400,7 @@ solis_dispatch_schedule:
         boolean:
     disable_discharge:
       name: Disable discharge
+      description: Requires Remote Dispatch V02 or later
       selector:
         boolean:
     soc_min:
@@ -378,6 +419,25 @@ solis_dispatch_schedule:
         number:
           min: 0
           max: 100
+          unit_of_measurement: "%"
+          mode: box
+    battery_reserve_soc:
+      name: Battery reserve SOC
+      description: Requires Remote Dispatch V02 or later. Keep this much battery in reserve during this period; turns the battery-reserve switch on. Range is the overdischarge SOC up to the SOC upper limit (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    pv_limit_percent:
+      name: PV power limit
+      description: Requires Remote Dispatch V03 or later. Cap PV output at this percentage during this period; turns the PV power-limit switch on. 100 removes the cap (omit = leave the current value unchanged)
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.01
           unit_of_measurement: "%"
           mode: box
     failsafe_minutes:

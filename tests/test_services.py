@@ -168,3 +168,64 @@ async def test_service_unknown_host_raises(hass: HomeAssistant):
             {"address": 1, "value": 2, "host": "no.such.host"},
             blocking=True,
         )
+
+
+def _parallel_pair(hass: HomeAssistant):
+    """Master + slave behind one datalogger, as in a parallel install."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.solis_modbus.runtime import SolisRuntimeData
+
+    controllers = []
+    for device_id in (1, 2):
+        controller = MagicMock()
+        controller.host = "10.0.30.75"
+        controller.device_id = device_id
+        controller.async_read_input_registers_with_exception = AsyncMock(return_value=([0xAA55 + device_id], None))
+        entry = MockConfigEntry(domain=DOMAIN, data={}, entry_id=f"entry_{device_id}")
+        entry.add_to_hass(hass)
+        entry.runtime_data = SolisRuntimeData(controller=controller)
+        controllers.append(controller)
+    return controllers
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("slave", [1, 2])
+async def test_read_register_picks_parallel_inverter_by_slave(hass: HomeAssistant, slave):
+    """Without a host, an explicit slave is enough to pick one of several inverters."""
+    from custom_components.solis_modbus import async_setup
+
+    controllers = _parallel_pair(hass)
+    await async_setup(hass, {})
+
+    response = await hass.services.async_call(DOMAIN, "solis_read_register", {"address": 33289, "slave": slave}, blocking=True, return_response=True)
+
+    assert response["values"] == [0xAA55 + slave]
+    controllers[slave - 1].async_read_input_registers_with_exception.assert_awaited_once_with(33289, 1)
+    controllers[2 - slave].async_read_input_registers_with_exception.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_read_register_ambiguous_target_lists_choices(hass: HomeAssistant):
+    from homeassistant.exceptions import ServiceValidationError
+
+    from custom_components.solis_modbus import async_setup
+
+    _parallel_pair(hass)
+    await async_setup(hass, {})
+
+    with pytest.raises(ServiceValidationError, match="host 10.0.30.75 slave 1, host 10.0.30.75 slave 2"):
+        await hass.services.async_call(DOMAIN, "solis_read_register", {"address": 33289}, blocking=True, return_response=True)
+
+
+@pytest.mark.asyncio
+async def test_read_register_host_defaults_to_slave_1(hass: HomeAssistant):
+    from custom_components.solis_modbus import async_setup
+
+    controllers = _parallel_pair(hass)
+    await async_setup(hass, {})
+
+    response = await hass.services.async_call(DOMAIN, "solis_read_register", {"address": 33289, "host": "10.0.30.75"}, blocking=True, return_response=True)
+
+    assert response["values"] == [0xAA56]
+    controllers[1].async_read_input_registers_with_exception.assert_not_awaited()

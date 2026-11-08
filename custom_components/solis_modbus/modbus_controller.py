@@ -1,5 +1,8 @@
 import asyncio
+import contextvars
 import logging
+import time
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -37,6 +40,22 @@ def is_number(value) -> bool:
 
 # Modbus exception codes we treat as address/map issues worth splitting reads (see data_retrieval recovery).
 RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})
+
+# Queued writes older than this are dropped instead of sent late (#534): after a
+# link outage, a backlog of control setpoints must not replay minutes later.
+WRITE_MAX_AGE = 30  # s
+
+# The write batch open in the current task (see ModbusController.write_batch).
+_current_write_batch: contextvars.ContextVar = contextvars.ContextVar("solis_write_batch", default=None)
+
+
+class _WriteBatch:
+    """Writes collected by ModbusController.write_batch, queued as one item."""
+
+    def __init__(self, controller):
+        self.controller = controller
+        self.writes = []
+        self.open = True
 
 
 def _exception_code_from_modbus_result(result) -> int | None:
@@ -122,6 +141,8 @@ class ModbusController:
             self.poll_lock = manager.get_client_lock(self.connection_id)
 
         self.connect_failures = 0
+        # Successful connects so far: tells callers the link was re-established.
+        self.connection_count = 0
         self._data_received = False
         self._poll_interval_fast = fast_poll
         self._poll_interval_normal = normal_poll
@@ -130,14 +151,20 @@ class ModbusController:
         self.inverter_config = inverter_config
         self._sw_version = "N/A"
         self.enabled = True
+        self._closed = False
         self._last_attempt = 0  # Track last connection attempt time
         self._sensor_groups = sensor_groups
         self._derived_sensors = derived_sensors
         # self.poll_lock = asyncio.Lock() # Replaced by shared lock from manager
 
         # Modbus Write Queue
+        # Items are (writes, queued_at): writes is a tuple of (register, value,
+        # multiple), sent in order or dropped together once queued_at is too old.
         self.write_queue = asyncio.Queue()
         self._last_modbus_success = datetime.now(UTC)
+        # Whether this inverter has answered a read since startup (unlike
+        # _last_modbus_success, which starts at "now").
+        self.has_answered = False
 
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially.
@@ -152,24 +179,44 @@ class ModbusController:
         try:
             while True:
                 # Block until a write is queued instead of busy-polling.
-                write_request = await self.write_queue.get()
+                writes, queued_at = await self.write_queue.get()
                 try:
-                    # Wait for the link BEFORE processing, so a write queued during a
-                    # reconnect window isn't executed (and acked via task_done) while
-                    # still disconnected — which could silently drop a control write.
-                    while not self.connected():
-                        await asyncio.sleep(5)
-                    register, value, multiple = write_request
-
-                    if multiple:
-                        await self._execute_write_holding_registers(register, value)
-                    else:
-                        await self._execute_write_holding_register(register, value)
+                    for index, (register, value, multiple) in enumerate(writes):
+                        # Wait for the link BEFORE each write, so a write queued during a
+                        # reconnect window isn't executed (and acked via task_done) while
+                        # still disconnected — which could silently drop a control write.
+                        waited = False
+                        while not self.connected():
+                            waited = True
+                            await asyncio.sleep(5)
+                        # Judged at the start of the item and after any wait, so the age
+                        # covers an outage; a batch already running on a healthy link is
+                        # finished even if it crosses the limit while it is sent.
+                        age = time.monotonic() - queued_at
+                        if (index == 0 or waited) and age > WRITE_MAX_AGE:
+                            self._log_dropped_writes(writes[index:], age, partial=index > 0)
+                            break
+                        if multiple:
+                            await self._execute_write_holding_registers(register, value)
+                        else:
+                            await self._execute_write_holding_register(register, value)
                 finally:
                     self.write_queue.task_done()
         except asyncio.CancelledError:
             # Clean shutdown on entry unload/reload.
             raise
+
+    def _log_dropped_writes(self, writes, age: float, partial: bool) -> None:
+        """Warn about queued writes dropped for being older than WRITE_MAX_AGE."""
+        _LOGGER.warning(
+            "(%s.%s) Dropped %s queued write(s) %.0f s old: %s%s",
+            self.host,
+            self.device_id,
+            len(writes),
+            age,
+            ", ".join(f"{register}={value}" for register, value, _ in writes),
+            " (the link dropped part-way through this batch; its earlier writes were sent)" if partial else "",
+        )
 
     async def _execute_write_holding_register(self, register, value):
         """Executes a single register write with interframe delay.
@@ -191,12 +238,7 @@ class ModbusController:
                 int_value = int(value)
                 int_register = register if is_number(register) else int(register)
 
-                # Different pymodbus APIs for TCP vs Serial
-                if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.write_register(address=int_register, value=int_value, device_id=self.device_id)
-                else:
-                    self.client.slave = self.device_id
-                    result = await self.client.write_register(address=int_register, value=int_value)
+                result = await self.client.write_register(address=int_register, value=int_value, device_id=self.device_id)
                 _LOGGER.debug(
                     f"({self.host}.{self.device_id}) Write Holding Register register = {int_register}, value = {value}, int_value = {int_value}: {result}"
                 )
@@ -232,12 +274,7 @@ class ModbusController:
                 await self.inter_frame_wait(is_write=True)  # Delay before write
 
                 try:
-                    # Different pymodbus APIs for TCP vs Serial
-                    if self.connection_type == CONN_TYPE_TCP:
-                        result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
-                    else:
-                        self.client.slave = self.device_id
-                        result = await self.client.write_registers(address=start_register, values=values)
+                    result = await self.client.write_registers(address=start_register, values=values, device_id=self.device_id)
                     _LOGGER.debug(
                         f"({self.host}.{self.device_id}) Write Holding Register block for {len(values)} registers starting at register = {start_register}"
                     )
@@ -272,7 +309,7 @@ class ModbusController:
         Returns:
             None
         """
-        await self.write_queue.put((register, value, False))
+        await self._queue_write((register, value, False))
 
     async def async_write_holding_registers(self, start_register, values):
         """Queues a write request to the Modbus device (write multiple registers).
@@ -284,7 +321,37 @@ class ModbusController:
         Returns:
             None
         """
-        await self.write_queue.put((start_register, values, True))
+        await self._queue_write((start_register, values, True))
+
+    async def _queue_write(self, write) -> None:
+        """Queue one write, or add it to the write batch open in this task."""
+        batch = _current_write_batch.get()
+        if batch is not None and batch.open and batch.controller is self:
+            batch.writes.append(write)
+        else:
+            await self.write_queue.put(((write,), time.monotonic()))
+
+    @asynccontextmanager
+    async def write_batch(self):
+        """Queue the writes made inside this block as one item (#534).
+
+        For combos whose writes depend on each other (e.g. the RC mode, power and
+        timeout): the item is sent in order or, once older than WRITE_MAX_AGE,
+        dropped whole. If the block raises, nothing is queued.
+        """
+        outer = _current_write_batch.get()
+        if outer is not None and outer.open and outer.controller is self:
+            yield  # nested: the outer batch queues these writes
+            return
+        batch = _WriteBatch(self)
+        token = _current_write_batch.set(batch)
+        try:
+            yield
+        finally:
+            batch.open = False
+            _current_write_batch.reset(token)
+        if batch.writes:
+            await self.write_queue.put((tuple(batch.writes), time.monotonic()))
 
     async def inter_frame_wait(self, is_write=False):
         """Spacing between Modbus frames on this link (shared across parallel inverters on the same host:port)."""
@@ -296,11 +363,7 @@ class ModbusController:
             await self.inter_frame_wait()
 
             try:
-                if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
-                else:
-                    self.client.slave = self.device_id
-                    result = await self.client.read_input_registers(address=register, count=count)
+                result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
 
                 _LOGGER.debug("(%s.%s) Read Input Registers: register = %s, count = %s", self.host, self.device_id, register, count)
 
@@ -311,6 +374,7 @@ class ModbusController:
                     return None, exc
 
                 self._last_modbus_success = datetime.now(UTC)
+                self.has_answered = True
                 return result.registers, None
             except Exception as e:
                 # Log the exception, close connection, and return error
@@ -328,7 +392,9 @@ class ModbusController:
     async def async_read_input_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
         """Like async_read_input_register but returns (registers, exception_code) for recoverable-read logic."""
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("input", register, count)
+                return None, None
             return await self._async_read_input_register_raw_detailed(register, count, quiet=False)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
@@ -348,7 +414,9 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("input", register, count)
+                return None
             return await self._async_read_input_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading input registers starting at {register} (count={count}): {str(e)}")
@@ -360,11 +428,7 @@ class ModbusController:
             await self.inter_frame_wait()
 
             try:
-                if self.connection_type == CONN_TYPE_TCP:
-                    result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
-                else:
-                    self.client.slave = self.device_id
-                    result = await self.client.read_holding_registers(address=register, count=count)
+                result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
 
                 _LOGGER.debug("(%s.%s) Read Holding Registers: register = %s, count = %s", self.host, self.device_id, register, count)
 
@@ -375,6 +439,7 @@ class ModbusController:
                     return None, exc
 
                 self._last_modbus_success = datetime.now(UTC)
+                self.has_answered = True
                 return result.registers, None
             except Exception as e:
                 # Log the exception, close connection, and return error
@@ -391,7 +456,9 @@ class ModbusController:
     async def async_read_holding_registers_with_exception(self, register: int, count: int) -> tuple[list[int] | None, int | None]:
         """Like async_read_holding_register but returns (registers, exception_code) for recoverable-read logic."""
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("holding", register, count)
+                return None, None
             return await self._async_read_holding_register_raw_detailed(register, count, quiet=False)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
@@ -411,11 +478,38 @@ class ModbusController:
             Exception: If there is an error during the read operation.
         """
         try:
-            await self.connect()
+            if not await self.connect():
+                self._log_skipped_read("holding", register, count)
+                return None
             return await self._async_read_holding_register_raw(register, count)
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Exception while reading holding registers starting at {register} (count={count}): {str(e)}")
             return None
+
+    def _log_skipped_read(self, kind: str, register: int, count: int) -> None:
+        # The link is down and the reconnect attempt failed. Issuing the read anyway only
+        # produces a pymodbus "Not connected" error per group (issue #478); the reconnect
+        # watchdog in DataRetrieval owns recovery, so stay quiet here.
+        _LOGGER.debug("(%s.%s) Skipping %s register read at %s (count=%s): not connected", self.host, self.device_id, kind, register, count)
+
+    async def async_unit_answers(self, device_id: int) -> bool:
+        """Return whether some unit on this link answers a read of the probe register.
+
+        Unlike the register reads, an answer doesn't count as this inverter
+        answering (has_answered, last_modbus_success): it may be another unit.
+        """
+        if not await self.connect():
+            return False
+        register = self.inverter_config.probe_register
+        async with self.poll_lock:
+            await self.inter_frame_wait()
+            try:
+                result = await self.client.read_input_registers(address=register, count=1, device_id=device_id)
+            except Exception as e:
+                _LOGGER.debug("(%s.%s) No answer from unit %s at register %s: %s", self.host, self.device_id, device_id, register, e)
+                self._safe_close()
+                return False
+        return not result.isError()
 
     async def connect(self):
         """Establishes a connection to the Modbus device.
@@ -426,15 +520,22 @@ class ModbusController:
         Raises:
             Exception: If there is an error during the connection attempt.
         """
+        if self._closed:
+            return False
         if self.connected():
             return True
 
         async def _try_connect() -> bool:
             try:
+                _LOGGER.debug("(%s.%s) Opening connection to %s (attempt %d)", self.host, self.device_id, self.connection_id, self.connect_failures + 1)
                 await self.client.connect()
+                if self._closed:
+                    self._client_manager.close_if_released(self.connection_id, self.client)
+                    return False
                 if self.connected():
                     _LOGGER.info(f"✅ ({self.host}.{self.device_id}) Connected to Modbus device")
                     self.connect_failures = 0
+                    self.connection_count += 1
                     _LOGGER.debug("(%s.%s) serial number: %s", self.host, self.device_id, self.serial_number)
                     return True
                 self.connect_failures += 1
@@ -450,6 +551,8 @@ class ModbusController:
         lock = self.poll_lock
         if lock:
             async with lock:
+                if self._closed:
+                    return False
                 if self.connected():
                     return True
                 return await _try_connect()
@@ -516,6 +619,7 @@ class ModbusController:
         Returns:
             None
         """
+        self._closed = True
         manager = ModbusClientManager.get_instance()
         manager.release_client(self.connection_id)
         _LOGGER.info(f"({self.host}.{self.device_id}) Modbus connection closed")

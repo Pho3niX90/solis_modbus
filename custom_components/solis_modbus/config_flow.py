@@ -10,13 +10,17 @@ from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
+    CONF_CLOCK_SYNC,
     CONF_CONNECTION_TYPE,
     CONF_EXTREME_INCLUDE_BATTERY,
+    CONF_EXTREME_INCLUDE_SMART_PORT,
     CONF_INVERTER_SERIAL,
     CONF_PARITY,
     CONF_POLL_PROFILE,
     CONF_SERIAL_PORT,
+    CONF_SKIP_CONN_CHECK,
     CONF_STOPBITS,
+    CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -30,8 +34,8 @@ from .const import (
     POLL_PROFILE_FULL,
     POLL_PROFILES,
 )
-from .data.enums import InverterType
 from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig, inverter_options_from_config
+from .serial_proxy import SerialProxyClient, is_serial_proxy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +47,28 @@ CONNECTION_TYPES = {CONN_TYPE_TCP: "TCP (WiFi Dongle)", CONN_TYPE_SERIAL: "Seria
 
 # Parity options
 PARITY_OPTIONS = {"N": "None", "E": "Even", "O": "Odd"}
+
+# HA 2026.5+ offers a picker of the serial ports it can see, with a manual-entry
+# option for socket:// or rfc2217:// gateways. Older versions get a text field.
+try:
+    from homeassistant.helpers.selector import SerialPortSelector
+except ImportError:  # HA < 2026.5
+    SERIAL_PORT_FIELD = {vol.Required(CONF_SERIAL_PORT, default="/dev/ttyUSB0"): str}
+else:
+    # No default: preselecting a port that may not exist hides the real ones.
+    SERIAL_PORT_FIELD = {vol.Required(CONF_SERIAL_PORT): SerialPortSelector()}
+
+# pymodbus opens serial ports with pyserial's serial_for_url, which takes device
+# paths and these URL schemes; ESPHome serial proxies go through SerialProxyClient.
+# The picker can list other ports neither can open, and offers no filter.
+PYSERIAL_URL_SCHEMES = ("alt", "cp2110", "hwgrep", "loop", "rfc2217", "socket", "spy")
+
+
+def _is_supported_serial_port(port: str) -> bool:
+    """Return whether this serial port path or URL can be opened."""
+    scheme, separator, _ = port.partition("://")
+    return not separator or scheme.lower() in PYSERIAL_URL_SCHEMES or is_serial_proxy(port)
+
 
 # Base schema with common fields (for both TCP and Serial)
 BASE_CONFIG_SCHEMA = {
@@ -57,6 +83,9 @@ BASE_CONFIG_SCHEMA = {
     vol.Optional("poll_interval_slow", default=30): vol.All(int, vol.Range(min=30)),
     vol.Required(CONF_POLL_PROFILE, default=POLL_PROFILE_FULL): vol.In(POLL_PROFILES),
     vol.Required(CONF_EXTREME_INCLUDE_BATTERY, default=False): bool,
+    vol.Required(CONF_EXTREME_INCLUDE_SMART_PORT, default=False): bool,
+    vol.Required(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, default=False): bool,
+    vol.Required(CONF_CLOCK_SYNC, default=True): bool,
     vol.Required("model", default=list(SOLIS_MODELS.keys())[0]): vol.In(SOLIS_MODELS),
     # Boolean options (Yes/No toggle)
     vol.Required("has_v2", default=True): bool,
@@ -76,16 +105,18 @@ TCP_CONFIG_SCHEMA = {
     vol.Required("host", default=""): str,
     vol.Required("port", default=502): int,
     vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
+    vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
 }
 
 # Serial-specific fields (no WiFi dongle type needed)
 SERIAL_CONFIG_SCHEMA = {
     **BASE_CONFIG_SCHEMA,
-    vol.Required(CONF_SERIAL_PORT, default="/dev/ttyUSB0"): str,
+    **SERIAL_PORT_FIELD,
     vol.Required(CONF_BAUDRATE, default=DEFAULT_BAUDRATE): vol.In([9600, 19200, 38400, 57600, 115200]),
     vol.Required(CONF_BYTESIZE, default=DEFAULT_BYTESIZE): vol.In([7, 8]),
     vol.Required(CONF_PARITY, default=DEFAULT_PARITY): vol.In(PARITY_OPTIONS),
     vol.Required(CONF_STOPBITS, default=DEFAULT_STOPBITS): vol.In([1, 2]),
+    vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
 }
 
 OPTIONS_SCHEMA = vol.Schema(
@@ -95,6 +126,9 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("poll_interval_slow"): vol.All(int, vol.Range(min=30)),
         vol.Required(CONF_POLL_PROFILE, default=POLL_PROFILE_FULL): vol.In(POLL_PROFILES),
         vol.Required(CONF_EXTREME_INCLUDE_BATTERY, default=False): bool,
+        vol.Required(CONF_EXTREME_INCLUDE_SMART_PORT, default=False): bool,
+        vol.Required(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, default=False): bool,
+        vol.Required(CONF_CLOCK_SYNC, default=True): bool,
         vol.Required("model"): vol.In(SOLIS_MODELS),
         vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
         # Boolean options (Yes/No toggle)
@@ -124,32 +158,6 @@ def _validate_poll_interval(config: dict) -> str | None:
     if interval is not None and int(interval) < floor:
         return "poll_interval_below_floor"
     return None
-
-
-async def _probe_tcp_port(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str | None]:
-    """Check that something is actually accepting TCP connections on host:port.
-
-    A plain socket open is far cheaper than a Modbus handshake and separates the two
-    failure modes cleanly: a refused/timed-out connect means nothing is listening,
-    whereas a successful connect that then fails the register probe means Modbus (or
-    the slave id) is the problem. Returns (reachable, reason).
-    """
-    writer = None
-    try:
-        _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
-        return True, None
-    except TimeoutError:
-        return False, "timeout"
-    except OSError as e:
-        # ConnectionRefusedError, host unreachable, DNS failure — all OSError subclasses.
-        return False, type(e).__name__
-    finally:
-        if writer is not None:
-            writer.close()
-            try:
-                await writer.wait_closed()
-            except OSError:  # pragma: no cover - best-effort cleanup
-                pass
 
 
 def clean_identification(iden: str | None) -> str | None:
@@ -228,6 +236,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Update existing entry data with new input
             data = {**entry.data, **user_input}
+            data.pop(CONF_SKIP_CONN_CHECK, None)
             serial = (data.get(CONF_INVERTER_SERIAL) or "").strip()
 
             # Require serial and model so the form always collects them
@@ -241,7 +250,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             elif interval_error := _validate_poll_interval(data):
                 errors["base"] = interval_error
             else:
-                valid, err_key = await self._validate_config(data)
+                valid, err_key = await self._validate_config({**data, CONF_SKIP_CONN_CHECK: user_input.get(CONF_SKIP_CONN_CHECK, False)})
                 if valid:
                     # Strip reconfigured keys from options: setup merges
                     # {**data, **options}, so stale option values would silently
@@ -269,7 +278,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 1. Sanitize Serial (Convert to Uppercase)
         if CONF_INVERTER_SERIAL in data:
-            data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).upper()
+            data[CONF_INVERTER_SERIAL] = str(data[CONF_INVERTER_SERIAL]).strip().upper()
 
         # 2. Validate Connection
         interval_error = _validate_poll_interval(data)
@@ -291,7 +300,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
         # 4. Create the Config Entry
-        return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=data)
+        entry_data = {k: v for k, v in data.items() if k != CONF_SKIP_CONN_CHECK}
+        return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=entry_data)
 
     async def _validate_config(self, user_input):
         """Validate the configuration by probing the Modbus device.
@@ -302,6 +312,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry's connection out from under it during reconfigure or when adding a
         second inverter on the same datalogger.
 
+        Opens one connection at a time and no separate reachability socket, because
+        dataloggers such as the S2-WL-ST are reported to allow few clients (issue #545).
+
         Returns (True, None) on success, (False, error_key) on failure.
         """
         inverter_model = user_input.get("model")
@@ -311,27 +324,31 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning("Invalid or unknown inverter model: %s", inverter_model)
             return False, "invalid_model"
 
+        conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
+        if conn_type != CONN_TYPE_TCP and not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
+            _LOGGER.error("Serial port %s cannot be opened", user_input[CONF_SERIAL_PORT])
+            return False, "serial_port_unsupported"
+
+        if user_input.get(CONF_SKIP_CONN_CHECK, False):
+            if not str(user_input.get(CONF_INVERTER_SERIAL) or "").strip():
+                return False, "serial_required"
+            if conn_type == CONN_TYPE_TCP and not str(user_input.get("host") or "").strip():
+                return False, "cannot_connect"
+            _LOGGER.info("Skipping initial connectivity check by user request (%s)", conn_type)
+            return True, None
+
         user_options = inverter_options_from_config(user_input, inverter_template)
         inverter_config = inverter_template.clone_with_options(user_options, user_input.get("connection", "S2_WL_ST"))
 
-        conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
         device_id = user_input.get("slave", 1)
-        probe_register = 3041 if inverter_config.type in [InverterType.GRID, InverterType.STRING] else 35000
+        probe_register = inverter_config.probe_register
 
         if conn_type == CONN_TYPE_TCP:
             host, port = user_input["host"], user_input.get("port", 502)
-            reachable, reason = await _probe_tcp_port(host, port)
-            if not reachable:
-                # Distinguish "nothing is listening on 502" from "Modbus itself failed".
-                # Recent Solis datalogger firmware closes the local TCP services while
-                # cloud upload keeps working, which otherwise surfaces as a generic
-                # "check your configuration" and sends people hunting the wrong problem
-                # (issue #432).
-                _LOGGER.error("TCP pre-probe of %s:%s failed (%s) — nothing is serving Modbus there", host, port, reason)
-                return False, "tcp_port_closed"
             client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
-            client = AsyncModbusSerialClient(
+            client_cls = SerialProxyClient if is_serial_proxy(user_input[CONF_SERIAL_PORT]) else AsyncModbusSerialClient
+            client = client_cls(
                 port=user_input[CONF_SERIAL_PORT],
                 baudrate=user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
                 bytesize=user_input.get(CONF_BYTESIZE, DEFAULT_BYTESIZE),
@@ -341,29 +358,41 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 retries=1,
             )
 
-        try:
-            for attempt in range(3):
-                try:
-                    await client.connect()
-                    if not client.connected:
-                        raise ConnectionError("Failed to connect")
-                    # Both client types take the target unit as `device_id` on the
-                    # request itself. Assigning `client.slave` did nothing on the
-                    # serial client, so the probe always read device 1 regardless
-                    # of the configured slave.
-                    result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
-                    if result.isError():
-                        raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
-                    return True, None
-                except Exception as e:
-                    _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
-                    if attempt < 2:
-                        await asyncio.sleep(1)
-        finally:
+        for attempt in range(3):
             try:
-                client.close()
-            except Exception:  # noqa: BLE001 - best-effort cleanup of a throwaway client
-                pass
+                await client.connect()
+                if not client.connected:
+                    # Distinguish "can't open a connection" from "Modbus itself failed".
+                    # Recent Solis datalogger firmware closes the local TCP services while
+                    # cloud upload keeps working, which otherwise surfaces as a generic
+                    # "check your configuration" and sends people hunting the wrong problem
+                    # (issue #432). Later attempts don't qualify: the port just accepted a
+                    # connection, so a refusal there is the logger, not a closed port.
+                    if conn_type == CONN_TYPE_TCP and attempt == 0:
+                        _LOGGER.error("Could not open a TCP connection to %s:%s", host, port)
+                        return False, "tcp_port_closed"
+                    raise ConnectionError("Failed to connect")
+                # Both client types take the target unit as `device_id` on the
+                # request itself. Assigning `client.slave` did nothing on the
+                # serial client, so the probe always read device 1 regardless
+                # of the configured slave.
+                result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
+                if result.isError():
+                    raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
+                return True, None
+            except Exception as e:
+                _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
+            finally:
+                # Close after every attempt, not just the last. pymodbus's connect() replaces
+                # its transport without closing the old one, so retrying on an open client
+                # leaves that socket open, which can use up a datalogger's client slots
+                # (issue #545).
+                try:
+                    client.close()
+                except Exception:  # noqa: BLE001 - best-effort cleanup of a throwaway client
+                    pass
+            if attempt < 2:
+                await asyncio.sleep(1)
 
         _LOGGER.error("Connection validation failed after 3 attempts (%s)", conn_type)
         return False, "cannot_connect"

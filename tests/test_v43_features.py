@@ -1,6 +1,7 @@
 """v4.2.0 second wave: read_register + force charge/discharge services,
 little-endian 32-bit decode, EPM gating."""
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -91,6 +92,33 @@ def controller():
     return c
 
 
+def record_write_batches(controller):
+    """Make controller.write_batch() group the writes made inside it; return the groups (#534)."""
+    batches = []
+    state = {"open": False}
+
+    @asynccontextmanager
+    async def write_batch():
+        batches.append([])
+        state["open"] = True
+        try:
+            yield
+        finally:
+            state["open"] = False
+
+    def record(*args):
+        if state["open"]:
+            batches[-1].append(args)
+        else:
+            batches.append([args])
+
+    controller.write_batch = write_batch
+    controller.async_write_holding_register.side_effect = record
+    if isinstance(getattr(controller, "async_write_holding_registers", None), AsyncMock):
+        controller.async_write_holding_registers.side_effect = record
+    return batches
+
+
 async def setup_services(hass, controller):
     from custom_components.solis_modbus import async_setup
 
@@ -175,6 +203,15 @@ async def test_force_charge_writes_the_352_combo_in_order(hass: HomeAssistant, c
     calls = [c.args for c in controller.async_write_holding_register.await_args_list]
     # Enable FIRST (issue #352 latch), then power (W/10), then timeout (minutes)
     assert calls == [(43135, 1), (43136, 300), (43282, 30)]
+
+
+@pytest.mark.asyncio
+async def test_force_charge_queues_the_combo_as_one_batch(hass: HomeAssistant, controller):
+    """Sent whole or dropped whole after an outage, never half-applied (#534)."""
+    batches = record_write_batches(controller)
+    await setup_services(hass, controller)
+    await hass.services.async_call(DOMAIN, "solis_force_battery_charge", {"power_watts": 3000, "duration_minutes": 30}, blocking=True)
+    assert batches == [[(43135, 1), (43136, 300), (43282, 30)]]
 
 
 @pytest.mark.asyncio

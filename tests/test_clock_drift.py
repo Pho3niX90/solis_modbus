@@ -2,7 +2,8 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from custom_components.solis_modbus.const import DOMAIN, DRIFT_COUNTER
-from custom_components.solis_modbus.helpers import clock_drift_test
+from custom_components.solis_modbus.helpers import clock_drift_test, clock_sync_enabled, is_clock_sync_sensor
+from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors_derived
 
 NOW = datetime(2026, 6, 13, 12, 30, 15, tzinfo=UTC)
 
@@ -120,3 +121,25 @@ def test_counters_are_isolated_per_inverter():
 
     assert get_counter(hass, "10.0.0.1:502|1|drift") == 2
     assert get_counter(hass, "10.0.0.1:502|2|drift") == 0
+
+
+def make_entry(data=None, options=None):
+    entry = MagicMock()
+    entry.data = data or {}
+    entry.options = options or {}
+    return entry
+
+
+def test_clock_sync_defaults_on_for_existing_entries():
+    assert clock_sync_enabled(make_entry()) is True
+
+
+def test_clock_sync_options_override_data():
+    assert clock_sync_enabled(make_entry(data={"clock_sync": False})) is False
+    assert clock_sync_enabled(make_entry(data={"clock_sync": True}, options={"clock_sync": False})) is False
+    assert clock_sync_enabled(make_entry(data={"clock_sync": False}, options={"clock_sync": True})) is True
+
+
+def test_only_the_clock_adjustment_sensor_is_flagged():
+    flagged = [entity["name"] for entity in hybrid_sensors_derived if is_clock_sync_sensor(entity)]
+    assert flagged == ["Last Clock Adjustment"]

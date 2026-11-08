@@ -103,7 +103,7 @@ Editable number entities (hybrid).
 
 | Name                                                                     | Register | Bit Position | Note                |
 |--------------------------------------------------------------------------|----------|--------------|---------------------|
-| Solis Power State                                                        | 43007    |              |                     |
+| Solis Inverter Power (On/Off)                                            | 43007    |              |                     |
 | Solis Output Limit Gate                                                  | 43070    |              |                     |
 | Solis Grid feed in power limit switch                                    | 43073    | 4            |                     |
 | Solis Self-Use Mode                                                      | 43110    | 0            |                     |
@@ -118,6 +118,7 @@ Editable number entities (hybrid).
 | Solis Batt OVC                                                           | 43110    | 7            |                     |
 | Solis Battery Forcecharge Peakshaving                                    | 43110    | 8            |                     |
 | Solis Battery Current Correction                                         | 43110    | 9            |                     |
+| Solis Backup Supply                                                      | 43111    |              |                     |
 | Solis RC Force Battery Charge                                            | 43135    |              |                     |
 | Solis RC Force Battery Discharge                                         | 43135    |              |                     |
 | Solis MPPT Parallel Function                                             | 43249    | 0            |                     |
@@ -178,12 +179,12 @@ Editable number entities (hybrid).
 
 # Select Control Sensors
 
-| Name                            | Register | Options                                                                                                                                                                                                                                                                                                                     |
-|---------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Solis RC Grid Adjustment        | 43132    | OFF, System Grid Connection Point, Inverter AC Grid Port                                                                                                                                                                                                                                                                    |
-| Solis RC Force Charge/Discharge | 43135    | None, Solis RC Force Battery Charge, Solis RC Force Battery Discharge                                                                                                                                                                                                                                                       |
-| Solis Storage Mode              | 43110    | Self-Use, Self-Use + TOU, Feed-in Priority, Feed-in Priority + TOU, Reserve / Backup, Reserve / Backup + TOU, Off-Grid Operation, Peak Shaving                                                                                                                                                                              |
-| Solis Battery Model (HV)        | 43009    | No battery, PYLON_HV, User define, B_BOX_HV BYD, LG_HV LG, SOLUNA_HV, Dyness HV, Aoboet HV, WECO HV, Alpha HV, GS Energy, BYD-HVS/HVM/HVL, Jinko, FOX, LG_16H, PureDrive, UZ ENERGY, Reserve017, Lotus, Fortress, AMPACE_HV, WTS, J-PACK-HV, SUNWODA HV, LG Enblock S, General-LiBat-HV                                     |
+| Name                            | Register | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+|---------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Solis RC Grid Adjustment        | 43132    | OFF, System Grid Connection Point, Inverter AC Grid Port                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Solis RC Force Charge/Discharge | 43135    | None, Solis RC Force Battery Charge, Solis RC Force Battery Discharge                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Solis Storage Mode              | 43110    | Self-Use, Self-Use + TOU, Self-Use + Reserve/Backup, Self-Use + TOU + Reserve/Backup, Feed-in Priority, Feed-in Priority + TOU, Feed-in Priority + Reserve/Backup, Feed-in Priority + TOU + Reserve/Backup, Off-Grid Operation, Peak Shaving                                                                                                                                                                                                                                                                   |
+| Solis Battery Model (HV)        | 43009    | No battery, PYLON_HV, User define, B_BOX_HV BYD, LG_HV LG, SOLUNA_HV, Dyness HV, Aoboet HV, WECO HV, Alpha HV, GS Energy, BYD-HVS/HVM/HVL, Jinko, FOX, LG_16H, PureDrive, UZ ENERGY, Reserve017, Lotus, Fortress, AMPACE_HV, WTS, J-PACK-HV, SUNWODA HV, LG Enblock S, General-LiBat-HV                                                                                                                                                                                                                        |
 | Solis Battery Model (LV)        | 43009    | No battery, PYLON_LV, User define, B_BOX_LV BYD, Dyness LV, PureDrive, LG Chem LV LG, AoBo LV, JiaWei LV, WECO LV, FreedomWon LV, Soluna LV, GSL LV, Rita LV, RiSheng, Alpha, UZ ENERGY, ATL, Zeta, Highstar, KODAK, FOX, EXIDE, HD Energy, Pytes, ARVIO, PAND, WANKE, Dowell, ROSEN ESS, ZRGP, Narada, BST, Cegasa, Meterboost, MOURA, Tecloman, Upower UE-H, Upower UE-I, SUNWODA, CFE, DMEGC, J-Pack-LV, HY4850, JA-L, Lithium Battery LV(RS485), General-LiBat-LV, Lead Acid, 48V-LiBat-LV, 51.2V-LiBat-LV |
 
 # Time Control Sensors
@@ -376,6 +377,8 @@ Editable number entities (hybrid).
 | Solis Meter Active Power A                                | POWER          | WATT                 | MEASUREMENT      | 33257, 33258                                    |
 | Solis Meter Active Power B                                | POWER          | WATT                 | MEASUREMENT      | 33259, 33260                                    |
 | Solis Meter Active Power C                                | POWER          | WATT                 | MEASUREMENT      | 33261, 33262                                    |
+| Solis Grid Export Power                                   | POWER          | WATT                 | MEASUREMENT      | 33263, 33264, 0                                 |
+| Solis Grid Import Power                                   | POWER          | WATT                 | MEASUREMENT      | 33263, 33264, 1                                 |
 | Solis Grid Power Net                                      | POWER          | WATT                 | MEASUREMENT      | 33263, 33264                                    |
 | Solis Meter Total Active Power                            | POWER          | WATT                 | MEASUREMENT      | 33263, 33264                                    |
 | Solis Meter Reactive Power A                              | REACTIVE_POWER | VOLT_AMPERE_REACTIVE | MEASUREMENT      | 33265, 33266                                    |
@@ -390,6 +393,7 @@ Editable number entities (hybrid).
 | Solis Meter Grid Frequency                                | FREQUENCY      | HERTZ                | MEASUREMENT      | 33282                                           |
 | Solis Meter Total Active Energy From Grid                 | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33283, 33284                                    |
 | Solis Meter Total Active Energy To Grid                   | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33285, 33286                                    |
+| Solis TOU Function Version                                |                |                      |                  | 33289                                           |
 | Solis Meter 1 Type and Location                           |                |                      | MEASUREMENT      | 33300                                           |
 | Solis Meter 2 Type and Location                           |                |                      | MEASUREMENT      | 33301                                           |
 | Solis Meter 2 AC Voltage A                                | VOLTAGE        | VOLT                 | MEASUREMENT      | 33302                                           |
@@ -414,6 +418,9 @@ Editable number entities (hybrid).
 | Solis Meter 2 Grid Frequency                              | FREQUENCY      | HERTZ                | MEASUREMENT      | 33333                                           |
 | Solis Meter 2 Total Active Energy From Grid               | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33334, 33335                                    |
 | Solis Meter 2 Total Active Energy To Grid                 | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33336, 33337                                    |
+| Solis AC Grid Port Active Power Phase A                   | POWER          | WATT                 | MEASUREMENT      | 33512                                           |
+| Solis AC Grid Port Active Power Phase B                   | POWER          | WATT                 | MEASUREMENT      | 33515                                           |
+| Solis AC Grid Port Active Power Phase C                   | POWER          | WATT                 | MEASUREMENT      | 33518                                           |
 | Solis Generator Phase A Active Power                      | POWER          | WATT                 | MEASUREMENT      | 33530                                           |
 | Solis Generator Today Energy                              | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33531                                           |
 | Solis Generator Total Energy                              | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33532, 33533                                    |
@@ -468,6 +475,7 @@ Editable number entities (hybrid).
 | Solis Backflow Power                                      | POWER          | WATT                 |                  | 43074                                           |
 | Solis Output Power Clamp                                  | POWER          | WATT                 | MEASUREMENT      | 43081                                           |
 | Solis Storage control Switch value                        |                |                      | MEASUREMENT      | 43110                                           |
+| Solis Backup Supply value                                 |                |                      | MEASUREMENT      | 43111                                           |
 | Solis Battery Max Charge Current                          | CURRENT        | AMPERE               |                  | 43117                                           |
 | Solis Battery Max Discharge Current                       | CURRENT        | AMPERE               |                  | 43118                                           |
 | Solis RC Inverter AC Grid Active Power                    | POWER          | WATT                 | MEASUREMENT      | 43128                                           |
@@ -527,6 +535,7 @@ Editable number entities (hybrid).
 | Solis RC Timeout                                          |                | MINUTES              |                  | 43282                                           |
 | Solis Flexible Export Backflow Power                      | POWER          | WATT                 | MEASUREMENT      | 43291                                           |
 | Solis Flexible Export Enabling Switch                     |                |                      | MEASUREMENT      | 43292                                           |
+| Solis Flexible Export Status                              |                |                      |                  | 43292, 43291                                    |
 | Solis Hybrid auxiliary control flags                      |                |                      | MEASUREMENT      | 43302                                           |
 | Solis Generator Set Enable Switch                         |                |                      | MEASUREMENT      | 43340                                           |
 | Solis MPPT Scanning Interval                              |                | SECONDS              | MEASUREMENT      | 43361                                           |
@@ -760,5 +769,46 @@ This is only required if your values are higher than expected, if you aren't exp
 - **Solis Implementation**: While not explicitly named, the combination of "Self-Use" and "Time Charging" modes can achieve peak shaving.
 - The battery discharges during peak demand times to reduce grid reliance and associated costs.
 - [Source](https://usservice.solisinverters.com/support/solutions/articles/73000560490-energy-storage-operating-modes)
+
+## Solis app settings and the Storage Mode select
+
+The Solis app splits the storage mode into two settings: **Storage Mode** and a
+separate **Battery Reserve Switch**. The integration's **Storage Mode** select
+(register 43110) combines both into one option:
+
+| Solis app: Storage Mode | Solis app: Battery Reserve Switch | Storage Mode select option              | 43110 value |
+|-------------------------|-----------------------------------|-----------------------------------------|-------------|
+| Self Use                | OFF                               | Self-Use                                | 1           |
+| Self Use                | ON                                | Self-Use + Reserve/Backup               | 17          |
+| Selling First           | OFF                               | Feed-in Priority                        | 64          |
+| Selling First           | ON                                | Feed-in Priority + Reserve/Backup       | 80          |
+| Off Grid                | (not applicable)                  | Off-Grid Operation                      | 4           |
+| (not offered)           | (not applicable)                  | Peak Shaving                            | 2048        |
+
+Notes:
+
+- The 43110 values above assume the other modifier bits are off. "Allow grid
+  to charge the battery" (bit 5) adds 32, e.g. Self-Use + Reserve/Backup with
+  grid charging is 49. The select keeps these bits when you change mode.
+- The Solis app does not offer **Peak Shaving** on every model, but an
+  S6-EH1P accepts it over Modbus and runs it.
+- **Time of Use.** On inverters that report V2 time-of-use (sensor *TOU
+  Function Version* = 43605, i.e. register 33289 = `0xAA55`), the Solis app has
+  no TOU storage mode. Time of use is set per period under
+  **Charge&Discharge Slot**, which corresponds to the integration's *Grid Time
+  of Use* period switches and time/number entities (43707 and up). On these
+  inverters the "+ TOU" select options and the *Time of Use* switch (43110
+  bit 1) are hidden, because the firmware clears that bit about 15 seconds
+  after it is written ([#475](https://github.com/Pho3niX90/solis_modbus/issues/475)).
+  Older V1 firmware keeps the "+ TOU" options and the *Time-Charging* slots.
+- **Parallel systems.** Set the mode on the **master** inverter. The master
+  copies its storage mode to the slave within a poll or two, and overwrites any
+  mode set on the slave directly, from the Solis app or from the slave's
+  Storage Mode select.
+- **Checking what the inverter runs.** 43110 is the setting, and register 33132
+  (*Storage Control Switching Value*) mirrors the mode actually applied. The
+  *Operating Mode* sensor (33122) shows one bit for the active mode. Values
+  seen on an S6-EH1P master: 2 = Self-Use, 8 = Feed-in Priority, 512 = Peak
+  Shaving. The slave reports 0 there.
 
 For detailed configuration and to ensure optimal performance tailored to your needs, consult the Solis inverter manual or contact their technical support.

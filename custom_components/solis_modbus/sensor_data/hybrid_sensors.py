@@ -1245,6 +1245,7 @@ hybrid_sensors = [
     },
     {
         "register_start": 34391,
+        "extreme_smart_port": True,  # opt-in frame: AC-coupled PV behind the Smart Port (#501)
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.SMART_PORT],
         "entities": [
@@ -1509,6 +1510,22 @@ hybrid_sensors = [
                 "unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
                 "state_class": SensorStateClass.TOTAL_INCREASING,
                 "data_type": DataType.U32,
+            },
+        ],
+    },
+    {
+        # TOU function version (Ver3.4 p18): 0xAA55 (43605) = V2 time-of-use, which
+        # hides the 43110 bit-1 (V1) TOU controls (issue #475). Own group so
+        # firmware without it only gets this one register disabled.
+        "register_start": 33289,
+        "poll_speed": PollSpeed.SLOW,
+        "entities": [
+            {
+                "name": "TOU Function Version",
+                "category": Category.STATUS_INFORMATION,
+                "unique": "solis_modbus_inverter_tou_function_version",
+                "register": ["33289"],
+                "multiplier": 0,
             },
         ],
     },
@@ -1793,6 +1810,18 @@ hybrid_sensors = [
                 "category": Category.AC_INFORMATION,
                 "unique": "solis_modbus_inverter_ac_grid_port_active_power_phase_b",
                 "register": ["33515"],
+                "device_class": SensorDeviceClass.POWER,
+                "multiplier": 10,
+                "unit_of_measurement": UnitOfPower.WATT,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S16,
+            },
+            {"type": "reserve", "register": ["33516", "33517"]},
+            {
+                "name": "AC Grid Port Active Power Phase C",
+                "category": Category.AC_INFORMATION,
+                "unique": "solis_modbus_inverter_ac_grid_port_active_power_phase_c",
+                "register": ["33518"],
                 "device_class": SensorDeviceClass.POWER,
                 "multiplier": 10,
                 "unit_of_measurement": UnitOfPower.WATT,
@@ -2097,9 +2126,10 @@ hybrid_sensors = [
                 "default": 20,
                 "min": 0,
                 # No "max": protocol ceiling. A literal here caps LV/multi-pack banks below
-                # their own rated current, and the BMS mirror (33206) is advisory only —
-                # it derates with SOC (#467) and can echo the setpoint back (#464), so it
-                # is surfaced as the device_limit attribute, never as the bound.
+                # their own rated current; the BMS limitation register (33143) and the
+                # inverter's own ceiling (33041) are advisory only — the BMS one derates
+                # with SOC (#467) and 33206 ("mirror") echoes the setpoint (#464/#481), so
+                # they're surfaced as the device_limit attribute, never as the bound.
                 "step": 0.1,
             },
             {
@@ -2113,7 +2143,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33144) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
             },
             {"type": "reserve", "register": ["43014", "43015"]},
@@ -2485,9 +2516,9 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33206) advisory — see 43012. The
-                # old 135 A literal sat below the ~293 A a 15 kW LV bank draws at its own
-                # nameplate.
+                # No "max": protocol ceiling; BMS limit (33143) + inverter ceiling (33041)
+                # advisory — see 43012. The old 135 A literal sat below the ~293 A a 15 kW
+                # LV bank draws at its own nameplate.
                 "step": 0.1,
                 "default": 50,
             },
@@ -2502,7 +2533,8 @@ hybrid_sensors = [
                 "state_class": SensorStateClass.MEASUREMENT,
                 "editable": True,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33144) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
                 "default": 50,
             },
@@ -4087,6 +4119,9 @@ hybrid_sensors = [
                 "device_class": SensorDeviceClass.POWER,
                 "unit_of_measurement": UnitOfPower.WATT,
                 "editable": True,
+                # SAPN-only: the control is disabled in the registry by default; the
+                # read-only sensor stays, since 0 W here silently blocks export (#499).
+                "registry_enabled": False,
                 "min": 0,
                 # SUSPECT: grid-side export limit capped at 15000 — see 43488.
                 "max": 15000,
@@ -4158,7 +4193,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33206) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33143) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
             },
             {
@@ -4172,7 +4208,8 @@ hybrid_sensors = [
                 "editable": True,
                 "default": 20,
                 "min": 0,
-                # No "max": protocol ceiling; BMS mirror (33207) advisory — see 43012.
+                # No "max": protocol ceiling; BMS limit (33144) + inverter ceiling (33041)
+                # advisory — see 43012.
                 "step": 0.1,
             },
         ],
@@ -4575,6 +4612,14 @@ hybrid_sensors_derived = [
         "register": ["33095"],
     },
     {
+        # Flexible Export switch (43292) + its export limit (43291). Switched on with a
+        # 0 W limit, every local export path is capped at 0 W with no other symptom (#499).
+        "name": "Flexible Export Status",
+        "unique": "solis_modbus_inverter_flexible_export_status",
+        "multiplier": 0,
+        "register": ["43292", "43291"],
+    },
+    {
         "name": "PV Power 1",
         "unique": "solis_modbus_inverter_dc_power_1",
         "device_class": SensorDeviceClass.POWER,
@@ -4649,6 +4694,27 @@ hybrid_sensors_derived = [
         "category": Category.METER_INFORMATION,
         "unique": "solis_modbus_inverter_grid_power_net",
         "register": ["33263", "33264"],
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    {
+        # Grid power split by direction (#524); the trailing flag picks the side: 0 export, 1 import.
+        "name": "Grid Export Power",
+        "category": Category.METER_INFORMATION,
+        "unique": "solis_modbus_inverter_grid_export_power",
+        "register": ["33263", "33264", "0"],
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+    },
+    {
+        "name": "Grid Import Power",
+        "category": Category.METER_INFORMATION,
+        "unique": "solis_modbus_inverter_grid_import_power",
+        "register": ["33263", "33264", "1"],
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0,
         "unit_of_measurement": UnitOfPower.WATT,

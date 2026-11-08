@@ -12,13 +12,14 @@ def get_switch_sensors(inverter_config):
         }
     ]
 
-    if inverter_config.type == InverterType.HYBRID:
+    if inverter_config.type in (InverterType.HYBRID, InverterType.ENERGY):
         switch_sensors.extend(
             [
                 {
+                    # Remote inverter on/off (issue #476): 0xBE = on, 0xDE = off.
                     "register": 43007,
                     "entities": [
-                        {"name": "Power State", "on_value": 190, "off_value": 222},
+                        {"name": "Inverter Power (On/Off)", "on_value": 190, "off_value": 222},
                     ],
                 },
                 {
@@ -42,7 +43,8 @@ def get_switch_sensors(inverter_config):
                         # NOTE: Self-Use must NOT clear bit 4 — Reserve/Backup is bit 4 as a
                         # modifier on Self-Use in every SolisCloud capture (17/49/51).
                         {"bit_position": 0, "name": "Self-Use Mode", "conflicts_with": [2, 6, 11]},
-                        {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6]},
+                        # V1 TOU enable: unavailable on V2 firmware, which clears it (issue #475).
+                        {"bit_position": 1, "name": "Time of Use", "requires_any": [0, 6], "tou_v1": True},
                         {"bit_position": 2, "name": "Off-Grid Mode", "conflicts_with": [0, 1, 4, 6, 11]},
                         {"bit_position": 3, "name": "Battery Wakeup Switch"},
                         {"bit_position": 4, "name": "Reserve Battery Mode", "conflicts_with": [2, 11], "requires": [0]},
@@ -186,9 +188,13 @@ def get_switch_sensors(inverter_config):
                 {
                     "register": 43292,
                     "entities": [
-                        # Solis AA/55 convention — without off_value, turning OFF wrote 0
-                        # instead of 0x55 (same convention as the 3069 power-limit switch).
-                        {"name": "Flexible Export Enabling Switch", "on_value": 170, "off_value": 85},
+                        # SAPN (South Australia) Flexible Export execution switch: 0x00AA on,
+                        # 0x0000 off — the spec marks every other value invalid. NOT the AA/55
+                        # pair of 3069: 0x55 belongs to the separate "setting allowed" gate
+                        # (string 3178), and writing it here is ignored, leaving the switch
+                        # stuck on with export capped at 43291 (#499). Off-by-default in the
+                        # registry: it only applies to SAPN sites.
+                        {"name": "Flexible Export Enabling Switch", "on_value": 170, "off_value": 0, "registry_enabled": False},
                     ],
                 },
                 {

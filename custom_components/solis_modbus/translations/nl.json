@@ -27,6 +27,10 @@
           "poll_interval_slow": "Langzaam Poll Interval (seconden)",
           "poll_profile": "Pollprofiel (hoeveel van de registerkaart wordt gepolld)",
           "extreme_include_battery": "Extreem: poll ook batterij-/belastingsgroep (SOC, belasting, batterijvermogen)",
+          "extreme_include_smart_port": "Extreem: ook Smart Port AC-vermogen uitlezen (fase A/B/C, alleen modellen met Smart Port)",
+          "suppress_night_offline_issue": "Onderdruk de 'datalogger onbereikbaar'-reparatiemelding zolang de zon onder de horizon staat",
+          "clock_sync": "Klokafwijking van de omvormer automatisch corrigeren (schrijft de omvormerklok; uitschakelen voor alleen-lezen monitoring)",
+          "skip_conn_check": "Initiële verbindingscontrole overslaan (offline instellen toestaan)",
           "identification": "Identificatie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -58,6 +62,10 @@
           "poll_interval_slow": "Langzaam Poll Interval (seconden)",
           "poll_profile": "Pollprofiel (hoeveel van de registerkaart wordt gepolld)",
           "extreme_include_battery": "Extreem: poll ook batterij-/belastingsgroep (SOC, belasting, batterijvermogen)",
+          "extreme_include_smart_port": "Extreem: ook Smart Port AC-vermogen uitlezen (fase A/B/C, alleen modellen met Smart Port)",
+          "suppress_night_offline_issue": "Onderdruk de 'datalogger onbereikbaar'-reparatiemelding zolang de zon onder de horizon staat",
+          "clock_sync": "Klokafwijking van de omvormer automatisch corrigeren (schrijft de omvormerklok; uitschakelen voor alleen-lezen monitoring)",
+          "skip_conn_check": "Initiële verbindingscontrole overslaan (offline instellen toestaan)",
           "identification": "Identificatie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -78,7 +86,8 @@
       "invalid_model": "Ongeldig of onbekend omvormermodel. Selecteer een model uit de lijst.",
       "serial_required": "Het serienummer van de omvormer is verplicht.",
       "model_required": "Selecteer een omvormermodel.",
-      "tcp_port_closed": "Er accepteert niets Modbus-verbindingen op dat adres en die poort. Het apparaat is mogelijk bereikbaar (het antwoordt op ping) maar biedt geen Modbus aan — controleer of Modbus TCP is ingeschakeld op de datalogger. Van recente Solis-loggerfirmware is bekend dat deze lokale poort 502 sluit; een RS485-naar-TCP-bridge is een tijdelijke oplossing.",
+      "tcp_port_closed": "Er kon geen Modbus-verbinding worden geopend op dat adres en die poort. Als het adres klopt, heeft de datalogger mogelijk geen verbindingen meer vrij: stop andere Modbus-clients, herstart de datalogger en probeer het opnieuw. Controleer anders of Modbus TCP is ingeschakeld op de datalogger. Van recente Solis-loggerfirmware is bekend dat deze lokale poort 502 sluit; een RS485-naar-TCP-bridge is een tijdelijke oplossing.",
+      "serial_port_unsupported": "Deze seriële poort kan niet worden gebruikt. Gebruik een apparaatpad (bijv. /dev/ttyUSB0), een socket://- of rfc2217://-gateway, een ESPHome seriële proxy zoals Home Assistant Connect AUX-2 (Home Assistant 2026.5 of nieuwer), of het verbindingstype TCP.",
       "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s)."
     },
     "abort": {
@@ -96,6 +105,9 @@
           "poll_interval_slow": "Langzaam Poll Interval (seconden)",
           "poll_profile": "Pollprofiel (hoeveel van de registerkaart wordt gepolld)",
           "extreme_include_battery": "Extreem: poll ook batterij-/belastingsgroep (SOC, belasting, batterijvermogen)",
+          "extreme_include_smart_port": "Extreem: ook Smart Port AC-vermogen uitlezen (fase A/B/C, alleen modellen met Smart Port)",
+          "suppress_night_offline_issue": "Onderdruk de 'datalogger onbereikbaar'-reparatiemelding zolang de zon onder de horizon staat",
+          "clock_sync": "Klokafwijking van de omvormer automatisch corrigeren (schrijft de omvormerklok; uitschakelen voor alleen-lezen monitoring)",
           "model": "Omvormer Model",
           "has_v2": "Geüpdatet naar V2 Firmware",
           "has_pv": "Heeft Zonnepanelen (PV)",
@@ -182,6 +194,10 @@
     "datalogger_unreachable": {
       "title": "Solis-datalogger onbereikbaar",
       "description": "Geen geslaagde Modbus-uitlezing van {host} sinds {last_success}. De WiFi-datalogger slaapt mogelijk, is uitgeschakeld of half-open; de integratie blijft het met backoff proberen. Herstart de voeding van de datalogger als dit aanhoudt."
+    },
+    "serial_slave_id": {
+      "title": "Solis-omvormer antwoordt niet op slave-ID {slave}",
+      "description": "De omvormer op {port} antwoordt niet op zijn ingestelde Modbus-slave-ID {slave}, maar een apparaat op de bus antwoordt op slave-ID 1. Oudere versies van deze integratie stuurden elk serieel (RS485) verzoek naar slave-ID 1, ongeacht de ingestelde ID, dus deze opstelling heeft mogelijk tot nu toe gewerkt. Staat de omvormer op slave-ID 1, herconfigureer dan de integratie-invoer en stel de slave-ID in op 1."
     }
   }
 }

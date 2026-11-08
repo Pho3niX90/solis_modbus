@@ -5,6 +5,7 @@ requires-python = "~=3.12.0" # keep in sync with Home Assistant
 dependencies = [
     "homeassistant==2025.1.4",
     "pymodbus>=3.11.1", # keep in sync with custom_components/solis_modbus/manifest.json
+    "modbus-connection[tmodbus]>=4.12.3", # keep in sync with custom_components/solis_modbus/manifest.json
 ]
 
 [dependency-groups]

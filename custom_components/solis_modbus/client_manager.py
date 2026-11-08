@@ -5,8 +5,15 @@ import time
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP
+from custom_components.solis_modbus.serial_proxy import SerialProxyClient, is_serial_proxy
 
 _LOGGER = logging.getLogger(__name__)
+
+# Solis RS485_MODBUS protocol (Hybrid Inverter V3.1 / PV Grid-Connected Inverter V19),
+# section 3.2 "Inter-frame interval requirement": "More than 300ms communications frame
+# interval is required." Applies to every request on the link, read or write. 310ms gives
+# a small margin above the documented floor (see issue #480).
+MIN_INTER_FRAME_MS = 310
 
 
 class ModbusClientManager:
@@ -44,15 +51,19 @@ class ModbusClientManager:
         _LOGGER.debug(f"TCP client ref count for {host}:{port} is now {self._clients[key]['ref_count']}")
         return self._clients[key]["client"]
 
-    def get_serial_client(self, serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient:
+    def get_serial_client(self, serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient | SerialProxyClient:
         """Get or create a Serial Modbus client."""
         key = serial_port  # Use serial_port as the key
         if key not in self._clients:
             _LOGGER.debug(f"Creating new Modbus Serial client for {serial_port} (baudrate={baudrate})")
-            # retries=1 for the same reason as the TCP client: the integration's own
-            # reconnect watchdog handles recovery, and pymodbus retry storms only
-            # add latency on an already-struggling link.
-            client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
+            if is_serial_proxy(serial_port):
+                # ESPHome serial proxies (e.g. Connect AUX-2): pyserial can't open them.
+                client = SerialProxyClient(serial_port, baudrate, bytesize, parity, stopbits, timeout=5)
+            else:
+                # retries=1 for the same reason as the TCP client: the integration's own
+                # reconnect watchdog handles recovery, and pymodbus retry storms only
+                # add latency on an already-struggling link.
+                client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,
@@ -102,7 +113,7 @@ class ModbusClientManager:
         """Minimum spacing between Modbus operations on one TCP/serial link, across all controllers sharing it."""
         if connection_id not in self._clients:
             return
-        delay_ms = 100 if is_write else 50
+        delay_ms = MIN_INTER_FRAME_MS
         entry = self._clients[connection_id]
         current_time = time.perf_counter()
         last = float(entry.get("last_modbus_request", 0.0))
@@ -121,8 +132,14 @@ class ModbusClientManager:
                 _LOGGER.debug(f"Closing and removing Modbus client for {connection_id}")
                 client = self._clients[connection_id]["client"]
                 try:
-                    if hasattr(client, "connected") and client.connected:
-                        client.close()
+                    # unconditional: close() also cancels a pending pymodbus reconnect, which connected=False hides
+                    client.close()
                 except Exception as e:
                     _LOGGER.debug(f"Error closing client for {connection_id}: {e}")
                 del self._clients[connection_id]
+
+    def close_if_released(self, connection_id: str, client) -> None:
+        """Close a client the manager no longer holds; a client other controllers still share is left open."""
+        entry = self._clients.get(connection_id)
+        if entry is None or entry["client"] is not client:
+            client.close()

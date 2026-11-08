@@ -1,7 +1,11 @@
+import asyncio
+import time
 import unittest
 from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
+
+from pymodbus.client import AsyncModbusSerialClient
 
 from custom_components.solis_modbus.const import (
     CONN_TYPE_SERIAL,
@@ -12,7 +16,7 @@ from custom_components.solis_modbus.const import (
     DEFAULT_STOPBITS,
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
-from custom_components.solis_modbus.modbus_controller import ModbusController
+from custom_components.solis_modbus.modbus_controller import WRITE_MAX_AGE, ModbusController
 
 
 class TestModbusControllerTCP(IsolatedAsyncioTestCase):
@@ -99,6 +103,24 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
         self.assertTrue(result)
         self.mock_client.connect.assert_not_called()
 
+    async def test_reads_skipped_when_reconnect_fails(self):
+        """Issue #478: when the link is down and reconnect fails, no read is issued
+        (pymodbus would only raise "Not connected" and log an error per group)."""
+        self.mock_client.connect = AsyncMock(return_value=False)
+        self.mock_client.connected = False
+        self.mock_client.read_holding_registers = AsyncMock()
+        self.mock_client.read_input_registers = AsyncMock()
+
+        with self.assertNoLogs("custom_components.solis_modbus.modbus_controller", level="ERROR"):
+            self.assertEqual((None, None), await self.controller.async_read_holding_registers_with_exception(43007, 1))
+            self.assertEqual((None, None), await self.controller.async_read_input_registers_with_exception(33000, 1))
+            self.assertIsNone(await self.controller.async_read_holding_register(43007, 1))
+            self.assertIsNone(await self.controller.async_read_input_register(33000, 1))
+
+        self.mock_client.read_holding_registers.assert_not_called()
+        self.mock_client.read_input_registers.assert_not_called()
+        self.assertEqual(4, self.mock_client.connect.await_count)
+
     async def test_async_read_input_register_success(self):
         """Test successful read of input register."""
         self.mock_client.connected = True
@@ -153,7 +175,7 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_register(100, 42)
 
-        self.controller.write_queue.put.assert_called_once_with((100, 42, False))
+        self.controller.write_queue.put.assert_called_once_with((((100, 42, False),), ANY))
 
     async def test_async_write_holding_registers(self):
         """Test queuing a write to multiple holding registers."""
@@ -163,7 +185,153 @@ class TestModbusControllerTCP(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_registers(100, [42, 43])
 
-        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True))
+        self.controller.write_queue.put.assert_called_once_with((((100, [42, 43], True),), ANY))
+
+    async def _drain_write_queue(self, items, connected=None, on_write=None):
+        """Run process_write_queue over (writes, queued_at) items; return the writes it executed."""
+        executed = []
+
+        async def execute(register, value):
+            if on_write:
+                on_write()
+            executed.append((register, value))
+
+        self.mock_client.connected = True
+        if connected is not None:
+            self.controller.connected = connected
+        self.controller._execute_write_holding_register = AsyncMock(side_effect=execute)
+        self.controller._execute_write_holding_registers = AsyncMock(side_effect=execute)
+        for item in items:
+            self.controller.write_queue.put_nowait(item)
+        task = asyncio.create_task(self.controller.process_write_queue())
+        await asyncio.wait_for(self.controller.write_queue.join(), 5)
+        task.cancel()
+        return executed
+
+    async def test_process_write_queue_drops_stale_backlog(self):
+        """Writes queued during an outage are dropped, not replayed late (#534)."""
+        now = time.monotonic()
+        backlog = [(((43129, 218 + i, False),), now - 100 + i * 5) for i in range(5)]
+        fresh = (((43129, 0, False),), now)
+
+        executed = await self._drain_write_queue([*backlog, fresh])
+
+        self.assertEqual(executed, [(43129, 0)])
+
+    async def test_process_write_queue_keeps_fresh_writes_in_order(self):
+        """With no outage every write is sent, in order."""
+        now = time.monotonic()
+        items = [(((43135, 2, False),), now), (((43136, 30, False),), now), (((43110, [1, 2], True),), now)]
+
+        executed = await self._drain_write_queue(items)
+
+        self.assertEqual(executed, [(43135, 2), (43136, 30), (43110, [1, 2])])
+
+    async def test_process_write_queue_judges_each_write_on_its_own_age(self):
+        """A stale write just before a fresh combo doesn't take part of it down with it."""
+        now = time.monotonic()
+        items = [
+            (((1, 0, False),), now - WRITE_MAX_AGE - 0.5),
+            (((43135, 2, False),), now - WRITE_MAX_AGE + 0.5),
+            (((43136, 30, False),), now - WRITE_MAX_AGE + 0.501),
+        ]
+
+        executed = await self._drain_write_queue(items)
+
+        self.assertEqual(executed, [(43135, 2), (43136, 30)])
+
+    async def test_process_write_queue_checks_age_after_an_outage(self):
+        """A write that waits out an outage behind a sent one is judged after the wait."""
+        polls = iter([True, False, True])  # first write sent, then the link drops
+        clock = [time.monotonic()]
+        items = [(((43135, 2, False),), clock[0]), (((43136, 47, False),), clock[0] + 0.5)]
+
+        async def outage(_seconds):
+            clock[0] += 900
+
+        with patch("custom_components.solis_modbus.modbus_controller.time") as mock_time, patch("asyncio.sleep", side_effect=outage):
+            mock_time.monotonic.side_effect = lambda: clock[0]
+            executed = await self._drain_write_queue(items, connected=lambda: next(polls, True))
+
+        self.assertEqual(executed, [(43135, 2)])
+
+    async def test_write_batch_is_sent_whole(self):
+        """A batch is one queue item, sent in order."""
+        async with self.controller.write_batch():
+            await self.controller.async_write_holding_register(43135, 2)
+            await self.controller.async_write_holding_registers(43136, [30, 5])
+        self.assertEqual(self.controller.write_queue.qsize(), 1)
+
+        executed = await self._drain_write_queue([])
+
+        self.assertEqual(executed, [(43135, 2), (43136, [30, 5])])
+
+    async def test_write_batch_is_dropped_whole_when_stale(self):
+        """An outage drops a whole batch, never half of it."""
+        stale = time.monotonic() - WRITE_MAX_AGE - 1
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), stale)]
+
+        executed = await self._drain_write_queue(items)
+
+        self.assertEqual(executed, [])
+
+    async def test_write_batch_that_ages_out_while_sending_is_finished(self):
+        """A batch fresh when it starts on a healthy link is sent whole."""
+        clock = [1000.0]
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), clock[0] - WRITE_MAX_AGE + 1)]
+
+        def slow_write():
+            clock[0] += 10  # the batch crosses WRITE_MAX_AGE after its first write
+
+        with patch("custom_components.solis_modbus.modbus_controller.time") as mock_time:
+            mock_time.monotonic.side_effect = lambda: clock[0]
+            executed = await self._drain_write_queue(items, on_write=slow_write)
+
+        self.assertEqual(executed, [(43135, 2), (43136, 30), (43138, 5)])
+
+    async def test_write_batch_interrupted_by_an_outage_drops_the_rest(self):
+        """If the link drops part-way through a batch, the rest isn't sent after the outage."""
+        polls = iter([True, False, True])
+        clock = [time.monotonic()]
+        items = [(((43135, 2, False), (43136, 30, False), (43138, 5, False)), clock[0])]
+
+        async def outage(_seconds):
+            clock[0] += 900
+
+        with patch("custom_components.solis_modbus.modbus_controller.time") as mock_time, patch("asyncio.sleep", side_effect=outage):
+            mock_time.monotonic.side_effect = lambda: clock[0]
+            with self.assertLogs("custom_components.solis_modbus.modbus_controller", "WARNING") as logs:
+                executed = await self._drain_write_queue(items, connected=lambda: next(polls, True))
+
+        self.assertEqual(executed, [(43135, 2)])
+        self.assertIn("43136=30, 43138=5", logs.output[0])
+        self.assertIn("part-way", logs.output[0])
+
+    async def test_write_batch_raising_queues_nothing(self):
+        """If the block raises, none of its writes are queued."""
+        with self.assertRaises(ValueError):
+            async with self.controller.write_batch():
+                await self.controller.async_write_holding_register(43135, 2)
+                raise ValueError
+        self.assertTrue(self.controller.write_queue.empty())
+
+    async def test_write_batch_leaves_other_writes_alone(self):
+        """Writes from other tasks, other controllers or after the block are queued on their own."""
+        other = ModbusController(
+            hass=self.hass, connection_type=CONN_TYPE_TCP, host="192.168.1.101", port=502, inverter_config=self.inverter_config, device_id=1
+        )
+        async with self.controller.write_batch():
+            await self.controller.async_write_holding_register(43135, 2)
+            later = asyncio.create_task(self.controller.async_write_holding_register(1, 1))  # runs after the block closes
+            await other.async_write_holding_register(2, 2)
+            async with self.controller.write_batch():  # nested blocks join the outer batch
+                await self.controller.async_write_holding_register(43136, 30)
+        await later
+        await self.controller.async_write_holding_register(3, 3)
+
+        items = [self.controller.write_queue.get_nowait()[0] for _ in range(self.controller.write_queue.qsize())]
+        self.assertEqual(items, [((43135, 2, False), (43136, 30, False)), ((1, 1, False),), ((3, 3, False),)])
+        self.assertEqual(other.write_queue.get_nowait()[0], ((2, 2, False),))
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
@@ -308,9 +476,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_input_register(100, 1)
 
         self.assertEqual([42], result)
-        # Serial: slave is set on client, not passed as parameter
-        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1)
-        self.assertEqual(self.mock_client.slave, 1)
+        self.mock_client.read_input_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_input_register_failure(self):
         """Test failed read of input register."""
@@ -332,9 +498,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         result = await self.controller.async_read_holding_register(100, 1)
 
         self.assertEqual([42], result)
-        # Serial: slave is set on client, not passed as parameter
-        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1)
-        self.assertEqual(self.mock_client.slave, 1)
+        self.mock_client.read_holding_registers.assert_called_once_with(address=100, count=1, device_id=1)
 
     async def test_async_read_holding_register_failure(self):
         """Test failed read of holding register."""
@@ -353,7 +517,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_register(100, 42)
 
-        self.controller.write_queue.put.assert_called_once_with((100, 42, False))
+        self.controller.write_queue.put.assert_called_once_with((((100, 42, False),), ANY))
 
     async def test_async_write_holding_registers(self):
         """Test queuing a write to multiple holding registers."""
@@ -363,7 +527,7 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
 
         await self.controller.async_write_holding_registers(100, [42, 43])
 
-        self.controller.write_queue.put.assert_called_once_with((100, [42, 43], True))
+        self.controller.write_queue.put.assert_called_once_with((((100, [42, 43], True),), ANY))
 
     def test_poll_speed(self):
         """Test the poll_speed property."""
@@ -391,6 +555,86 @@ class TestModbusControllerSerial(IsolatedAsyncioTestCase):
         """Test enabling the connection."""
         self.controller.enable_connection()
         self.assertTrue(self.controller.enabled)
+
+
+class TestModbusControllerSerialSlave(IsolatedAsyncioTestCase):
+    """A serial controller must address its configured slave, not unit 1.
+
+    Regression: the serial path assigned `client.slave = device_id` and sent
+    requests without a device_id. pymodbus takes the unit as a request kwarg
+    (default 1) and AsyncModbusSerialClient never reads `slave`, so every
+    serial request went to unit 1 whatever slave ID was configured.
+    """
+
+    def setUp(self):
+        self.manager_patcher = patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager")
+        mock_manager = self.manager_patcher.start().get_instance.return_value
+        mock_manager.inter_frame_wait = AsyncMock()
+        mock_lock = MagicMock()
+        mock_lock.__aenter__ = AsyncMock(return_value=None)
+        mock_lock.__aexit__ = AsyncMock(return_value=None)
+        mock_manager.get_client_lock.return_value = mock_lock
+
+        # spec: a real serial client has no `slave` attribute to fall back on.
+        self.mock_client = MagicMock(spec=AsyncModbusSerialClient)
+        self.mock_client.connected = True
+        mock_manager.get_serial_client.return_value = self.mock_client
+
+        result = MagicMock()
+        result.registers = [42]
+        result.isError.return_value = False
+        for method in ("read_input_registers", "read_holding_registers", "write_register", "write_registers"):
+            setattr(self.mock_client, method, AsyncMock(return_value=result))
+
+        self.controller = ModbusController(
+            hass=MagicMock(),
+            connection_type=CONN_TYPE_SERIAL,
+            serial_port="/dev/ttyUSB0",
+            inverter_config=MagicMock(),
+            device_id=7,
+        )
+
+    def tearDown(self):
+        self.manager_patcher.stop()
+
+    async def test_reads_target_configured_slave(self):
+        self.assertEqual([42], await self.controller.async_read_input_register(33000, 1))
+        self.assertEqual([42], await self.controller.async_read_holding_register(43000, 1))
+
+        self.mock_client.read_input_registers.assert_awaited_once_with(address=33000, count=1, device_id=7)
+        self.mock_client.read_holding_registers.assert_awaited_once_with(address=43000, count=1, device_id=7)
+
+    async def test_writes_target_configured_slave(self):
+        with (
+            patch("custom_components.solis_modbus.modbus_controller.cache_save"),
+            patch("custom_components.solis_modbus.modbus_controller.notify_register_update"),
+        ):
+            self.assertIsNotNone(await self.controller._execute_write_holding_register(43110, 42))
+            self.assertIsNotNone(await self.controller._execute_write_holding_registers(43141, [1, 2]))
+
+        self.mock_client.write_register.assert_awaited_once_with(address=43110, value=42, device_id=7)
+        self.mock_client.write_registers.assert_awaited_once_with(address=43141, values=[1, 2], device_id=7)
+
+    async def test_unit_answers_probes_other_unit_without_counting_as_success(self):
+        self.controller.inverter_config.probe_register = 35000
+
+        self.assertTrue(await self.controller.async_unit_answers(1))
+
+        self.mock_client.read_input_registers.assert_awaited_once_with(address=35000, count=1, device_id=1)
+        self.assertFalse(self.controller.has_answered)
+
+    async def test_read_from_configured_slave_marks_answered(self):
+        self.assertFalse(self.controller.has_answered)
+        await self.controller.async_read_input_register(33000, 1)
+        self.assertTrue(self.controller.has_answered)
+
+    async def test_unit_answers_false_on_error_or_timeout(self):
+        self.controller.inverter_config.probe_register = 35000
+        self.mock_client.read_input_registers.return_value.isError.return_value = True
+        self.assertFalse(await self.controller.async_unit_answers(1))
+
+        self.mock_client.read_input_registers.side_effect = TimeoutError
+        self.assertFalse(await self.controller.async_unit_answers(1))
 
 
 class TestModbusControllerInitialization(unittest.TestCase):

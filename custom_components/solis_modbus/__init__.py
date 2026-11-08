@@ -22,6 +22,7 @@ from .const import (
     CONF_SERIAL_PORT,
     CONF_SLAVE,
     CONF_STOPBITS,
+    CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -37,13 +38,16 @@ from .const import (
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
 from .helpers import (
+    clock_sync_enabled,
     combine_u32,
     combine_u32_le,
     derived_sensor_is_supported,
     extreme_includes_battery,
+    extreme_includes_smart_port,
     get_controller,
     get_poll_profile,
     group_in_poll_profile,
+    is_clock_sync_sensor,
     iter_controllers,
     iter_platform_entities,
     registers_declared_by,
@@ -77,7 +81,7 @@ SCHEME_READ_REGISTER = vol.Schema(
         vol.Optional("count", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
         vol.Optional("register_type", default="input"): vol.In(["input", "holding"]),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_FORCE_CHARGE = vol.Schema(
@@ -85,13 +89,13 @@ SCHEME_FORCE_CHARGE = vol.Schema(
         vol.Optional("power_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=60000)),
         vol.Optional("duration_minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_STOP_FORCE = vol.Schema(
     {
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 
@@ -110,6 +114,7 @@ RC_POWER_MULTIPLIER = 10
 # write order: failsafe -> master on -> power/function/SOC -> control mode LAST
 # (the function field is re-initialized by the inverter unless dispatch is on).
 DISPATCH_CAPABILITY_REG = 34502
+DISPATCH_VERSION_REG = 34503
 DISPATCH_CAPABLE_MAGIC = 0xAA55
 DISPATCH_MASTER_REG = 44100
 DISPATCH_FAILSAFE_REG = 44101
@@ -118,8 +123,14 @@ DISPATCH_POWER_REG = 44106  # S32 pair 44106/44107, x10 W
 DISPATCH_FUNCTION_REG = 44108
 DISPATCH_SOC_LOW_REG = 44109
 DISPATCH_SOC_HIGH_REG = 44110
+DISPATCH_RESERVE_SOC_REG = 44111  # gated by 44108 BIT08-09
+DISPATCH_PV_LIMIT_REG = 44112  # 0.01 %, gated by 44108 BIT14-15
 DISPATCH_SCHEDULE_BASE = 44116  # 6 periods x 14 registers
 DISPATCH_SCHEDULE_STRIDE = 14
+DISPATCH_SCHEDULE_RESERVE_OFFSET = 9  # period reserve SOC, then PV limit %
+DISPATCH_LIMIT_UNIT = 100
+DISPATCH_LIMIT_DEFAULT = 0xFFFF
+DISPATCH_WRITE_FLUSH_TIMEOUT = 30  # s to wait for queued writes before a read-back
 
 # mode -> (44105 value, sign applied to power_watts); modes 3/4: +export/-import
 DISPATCH_MODES = {
@@ -143,9 +154,13 @@ SCHEME_DISPATCH = vol.Schema(
         vol.Optional("disable_discharge"): vol.Coerce(bool),
         vol.Optional("soc_min"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         vol.Optional("soc_max"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("battery_reserve_soc"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("pv_limit_percent"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+        vol.Optional("import_limit_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
+        vol.Optional("export_limit_watts"): vol.All(vol.Coerce(int), vol.Range(min=0, max=240000)),
         vol.Optional("failsafe_minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 SCHEME_DISPATCH_SCHEDULE = vol.Schema(
@@ -161,17 +176,20 @@ SCHEME_DISPATCH_SCHEDULE = vol.Schema(
         vol.Optional("disable_discharge"): vol.Coerce(bool),
         vol.Optional("soc_min", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         vol.Optional("soc_max", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("battery_reserve_soc"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("pv_limit_percent"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
         vol.Optional("failsafe_minutes", default=1440): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
         vol.Optional("host"): vol.Coerce(str),
-        vol.Optional("slave", default=1): vol.Coerce(int),
+        vol.Optional("slave"): vol.Coerce(int),
     }
 )
 
 
-def _dispatch_function_value(pv_shutdown, allow_grid_charge, disable_discharge) -> int:
+def _dispatch_function_value(pv_shutdown, allow_grid_charge, disable_discharge, battery_reserve=None, pv_limit=None) -> int:
     """Build the 44108 function bitfield. Each 2-bit pair: 0 = leave unchanged
     ("invalid"), then per-field semantics (PV shutdown: 1 off / 2 on;
-    grid-charge: 1 allowed / 2 not allowed; discharge-disable: 1 off / 2 on)."""
+    grid-charge: 1 allowed / 2 not allowed; discharge-disable, battery reserve
+    and PV power-limit switches: 1 off / 2 on)."""
 
     def pair(value, true_code, false_code):
         if value is None:
@@ -181,13 +199,37 @@ def _dispatch_function_value(pv_shutdown, allow_grid_charge, disable_discharge) 
     return (
         pair(pv_shutdown, 2, 1)  # bits 0-1
         | (pair(allow_grid_charge, 1, 2) << 4)  # bits 4-5
+        | (pair(battery_reserve, 2, 1) << 8)  # bits 8-9 (uses 44111)
         | (pair(disable_discharge, 2, 1) << 10)  # bits 10-11
+        | (pair(pv_limit, 2, 1) << 14)  # bits 14-15 (uses 44112)
     )
 
 
 def _s32_words(value: int) -> list[int]:
     raw = value & 0xFFFFFFFF
     return [(raw >> 16) & 0xFFFF, raw & 0xFFFF]
+
+
+def _pv_limit_raw(percent) -> int:
+    return round(float(percent) * 100)  # 100 <-> 1 %
+
+
+def _dispatch_system_limits(import_limit_watts, export_limit_watts) -> tuple[int, int, int]:
+    """Build 44102/44103/44104. Omitted = switch off + 0xFFFF (inverter default)."""
+
+    def raw(watts) -> int:
+        return (int(watts) + DISPATCH_LIMIT_UNIT // 2) // DISPATCH_LIMIT_UNIT
+
+    switches = 0
+    import_raw = DISPATCH_LIMIT_DEFAULT
+    export_raw = DISPATCH_LIMIT_DEFAULT
+    if import_limit_watts is not None:
+        switches |= 0b01
+        import_raw = raw(import_limit_watts)
+    if export_limit_watts is not None:
+        switches |= 0b10
+        export_raw = raw(export_limit_watts)
+    return switches, import_raw, export_raw
 
 
 async def async_remove_config_entry_device(hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
@@ -247,10 +289,15 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         raise ServiceValidationError(f"Entity {entity_id} is not a solis_modbus time entity")
 
     def _resolve_controller(call: ServiceCall):
-        """Resolve the target controller from optional host/slave service fields."""
+        """Resolve the target controller from optional host/slave service fields.
+
+        Without a host, an explicit slave narrows the choice, so parallel inverters
+        sharing one datalogger can be addressed by slave alone.
+        """
         host = call.data.get("host")
-        slave = call.data.get("slave", 1)
+        slave = call.data.get("slave")
         if host:
+            slave = 1 if slave is None else slave
             controller = get_controller(hass, host, slave)
             if controller is None:
                 raise ServiceValidationError(f"No Solis inverter found for host {host} (slave {slave})")
@@ -258,9 +305,13 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controllers = list(iter_controllers(hass))
         if not controllers:
             raise ServiceValidationError("No Solis inverter is configured")
-        if len(controllers) > 1:
-            raise ServiceValidationError("Multiple Solis inverters configured — specify the 'host' field")
-        return controllers[0]
+        candidates = [c for c in controllers if slave is None or getattr(c, "device_id", 1) == slave]
+        if not candidates:
+            raise ServiceValidationError(f"No Solis inverter configured with slave {slave}")
+        if len(candidates) > 1:
+            choices = ", ".join(f"host {c.host} slave {c.device_id}" for c in candidates)
+            raise ServiceValidationError(f"Multiple Solis inverters match — specify 'host' and 'slave' (one of: {choices})")
+        return candidates[0]
 
     async def service_read_register(call: ServiceCall) -> dict:
         """Read arbitrary registers and return the values (register discovery / debugging)."""
@@ -310,17 +361,19 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controller = _resolve_controller(call)
         _require_hybrid(controller)
 
-        await controller.async_write_holding_register(RC_FORCE_MODE_REG, mode)
+        # One batch: sent whole or, after an outage, dropped whole (#534).
+        async with controller.write_batch():
+            await controller.async_write_holding_register(RC_FORCE_MODE_REG, mode)
 
-        power_watts = call.data.get("power_watts")
-        if power_watts is not None:
-            max_watts = getattr(controller.inverter_config, "wattage_chosen", 60000) or 60000
-            watts = min(int(power_watts), int(max_watts))
-            await controller.async_write_holding_register(power_register, round(watts / RC_POWER_MULTIPLIER))
+            power_watts = call.data.get("power_watts")
+            if power_watts is not None:
+                max_watts = getattr(controller.inverter_config, "wattage_chosen", 60000) or 60000
+                watts = min(int(power_watts), int(max_watts))
+                await controller.async_write_holding_register(power_register, round(watts / RC_POWER_MULTIPLIER))
 
-        duration = call.data.get("duration_minutes")
-        if duration is not None:
-            await controller.async_write_holding_register(RC_TIMEOUT_REG, int(duration))
+            duration = call.data.get("duration_minutes")
+            if duration is not None:
+                await controller.async_write_holding_register(RC_TIMEOUT_REG, int(duration))
 
     async def service_force_battery_charge(call: ServiceCall) -> None:
         await _force_battery(call, 1, RC_CHARGE_POWER_REG)
@@ -343,35 +396,122 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         if capability != DISPATCH_CAPABLE_MAGIC:
             raise ServiceValidationError(f"This inverter does not support Remote Dispatch (register 34502 reads {capability}, expected 0xAA55)")
 
+    async def _ensure_dispatch_function_version(controller, call: ServiceCall) -> None:
+        """Reject newer dispatch features before any writes (Ver3.5, section 6.2.1).
+
+        The 0xAA55 capability flag alone does not qualify every function. V1
+        supports modes 1-4; V2 adds modes 5/6, reserve and discharge prohibition;
+        V3 adds PV limiting. Base V1 calls need no additional metadata read.
+        """
+        required = 1
+        if (
+            call.data.get("mode") in ("self_consumption", "feed_in_priority")
+            or call.data.get("battery_reserve_soc") is not None
+            or call.data.get("disable_discharge") is not None
+        ):
+            required = 2
+        if call.data.get("pv_limit_percent") is not None:
+            required = 3
+        if required == 1:
+            return
+
+        from .helpers import cache_get
+
+        version = cache_get(hass, controller, DISPATCH_VERSION_REG)
+        if version is None:
+            values = await controller.async_read_input_register(DISPATCH_VERSION_REG, 1)
+            version = values[0] if values else None
+        if version not in (1, 2, 3):
+            raise ServiceValidationError(
+                f"Cannot verify Remote Dispatch function version (register 34503 reads {version}); "
+                f"the requested features require V{required:02d}. Nothing was written"
+            )
+        if version < required:
+            raise ServiceValidationError(
+                f"The requested features require Remote Dispatch V{required:02d}, but register 34503 reports V{version:02d}. Nothing was written"
+            )
+
+    # Serializes read-back + enqueue so two overlapping dispatch calls cannot
+    # read the same stale value and overwrite each other. One lock per inverter:
+    # a stalled link waiting out the flush timeout must not block the others.
+    dispatch_locks: dict[tuple[str, int], asyncio.Lock] = {}
+
+    def _dispatch_lock(controller) -> asyncio.Lock:
+        return dispatch_locks.setdefault((controller.host, controller.device_id), asyncio.Lock())
+
+    async def _dispatch_reserve_words(controller, register: int, call: ServiceCall) -> list[int]:
+        """Reserve SOC + PV limit % words for a dispatch block.
+
+        On Ver3.4 firmware these are live settings (defaults 40 % / 100 %), not
+        reserved words. Anything the caller omits is read back and rewritten
+        unchanged -- writing 0 would cap PV at 0 % whenever another controller
+        has enabled the PV power-limit switch (#500). Never guess on a failed read.
+        """
+        reserve = call.data.get("battery_reserve_soc")
+        pv_limit = call.data.get("pv_limit_percent")
+        words = [None if reserve is None else int(reserve), None if pv_limit is None else _pv_limit_raw(pv_limit)]
+        if None in words:
+            # Writes are queued, reads are not: let earlier dispatch writes land
+            # first, or the read-back could return (and re-write) a stale value.
+            try:
+                await asyncio.wait_for(controller.write_queue.join(), DISPATCH_WRITE_FLUSH_TIMEOUT)
+            except TimeoutError as err:
+                raise HomeAssistantError("Earlier writes to the inverter are still pending; nothing was written") from err
+            current = await controller.async_read_holding_register(register, 2)
+            if not current or len(current) < 2:
+                raise HomeAssistantError(f"Could not read dispatch registers {register}-{register + 1}; nothing was written")
+            words = [current[i] if word is None else word for i, word in enumerate(words)]
+        return words
+
+    def _dispatch_function_from_call(call: ServiceCall) -> int:
+        return _dispatch_function_value(
+            call.data.get("pv_shutdown"),
+            call.data.get("allow_grid_charge"),
+            call.data.get("disable_discharge"),
+            True if call.data.get("battery_reserve_soc") is not None else None,
+            True if call.data.get("pv_limit_percent") is not None else None,
+        )
+
     async def service_dispatch(call: ServiceCall) -> None:
         """Real-time Remote Dispatch: goal-seeking grid/battery control with failsafe."""
         controller = _resolve_controller(call)
         _require_hybrid(controller)
         await _ensure_dispatch_capable(controller)
+        await _ensure_dispatch_function_version(controller, call)
 
         mode_value, sign = DISPATCH_MODES[call.data["mode"]]
         power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
-        function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
+        function_value = _dispatch_function_from_call(call)
         soc_low = int(call.data["soc_min"]) if call.data.get("soc_min") is not None else 0
         soc_high = int(call.data["soc_max"]) if call.data.get("soc_max") is not None else 100
+        switches, import_raw, export_raw = _dispatch_system_limits(call.data.get("import_limit_watts"), call.data.get("export_limit_watts"))
 
         # The dispatch block must be written as contiguous chunks (Ver3.4 doc):
         # scattered single-register writes get silently dropped/re-initialized,
         # especially under write-queue contention. Two atomic FC16 blocks:
-        #   global 44100-44104  = master, failsafe, no system caps (0xFFFF = default)
-        #   realtime 44105-44112 = mode, power(S32), function, SOC window
-        # Global first so dispatch is active before the realtime block lands
-        # (the function field is re-initialized unless the master is already on).
-        await controller.async_write_holding_registers(DISPATCH_MASTER_REG, [1, int(call.data.get("failsafe_minutes", 30)), 0, 0xFFFF, 0xFFFF])
-        await controller.async_write_holding_registers(DISPATCH_MODE_REG, [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, 0, 0])
+        #   global 44100-44104  = master, failsafe, limit switch, import/export caps
+        #   realtime 44105-44112 = mode, power(S32), function, SOC window,
+        #                          battery reserve SOC, PV limit %
+        # 44113-44115 are reserved and deliberately left out. Global first so
+        # dispatch is active before the realtime block lands (the function
+        # field is re-initialized unless the master is already on).
+        global_block = [1, int(call.data.get("failsafe_minutes", 30)), switches, import_raw, export_raw]
+        async with _dispatch_lock(controller):
+            # Read before any write so a failed read leaves the inverter untouched.
+            reserve_words = await _dispatch_reserve_words(controller, DISPATCH_RESERVE_SOC_REG, call)
+            realtime_block = [mode_value, *_s32_words(power_raw), function_value, soc_low, soc_high, *reserve_words]
+            async with controller.write_batch():
+                await controller.async_write_holding_registers(DISPATCH_MASTER_REG, global_block)
+                await controller.async_write_holding_registers(DISPATCH_MODE_REG, realtime_block)
 
     async def service_dispatch_stop(call: ServiceCall) -> None:
         """Release Remote Dispatch (live-verified revert sequence)."""
         controller = _resolve_controller(call)
         _require_hybrid(controller)
-        await controller.async_write_holding_register(DISPATCH_MODE_REG, 1)
-        await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, 1)
-        await controller.async_write_holding_register(DISPATCH_MASTER_REG, 0)
+        async with controller.write_batch():
+            await controller.async_write_holding_register(DISPATCH_MODE_REG, 1)
+            await controller.async_write_holding_register(DISPATCH_FUNCTION_REG, 1)
+            await controller.async_write_holding_register(DISPATCH_MASTER_REG, 0)
 
     async def service_dispatch_schedule(call: ServiceCall) -> None:
         """Program one of the six inverter-resident scheduled dispatch periods.
@@ -382,6 +522,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
         controller = _resolve_controller(call)
         _require_hybrid(controller)
         await _ensure_dispatch_capable(controller)
+        await _ensure_dispatch_function_version(controller, call)
 
         def packed_time(value: str) -> int:
             parsed = datetime.strptime(value, "%H:%M")
@@ -395,7 +536,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
         mode_value, sign = DISPATCH_MODES[call.data.get("mode", "battery_hold")]
         power_raw = sign * round(int(call.data.get("power_watts", 0)) / 10)
-        function_value = _dispatch_function_value(call.data.get("pv_shutdown"), call.data.get("allow_grid_charge"), call.data.get("disable_discharge"))
+        function_value = _dispatch_function_from_call(call)
 
         base = DISPATCH_SCHEDULE_BASE + (int(call.data["period"]) - 1) * DISPATCH_SCHEDULE_STRIDE
         block = [
@@ -407,16 +548,18 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
             function_value,
             int(call.data.get("soc_min", 0)),
             int(call.data.get("soc_max", 100)),
-            0,  # battery reserve SOC (unused here)
-            0,  # PV power-limit percentage (unused here)
         ]
-        await controller.async_write_holding_registers(base, block)
+        async with _dispatch_lock(controller):
+            # battery reserve SOC + PV power-limit percentage complete the block
+            block += await _dispatch_reserve_words(controller, base + DISPATCH_SCHEDULE_RESERVE_OFFSET, call)
+            async with controller.write_batch():
+                await controller.async_write_holding_registers(base, block)
 
-        if call.data["enabled"]:
-            # Schedules need the dispatch master on; long failsafe by default so
-            # the plan survives HA restarts (re-push daily to keep it alive).
-            await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 1440)))
-            await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
+                if call.data["enabled"]:
+                    # Schedules need the dispatch master on; long failsafe by default so
+                    # the plan survives HA restarts (re-push daily to keep it alive).
+                    await controller.async_write_holding_register(DISPATCH_FAILSAFE_REG, int(call.data.get("failsafe_minutes", 1440)))
+                    await controller.async_write_holding_register(DISPATCH_MASTER_REG, 1)
 
     hass.services.async_register(DOMAIN, "solis_write_holding_register", service_write_holding_register, schema=SCHEME_HOLDING_REGISTER)
     hass.services.async_register(DOMAIN, "solis_write_time", service_set_time, schema=SCHEME_TIME_SET)
@@ -565,6 +708,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         controller._sensor_groups = []
         poll_profile = get_poll_profile(entry)
         include_battery = extreme_includes_battery(entry)
+        include_smart_port = extreme_includes_smart_port(entry)
 
         # A profile that matches nothing would set the entry up with no sensors at
         # all, which reads as a broken integration. Extreme currently only maps the
@@ -584,7 +728,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
                 continue
 
-            if not group_in_poll_profile(group, poll_profile, include_battery):
+            if not group_in_poll_profile(group, poll_profile, include_battery, include_smart_port):
                 skipped_by_profile += 1
                 continue
 
@@ -613,6 +757,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 len(sensors_derived) - len(supported_derived),
             )
 
+        # The clock-adjustment sensor is what writes the RTC, so leaving it out
+        # is enough to stop clock sync entirely (issue #516).
+        if not clock_sync_enabled(entry):
+            supported_derived = [entity for entity in supported_derived if not is_clock_sync_sensor(entity)]
+
         controller._derived_sensors = [
             SolisBaseSensor(
                 hass=hass,
@@ -640,7 +789,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # which already unloads [Platform.SENSOR, *PLATFORMS] together.
         await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR, *PLATFORMS])
 
-        entry.runtime_data.data_retrieval = DataRetrieval(hass, controller, entry.entry_id)
+        entry.runtime_data.data_retrieval = DataRetrieval(
+            hass,
+            controller,
+            entry.entry_id,
+            suppress_night_issue=bool(config.get(CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE, False)),
+        )
     except Exception:
         controller.close_connection()
         entry.runtime_data = None

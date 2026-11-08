@@ -15,6 +15,10 @@ from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSe
 
 _LOGGER = logging.getLogger(__name__)
 
+FLEXIBLE_EXPORT_OFF = "Off"
+FLEXIBLE_EXPORT_ACTIVE = "Active"
+FLEXIBLE_EXPORT_BLOCKED = "Export Blocked"
+
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
@@ -48,10 +52,12 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         await super().async_added_to_hass()
         state = await self.async_get_last_sensor_data()
         if state:
-            if self.base_sensor.device_class != SensorDeviceClass.TIMESTAMP:
-                self._attr_native_value = state.native_value
-            else:
-                self._attr_native_value = datetime.now(UTC)
+            value = state.native_value
+            # Restore the stored timestamp, never "now": stamping the restart time
+            # made Last Clock Adjustment report RTC writes that never happened (#516).
+            if self.base_sensor.device_class == SensorDeviceClass.TIMESTAMP and not isinstance(value, datetime):
+                value = None
+            self._attr_native_value = value
         self.is_added_to_hass = True
 
         for reg in set(self._register):
@@ -171,12 +177,29 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             if 33263 in self._register and len(self._register) == 2:
                 new_value = new_value * -1
 
+            if 33263 in self._register and len(self._register) == 3:
+                # Meter total active power is positive when exporting; flag 0 = export, 1 = import.
+                meter_power = self.base_sensor.convert_value([self._received_values[33263], self._received_values[33264]])
+                if meter_power is not None:
+                    new_value = max(meter_power if self._register[2] == 0 else -meter_power, 0)
+
             if 33175 in self._register or 33171 in self._register:
                 # 33175 - to grid
                 # 33171 - from grid
                 to_grid = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 from_grid = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = from_grid - to_grid
+
+            if 43292 in self._register:
+                # 0x00AA = Flexible Export on: export follows the 43291 limit instead of 43074.
+                switch_value = int(self._received_values[43292])
+                export_limit = int(self._received_values[43291])
+                if switch_value != 0xAA:
+                    new_value = FLEXIBLE_EXPORT_OFF
+                elif export_limit == 0:
+                    new_value = FLEXIBLE_EXPORT_BLOCKED
+                else:
+                    new_value = FLEXIBLE_EXPORT_ACTIVE
 
             # set after
             if 35000 in self._register:
@@ -210,7 +233,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         if not serial:
             return
         dev_reg = dr.async_get(self.hass)
-        device = dev_reg.async_get_device(identifiers={(DOMAIN, serial)})
+        device = next(iter(dev_reg.async_get_devices(identifiers={(DOMAIN, serial)})), None)
         sw_version = f"Protocol {protocol_version}"
         if device and device.sw_version != sw_version:
             dev_reg.async_update_device(device.id, sw_version=sw_version)

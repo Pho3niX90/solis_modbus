@@ -27,6 +27,10 @@
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
           "poll_profile": "Peilprofiel (hoeveel van die registerkaart gepeil word)",
           "extreme_include_battery": "Uiters: peil ook batterye-/lasgroep (LT, las, batterykrag)",
+          "extreme_include_smart_port": "Uiters: peil ook Smart Port-WS-krag (fase A/B/C, slegs Smart Port-modelle)",
+          "suppress_night_offline_issue": "Onderdruk die 'datalogger onbereikbaar'-herstelkwessie terwyl die son onder die horison is",
+          "clock_sync": "Korrigeer omsetter-klokafwyking outomaties (skryf na die omsetterklok; skakel af vir slegs-lees monitering)",
+          "skip_conn_check": "Slaan aanvanklike verbindingskontrole oor (laat vanlyn opstelling toe)",
           "identification": "Identifikasie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -58,6 +62,10 @@
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
           "poll_profile": "Peilprofiel (hoeveel van die registerkaart gepeil word)",
           "extreme_include_battery": "Uiters: peil ook batterye-/lasgroep (LT, las, batterykrag)",
+          "extreme_include_smart_port": "Uiters: peil ook Smart Port-WS-krag (fase A/B/C, slegs Smart Port-modelle)",
+          "suppress_night_offline_issue": "Onderdruk die 'datalogger onbereikbaar'-herstelkwessie terwyl die son onder die horison is",
+          "clock_sync": "Korrigeer omsetter-klokafwyking outomaties (skryf na die omsetterklok; skakel af vir slegs-lees monitering)",
+          "skip_conn_check": "Slaan aanvanklike verbindingskontrole oor (laat vanlyn opstelling toe)",
           "identification": "Identifikasie Naam",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -78,7 +86,8 @@
       "invalid_model": "Ongeldige of onbekende omsettermodel. Kies asseblief 'n model uit die lys.",
       "serial_required": "Omsetter-reeksnommer word vereis.",
       "model_required": "Kies asseblief 'n omsettermodel.",
-      "tcp_port_closed": "Niks aanvaar Modbus-verbindings op daardie adres en poort nie. Die toestel kan bereikbaar wees (dit antwoord op ping) maar bedien nie Modbus nie — kontroleer dat Modbus TCP op die datalogger geaktiveer is. Onlangse Solis-logger-firmware sluit bekend plaaslike poort 502; 'n RS485-na-TCP-brug is 'n omweg.",
+      "tcp_port_closed": "Kon nie 'n Modbus-verbinding op daardie adres en poort oopmaak nie. As die adres korrek is, het die datalogger dalk geen verbindings oor nie: stop enige ander Modbus-kliënte, herbegin dit en probeer weer. Andersins, kontroleer dat Modbus TCP op die datalogger geaktiveer is. Onlangse Solis-logger-firmware sluit bekend plaaslike poort 502; 'n RS485-na-TCP-brug is 'n omweg.",
+      "serial_port_unsupported": "Hierdie seriële poort kan nie gebruik word nie. Gebruik 'n toestelpad (bv. /dev/ttyUSB0), 'n socket://- of rfc2217://-poort, 'n ESPHome-seriële proxy soos Home Assistant Connect AUX-2 (Home Assistant 2026.5 of nuwer), of die TCP-verbindingstipe.",
       "poll_interval_below_floor": "Vinnige peilinterval is onder die minimum vir die gekose peilprofiel. Slegs die uiterste profiel laat intervalle onder 10s toe (minimum 2s)."
     },
     "abort": {
@@ -96,6 +105,9 @@
           "poll_interval_slow": "Stadige polsinterval (sekondes)",
           "poll_profile": "Peilprofiel (hoeveel van die registerkaart gepeil word)",
           "extreme_include_battery": "Uiters: peil ook batterye-/lasgroep (LT, las, batterykrag)",
+          "extreme_include_smart_port": "Uiters: peil ook Smart Port-WS-krag (fase A/B/C, slegs Smart Port-modelle)",
+          "suppress_night_offline_issue": "Onderdruk die 'datalogger onbereikbaar'-herstelkwessie terwyl die son onder die horison is",
+          "clock_sync": "Korrigeer omsetter-klokafwyking outomaties (skryf na die omsetterklok; skakel af vir slegs-lees monitering)",
           "model": "Omsettermodel",
           "has_v2": "Opgedateer na V2-firmware",
           "has_pv": "Het sonkrag (PV)",
@@ -182,6 +194,10 @@
     "datalogger_unreachable": {
       "title": "Solis datalogger onbereikbaar",
       "description": "Geen suksesvolle Modbus-lesing vanaf {host} sedert {last_success} nie. Die WiFi-datalogger slaap dalk, is afgeskakel of in 'n half-oop toestand; die integrasie probeer aanhoudend weer met terugval. Skakel die datalogger se krag af en aan as dit voortduur."
+    },
+    "serial_slave_id": {
+      "title": "Solis-omsetter antwoord nie by slaaf-ID {slave} nie",
+      "description": "Die omsetter op {port} antwoord nie by sy gekonfigureerde Modbus-slaaf-ID {slave} nie, maar 'n toestel op die bus antwoord by slaaf-ID 1. Ouer weergawes van hierdie integrasie het elke seriële (RS485) versoek na slaaf-ID 1 gestuur, ongeag die gekonfigureerde ID, so hierdie opstelling het dalk tot nou gewerk. As die omsetter by slaaf-ID 1 is, herkonfigureer die integrasie-inskrywing en stel die slaaf-ID op 1."
     }
   }
 }

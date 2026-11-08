@@ -1,9 +1,12 @@
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.components.sensor import SensorDeviceClass, SensorExtraStoredData
 from homeassistant.core import HomeAssistant
 
 from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.helpers import split_s32
 from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
 
 
@@ -77,6 +80,30 @@ def test_derived_sensor_string_dc_power(hass: HomeAssistant, mock_base_sensor):
     assert sensor.native_value == 200  # 40 * 5 W * 0.1
 
 
+@pytest.mark.parametrize(
+    ("flag", "words", "expected"),
+    [
+        (0, [0, 1500], 1500),  # exporting 1500 W
+        (1, [0, 1500], 0),
+        (0, [0xFFFF, 0xFC18], 0),  # importing 1000 W (S32 -1000)
+        (1, [0xFFFF, 0xFC18], 1000),
+    ],
+)
+def test_derived_sensor_grid_export_import_power(hass: HomeAssistant, mock_base_sensor, flag, words, expected):
+    """Grid Export/Import Power split the signed meter power (+export) by direction (#524)."""
+    mock_base_sensor.registrars = [33263, 33264, flag]
+    mock_base_sensor.convert_value = split_s32
+    sensor = SolisDerivedSensor(hass, mock_base_sensor)
+
+    sensor._received_values[33263] = words[0]
+    event_data = {REGISTER: 33264, VALUE: words[1], CONTROLLER: "1.2.3.4", SLAVE: 1}
+
+    with patch.object(sensor, "schedule_update_ha_state"):
+        sensor.handle_modbus_update(event_data)
+
+    assert sensor.native_value == expected
+
+
 def test_derived_sensor_wrong_controller(hass: HomeAssistant, mock_base_sensor):
     sensor = SolisDerivedSensor(hass, mock_base_sensor)
 
@@ -105,3 +132,42 @@ def test_derived_sensor_incomplete_data(hass: HomeAssistant, mock_base_sensor):
 
     assert sensor.native_value is None
     assert sensor._received_values[33050] == 10
+
+
+async def _restore(hass, base_sensor, native_value):
+    sensor = SolisDerivedSensor(hass, base_sensor)
+    sensor.hass = hass
+    sensor.entity_id = "sensor.test_derived"
+    stored = SensorExtraStoredData(native_value=native_value, native_unit_of_measurement=None)
+    with patch.object(sensor, "async_get_last_sensor_data", AsyncMock(return_value=stored)):
+        await sensor.async_added_to_hass()
+    return sensor
+
+
+@pytest.mark.asyncio
+async def test_restored_timestamp_keeps_stored_value(hass: HomeAssistant, mock_base_sensor):
+    """A restart must not stamp Last Clock Adjustment with "now" — no write happened (#516)."""
+    mock_base_sensor.registrars = [90007, 33022, 33023, 33024, 33025, 33026, 33027]
+    mock_base_sensor.device_class = SensorDeviceClass.TIMESTAMP
+    last_adjusted = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+    sensor = await _restore(hass, mock_base_sensor, last_adjusted)
+
+    assert sensor.native_value == last_adjusted
+
+
+@pytest.mark.asyncio
+async def test_restored_timestamp_ignores_non_datetime(hass: HomeAssistant, mock_base_sensor):
+    mock_base_sensor.registrars = [90007, 33022, 33023, 33024, 33025, 33026, 33027]
+    mock_base_sensor.device_class = SensorDeviceClass.TIMESTAMP
+
+    sensor = await _restore(hass, mock_base_sensor, "garbage")
+
+    assert sensor.native_value is None
+
+
+@pytest.mark.asyncio
+async def test_restored_measurement_keeps_stored_value(hass: HomeAssistant, mock_base_sensor):
+    sensor = await _restore(hass, mock_base_sensor, 42)
+
+    assert sensor.native_value == 42

@@ -1,11 +1,21 @@
+import asyncio
 import unittest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from custom_components.solis_modbus.const import DOMAIN, VALUES
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data_retrieval import DataRetrieval
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
+
+
+@pytest.fixture(autouse=True)
+def _real_register_image():
+    """These mocks don't answer the blank image probe; tests for it are in test_blank_register_image.py."""
+    with patch.object(DataRetrieval, "_image_is_blank", AsyncMock(return_value=False)):
+        yield
 
 
 class TestDataRetrieval(unittest.TestCase):
@@ -310,3 +320,88 @@ async def test_link_is_stale_thresholds():
     assert retrieval._link_is_stale() is False
     controller.last_modbus_success = datetime.now(UTC) - timedelta(seconds=130)
     assert retrieval._link_is_stale() is True
+
+
+async def test_poll_stops_after_link_drops():
+    """Issue #478: a read that times out closes the link. The remaining groups in the
+    batch must not each retry the connection and log "Not connected"."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC))
+    controller.enabled = True
+    groups = []
+    for start in (43007, 43128, 43173, 43195):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.SLOW
+        group.start_register = start
+        group.registrar_count = 1
+        groups.append(group)
+    controller.sensor_groups = list(groups)
+
+    link_up = True
+
+    async def read(start, count):
+        nonlocal link_up
+        if start == 43128:
+            link_up = False  # "No response received" -> controller closes the client
+            return None, None
+        return [1] * count, None
+
+    controller.connected = MagicMock(side_effect=lambda: link_up)
+    controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=read)
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.get_modbus_updates(groups, PollSpeed.SLOW)
+
+    read_starts = [c.args[0] for c in controller.async_read_holding_registers_with_exception.await_args_list]
+    assert read_starts == [43007, 43128]
+    assert retrieval.poll_updating[PollSpeed.SLOW] == {}
+
+
+async def test_poll_continues_after_failure_when_link_up():
+    """A failed group that leaves the link connected must not abort the batch."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC))
+    controller.enabled = True
+    controller.connected = MagicMock(return_value=True)
+    groups = []
+    for start in (43007, 43128, 43173):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.SLOW
+        group.start_register = start
+        group.registrar_count = 1
+        groups.append(group)
+    controller.sensor_groups = list(groups)
+    controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=lambda start, count: (None, None) if start == 43128 else ([1] * count, None))
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.get_modbus_updates(groups, PollSpeed.SLOW)
+
+    assert controller.async_read_holding_registers_with_exception.await_count == 3
+
+
+async def test_poll_controller_starts_write_queue_as_background_task():
+    """Issue #546: process_write_queue() runs until it is cancelled, and entries are not
+    unloaded at shutdown, so as a tracked task it kept Home Assistant waiting ("was still
+    running after final writes shutdown stage"). A background task is cancelled by HA
+    when it stops instead."""
+    retrieval, controller = _make_stale_watchdog_fixture(None)
+    hass = retrieval.hass
+    retrieval.check_connection = AsyncMock()
+
+    with patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval"):
+        await retrieval.poll_controller()
+
+    hass.async_create_background_task.assert_called_once()
+    assert hass.async_create_background_task.call_args.args[0] is controller.process_write_queue.return_value
+    hass.async_create_task.assert_not_called()
+    assert retrieval._write_task is hass.async_create_background_task.return_value
+
+
+async def test_async_stop_cancels_write_queue_task():
+    """Unload/reload still cancels the write queue task itself and waits for it."""
+    retrieval, _ = _make_stale_watchdog_fixture(None)
+    task = asyncio.create_task(asyncio.Event().wait())
+    retrieval._write_task = task
+
+    await retrieval.async_stop()
+
+    assert task.cancelled()
+    assert retrieval._write_task is None

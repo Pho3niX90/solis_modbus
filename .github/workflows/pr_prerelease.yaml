@@ -1,0 +1,191 @@
+name: PR Pre-release
+
+# Publishes a temporary pre-release (tag `pr-<number>`) with the integration zip
+# for every PR, so it can be tested without cloning the branch. The pre-release
+# is rebuilt on every push and deleted when the PR is closed or merged.
+#
+# pull_request_target is used so fork PRs get a token that can create releases.
+# The PR code is never executed here: it is only checked out, zipped and uploaded.
+# Everything from the PR is untrusted input, so the two halves are kept apart:
+#   - build checks out the PR with a read-only token and no secrets.
+#   - publish holds the write token and never sees the checkout, only the zip and
+#     a version string, which it validates before use.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, closed]
+    paths:
+      - "custom_components/**"
+
+env:
+  COMPONENT_NAME: solis_modbus
+  TAG: pr-${{ github.event.pull_request.number }}
+
+concurrency:
+  group: pr-prerelease-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build test zip
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.stamp.outputs.version }}
+    steps:
+      # Safe to opt in: this job has a read-only token and no secrets, nothing from
+      # the checkout is run, and only the zip and version reach the publish job.
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
+
+      - name: Stamp version in manifest.json
+        id: stamp
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          manifest="custom_components/${COMPONENT_NAME}/manifest.json"
+          # Label the build with the release it will ship in: the release branch
+          # it targets (or, for a release branch merging back, comes from), else
+          # the lowest open release/X.Y.0 a master PR flows into, else the
+          # manifest version.
+          base=""
+          if [[ "$BASE_REF" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}"
+          elif [[ "$HEAD_REF" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}"
+          else
+            latest=$(gh api --paginate "repos/$GH_REPO/tags?per_page=100" --jq '.[].name' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -1)
+            for version in $(gh api --paginate "repos/$GH_REPO/branches?per_page=100" \
+                --jq '.[].name | select(startswith("release/")) | ltrimstr("release/")' \
+                | grep -E '^[0-9]+\.[0-9]+\.0$' | sort -V); do
+              if [ -z "$latest" ] || [ "$(printf '%s\n%s\n' "$version" "$latest" | sort -V | tail -1)" = "$version" ] && [ "$version" != "$latest" ]; then
+                base="$version"
+                break
+              fi
+            done
+          fi
+          base="${base:-$(jq -r '.version' "$manifest")}"
+          version="${base}-pr${PR_NUMBER}+${HEAD_SHA:0:7}"
+          jq --arg v "$version" '.version = $v' "$manifest" > manifest.tmp.json && mv manifest.tmp.json "$manifest"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Zip ${{ env.COMPONENT_NAME }} dir
+        run: |
+          cd "custom_components/${COMPONENT_NAME}"
+          # -y stores symlinks as links rather than following them out of the checkout
+          zip -r -y "${GITHUB_WORKSPACE}/${COMPONENT_NAME}.zip" ./ -x '__pycache__/*' '*/__pycache__/*'
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.COMPONENT_NAME }}-zip
+          path: ${{ env.COMPONENT_NAME }}.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish pre-release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - name: Validate version
+        run: |
+          # The version can come from the PR's manifest.json.
+          if [[ ! "$VERSION" =~ ^[0-9A-Za-z.+_-]+$ ]]; then
+            echo "::error::Refusing to publish: invalid version string"
+            exit 1
+          fi
+
+      - name: Download zip
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.COMPONENT_NAME }}-zip
+
+      - name: Recreate pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh release delete "$TAG" --cleanup-tag --yes || true
+
+          cat > notes.md <<EOF
+          Temporary test build for ${PR_URL} at commit ${HEAD_SHA}.
+
+          **Not for production use.** This pre-release is replaced on every push to the PR and deleted when the PR is closed.
+          EOF
+
+          gh release create "$TAG" "${COMPONENT_NAME}.zip" \
+            --prerelease \
+            --latest=false \
+            --target "$HEAD_SHA" \
+            --title "PR #${PR_NUMBER} test build (${VERSION})" \
+            --notes-file notes.md
+
+          echo "ZIP_URL=https://github.com/${GH_REPO}/releases/download/${TAG}/${COMPONENT_NAME}.zip" >> "$GITHUB_ENV"
+          echo "RELEASE_URL=https://github.com/${GH_REPO}/releases/tag/${TAG}" >> "$GITHUB_ENV"
+
+      - name: Comment on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-prerelease
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            ### 🧪 Test build
+
+            A pre-release has been built for commit ${{ github.event.pull_request.head.sha }}.
+
+            **Download:** [${{ env.COMPONENT_NAME }}.zip](${{ env.ZIP_URL }}) (version `${{ env.VERSION }}`, [release page](${{ env.RELEASE_URL }}))
+
+            **To install:**
+            1. Back up your current `config/custom_components/${{ env.COMPONENT_NAME }}` folder.
+            2. Extract the zip into `config/custom_components/${{ env.COMPONENT_NAME }}`, replacing the existing files.
+            3. Restart Home Assistant.
+
+            To go back, restore your backup (or redownload a release through HACS) and restart.
+
+            _This build is updated on every push and deleted when the PR is closed._
+
+  cleanup:
+    name: Delete pre-release
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Delete pre-release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete "$TAG" --cleanup-tag --yes || echo "No pre-release to delete"
+
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-prerelease
+          number: ${{ github.event.pull_request.number }}
+          only_update: true
+          message: |
+            ### 🧪 Test build
+
+            _The test pre-release for this PR was removed when the PR was closed._

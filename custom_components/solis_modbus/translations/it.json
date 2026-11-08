@@ -27,6 +27,10 @@
           "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
           "poll_profile": "Profilo di polling (quanta parte della mappa registri viene interrogata)",
           "extreme_include_battery": "Estremo: interroga anche il gruppo batteria/carico (SOC, carico, potenza batteria)",
+          "extreme_include_smart_port": "Estremo: interroga anche la potenza CA della Smart Port (fasi A/B/C, solo modelli con Smart Port)",
+          "suppress_night_offline_issue": "Sopprimi la segnalazione di riparazione 'datalogger non raggiungibile' finché il sole è sotto l'orizzonte",
+          "clock_sync": "Correggi automaticamente la deriva dell'orologio dell'inverter (scrive l'orologio dell'inverter; disattiva per il solo monitoraggio)",
+          "skip_conn_check": "Salta il controllo iniziale della connessione (consenti configurazione offline)",
           "identification": "Nome Identificativo",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -58,6 +62,10 @@
           "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
           "poll_profile": "Profilo di polling (quanta parte della mappa registri viene interrogata)",
           "extreme_include_battery": "Estremo: interroga anche il gruppo batteria/carico (SOC, carico, potenza batteria)",
+          "extreme_include_smart_port": "Estremo: interroga anche la potenza CA della Smart Port (fasi A/B/C, solo modelli con Smart Port)",
+          "suppress_night_offline_issue": "Sopprimi la segnalazione di riparazione 'datalogger non raggiungibile' finché il sole è sotto l'orizzonte",
+          "clock_sync": "Correggi automaticamente la deriva dell'orologio dell'inverter (scrive l'orologio dell'inverter; disattiva per il solo monitoraggio)",
+          "skip_conn_check": "Salta il controllo iniziale della connessione (consenti configurazione offline)",
           "identification": "Nome Identificativo",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -78,7 +86,8 @@
       "invalid_model": "Modello di inverter non valido o sconosciuto. Selezionare un modello dall'elenco.",
       "serial_required": "Il numero di serie dell'inverter è obbligatorio.",
       "model_required": "Selezionare un modello di inverter.",
-      "tcp_port_closed": "Nessun servizio accetta connessioni Modbus su quell'indirizzo e porta. Il dispositivo potrebbe essere raggiungibile (risponde al ping) ma non fornisce Modbus — verificare che Modbus TCP sia abilitato sul datalogger. È noto che i firmware recenti dei logger Solis chiudono la porta locale 502; un bridge RS485-TCP è una soluzione alternativa.",
+      "tcp_port_closed": "Impossibile aprire una connessione Modbus su quell'indirizzo e porta. Se l'indirizzo è corretto, il datalogger potrebbe non avere connessioni disponibili: arrestare gli altri client Modbus, riavviarlo e riprovare. In caso contrario, verificare che Modbus TCP sia abilitato sul datalogger. È noto che i firmware recenti dei logger Solis chiudono la porta locale 502; un bridge RS485-TCP è una soluzione alternativa.",
+      "serial_port_unsupported": "Questa porta seriale non può essere usata. Usare un percorso di dispositivo (ad es. /dev/ttyUSB0), un gateway socket:// o rfc2217://, un proxy seriale ESPHome come Home Assistant Connect AUX-2 (Home Assistant 2026.5 o successivo), oppure il tipo di connessione TCP.",
       "poll_interval_below_floor": "L'intervallo di polling veloce è inferiore al minimo per il profilo selezionato. Solo il profilo estremo consente intervalli inferiori a 10s (minimo 2s)."
     },
     "abort": {
@@ -96,6 +105,9 @@
           "poll_interval_slow": "Intervallo di Aggiornamento Lento (secondi)",
           "poll_profile": "Profilo di polling (quanta parte della mappa registri viene interrogata)",
           "extreme_include_battery": "Estremo: interroga anche il gruppo batteria/carico (SOC, carico, potenza batteria)",
+          "extreme_include_smart_port": "Estremo: interroga anche la potenza CA della Smart Port (fasi A/B/C, solo modelli con Smart Port)",
+          "suppress_night_offline_issue": "Sopprimi la segnalazione di riparazione 'datalogger non raggiungibile' finché il sole è sotto l'orizzonte",
+          "clock_sync": "Correggi automaticamente la deriva dell'orologio dell'inverter (scrive l'orologio dell'inverter; disattiva per il solo monitoraggio)",
           "model": "Modello Inverter",
           "has_v2": "Aggiornato al Firmware V2",
           "has_pv": "Ha Pannelli Solari (PV)",
@@ -182,6 +194,10 @@
     "datalogger_unreachable": {
       "title": "Datalogger Solis irraggiungibile",
       "description": "Nessuna lettura Modbus riuscita da {host} da {last_success}. Il datalogger WiFi potrebbe essere in sospensione, spento o in uno stato semiaperto; l'integrazione continua a riprovare con backoff. Riavviare l'alimentazione del datalogger se il problema persiste."
+    },
+    "serial_slave_id": {
+      "title": "L'inverter Solis non risponde all'ID slave {slave}",
+      "description": "L'inverter su {port} non risponde al suo ID slave Modbus configurato {slave}, ma un dispositivo sul bus risponde all'ID slave 1. Le versioni precedenti di questa integrazione inviavano ogni richiesta seriale (RS485) all'ID slave 1, qualunque fosse l'ID configurato, quindi questa configurazione potrebbe aver funzionato finora. Se l'inverter è all'ID slave 1, riconfigurare la voce dell'integrazione e impostare l'ID slave a 1."
     }
   }
 }

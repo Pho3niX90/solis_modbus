@@ -13,6 +13,18 @@ Table of Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: Connection guides
+
+   connect-aux-2.md
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Inverter models
+
+   s6-ea1p6k-l.md
+
+.. toctree::
+   :maxdepth: 2
    :caption: Advanced
 
    migration.md

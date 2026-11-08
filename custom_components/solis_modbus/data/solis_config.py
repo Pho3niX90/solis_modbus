@@ -78,6 +78,16 @@ class InverterConfig:
             feats.append(InverterFeature.TCP)
         self.features: list[InverterFeature] = feats
 
+    @property
+    def probe_register(self) -> int:
+        """An input register every inverter of this type answers, for checking a unit responds."""
+        return 3041 if self.type in [InverterType.GRID, InverterType.STRING] else 35000
+
+    @property
+    def identity_register(self) -> int:
+        """The model-number input register, which never reads 0 on a real inverter."""
+        return 2999 if self.type in [InverterType.GRID, InverterType.STRING] else 33000
+
     def clone_with_options(self, options: InverterOptions, connection: str) -> InverterConfig:
         """Copy this model definition with user-chosen options (does not mutate SOLIS_INVERTERS templates)."""
         return InverterConfig(
@@ -160,7 +170,7 @@ SOLIS_INVERTERS = [
     InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RHI-3P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RAI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.ENERGY, features=[]),
-    InverterConfig(model="RAI-3K-48ES-5G", wattage=[3000], phases=1, type=InverterType.HYBRID, features=[]),
+    InverterConfig(model="RAI-3K-48ES-5G", wattage=[3000], phases=1, type=InverterType.ENERGY, features=[]),
     InverterConfig(
         model="3P(3-20)K-4G",
         wattage=[3000, 4000, 5000, 6000, 8000, 9000, 10000, 12000, 15000, 17000, 20000],

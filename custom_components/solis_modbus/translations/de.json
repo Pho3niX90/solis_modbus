@@ -27,6 +27,10 @@
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
           "poll_profile": "Abfrageprofil (wie viel der Registerkarte abgefragt wird)",
           "extreme_include_battery": "Extrem: auch Batterie-/Lastgruppe abfragen (SOC, Last, Batterieleistung)",
+          "extreme_include_smart_port": "Extrem: auch Smart-Port-AC-Leistung abfragen (Phase A/B/C, nur Modelle mit Smart Port)",
+          "suppress_night_offline_issue": "Reparaturmeldung „Datenlogger nicht erreichbar“ unterdrücken, solange die Sonne unter dem Horizont steht",
+          "clock_sync": "Abweichung der Wechselrichteruhr automatisch korrigieren (schreibt die Wechselrichteruhr; für reine Überwachung deaktivieren)",
+          "skip_conn_check": "Anfängliche Verbindungsprüfung überspringen (Offline-Einrichtung erlauben)",
           "identification": "Identifikationsname",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -58,6 +62,10 @@
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
           "poll_profile": "Abfrageprofil (wie viel der Registerkarte abgefragt wird)",
           "extreme_include_battery": "Extrem: auch Batterie-/Lastgruppe abfragen (SOC, Last, Batterieleistung)",
+          "extreme_include_smart_port": "Extrem: auch Smart-Port-AC-Leistung abfragen (Phase A/B/C, nur Modelle mit Smart Port)",
+          "suppress_night_offline_issue": "Reparaturmeldung „Datenlogger nicht erreichbar“ unterdrücken, solange die Sonne unter dem Horizont steht",
+          "clock_sync": "Abweichung der Wechselrichteruhr automatisch korrigieren (schreibt die Wechselrichteruhr; für reine Überwachung deaktivieren)",
+          "skip_conn_check": "Anfängliche Verbindungsprüfung überspringen (Offline-Einrichtung erlauben)",
           "identification": "Identifikationsname",
           "inverter_serial": "Inverter Serial",
           "has_v2": "Updated to V2 Firmware",
@@ -78,7 +86,8 @@
       "invalid_model": "Ungültiges oder unbekanntes Wechselrichtermodell. Bitte ein Modell aus der Liste wählen.",
       "serial_required": "Die Seriennummer des Wechselrichters ist erforderlich.",
       "model_required": "Bitte ein Wechselrichtermodell auswählen.",
-      "tcp_port_closed": "Auf dieser Adresse und diesem Port nimmt nichts Modbus-Verbindungen an. Das Gerät ist möglicherweise erreichbar (es antwortet auf Ping), stellt aber kein Modbus bereit — prüfen Sie, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe.",
+      "tcp_port_closed": "Auf dieser Adresse und diesem Port konnte keine Modbus-Verbindung geöffnet werden. Wenn die Adresse stimmt, hat der Datenlogger möglicherweise keine freien Verbindungen mehr: Beenden Sie andere Modbus-Clients, starten Sie ihn neu und versuchen Sie es erneut. Prüfen Sie andernfalls, ob Modbus TCP auf dem Datenlogger aktiviert ist. Neuere Solis-Logger-Firmware schließt bekanntermaßen den lokalen Port 502; eine RS485-zu-TCP-Bridge ist eine Abhilfe.",
+      "serial_port_unsupported": "Dieser serielle Port kann nicht verwendet werden. Verwenden Sie einen Gerätepfad (z. B. /dev/ttyUSB0), ein socket://- oder rfc2217://-Gateway, einen ESPHome-Serial-Proxy wie Home Assistant Connect AUX-2 (Home Assistant 2026.5 oder neuer) oder den Verbindungstyp TCP.",
       "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s)."
     },
     "abort": {
@@ -96,6 +105,9 @@
           "poll_interval_slow": "Langsames Abfrageintervall (Sekunden)",
           "poll_profile": "Abfrageprofil (wie viel der Registerkarte abgefragt wird)",
           "extreme_include_battery": "Extrem: auch Batterie-/Lastgruppe abfragen (SOC, Last, Batterieleistung)",
+          "extreme_include_smart_port": "Extrem: auch Smart-Port-AC-Leistung abfragen (Phase A/B/C, nur Modelle mit Smart Port)",
+          "suppress_night_offline_issue": "Reparaturmeldung „Datenlogger nicht erreichbar“ unterdrücken, solange die Sonne unter dem Horizont steht",
+          "clock_sync": "Abweichung der Wechselrichteruhr automatisch korrigieren (schreibt die Wechselrichteruhr; für reine Überwachung deaktivieren)",
           "model": "Wechselrichtermodell",
           "has_v2": "Auf Firmware V2 aktualisiert",
           "has_pv": "Hat Photovoltaik (Solarpaneele)",
@@ -182,6 +194,10 @@
     "datalogger_unreachable": {
       "title": "Solis-Datenlogger nicht erreichbar",
       "description": "Kein erfolgreicher Modbus-Lesevorgang von {host} seit {last_success}. Der WiFi-Datenlogger schläft möglicherweise, ist ausgeschaltet oder in einem halboffenen Zustand; die Integration versucht es weiterhin mit Backoff. Bei anhaltendem Problem den Datenlogger stromlos machen."
+    },
+    "serial_slave_id": {
+      "title": "Solis-Wechselrichter antwortet nicht unter Slave-ID {slave}",
+      "description": "Der Wechselrichter an {port} antwortet nicht unter seiner konfigurierten Modbus-Slave-ID {slave}, aber ein Gerät am Bus antwortet unter Slave-ID 1. Ältere Versionen dieser Integration haben jede serielle (RS485) Anfrage unabhängig von der konfigurierten ID an Slave-ID 1 gesendet, daher hat diese Konfiguration bisher möglicherweise funktioniert. Wenn der Wechselrichter Slave-ID 1 hat, den Integrationseintrag neu konfigurieren und die Slave-ID auf 1 setzen."
     }
   }
 }
