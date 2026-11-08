@@ -2,22 +2,45 @@ name: Release
 
 # Cuts a stable release, marked latest.
 #
-# - On a `release/X.Y.Z` branch (the normal way): releases vX.Y.Z, opens a PR
-#   merging the branch back into master, and closes milestone X.Y.Z. Release
-#   candidates are published by release_branch.yaml on every push.
-# - On master: bumps the patch version past the latest release (the old flow).
-#   Master may hold unreleased features, so it warns while release branches are
-#   open; hotfixes belong on a release/X.Y.Z branch cut from the last tag.
+# - Merging a `release/X.Y.Z` branch into master (the normal way):
+#   release_next.yaml calls this workflow, which releases vX.Y.Z from the branch
+#   as it was merged, merges the version bump into master, and closes milestone
+#   X.Y.Z. Release candidates are published by release_branch.yaml on every push
+#   to the branch.
+# - Run on a `release/X.Y.Z` branch: releases vX.Y.Z before the branch is
+#   merged, opens a PR merging it back into master, and closes the milestone.
+#   Merging that PR then finds the release done.
+# - Run on master: bumps the patch version past the latest release (the old
+#   flow). Refused while a release branch is unreleased: master holds that
+#   branch's work, which would ship as a patch. Hotfixes belong on a
+#   release/X.Y.Z branch cut from the last tag.
 #
-# Re-running resumes after a partial failure: on a release branch whose version
-# is already tagged, nothing is re-tagged; the GitHub release is created if it
-# is missing, and the remaining steps run.
+# Re-running resumes after a partial failure: once the version is tagged,
+# nothing is re-tagged; the GitHub release is created if it is missing, and the
+# remaining steps run.
 #
 # Pre-releases come only from release_branch.yaml (vX.Y.Z-rc.N). A plain vX.Y.Z
 # tag always means a stable release, which the version checks rely on.
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      branch:
+        description: The release/X.Y.Z branch that was merged into master
+        type: string
+        required: true
+      sha:
+        description: The branch's head when it was merged, which is released
+        type: string
+        required: true
+      merge_sha:
+        description: The commit that merged it into master
+        type: string
+        required: true
+    secrets:
+      PAT:
+        required: true
 
 env:
   COMPONENT_NAME: solis_modbus
@@ -32,12 +55,23 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
+    # One at a time: running Release on a branch while its merge is releasing it
+    # waits, then finds the version tagged and resumes.
+    concurrency:
+      group: release
+      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ secrets.PAT }}
       GH_REPO: ${{ github.repository }}
+      # Called for a merged release branch, or else the branch Release is run on.
+      BRANCH: ${{ inputs.branch || github.ref_name }}
+      MERGED_HEAD: ${{ inputs.sha }}
+      MERGE_SHA: ${{ inputs.merge_sha }}
     steps:
       - uses: actions/checkout@v6
         with:
+          # Empty, so the branch Release is run on, unless called for a merge.
+          ref: ${{ inputs.sha }}
           fetch-depth: 0
           # master requires PR reviews, so the default GITHUB_TOKEN cannot push
           # the version bump. The PAT (repo admin) bypasses that rule.
@@ -54,37 +88,89 @@ jobs:
           newer() {
             python -c "import semver, sys; sys.exit(0 if semver.compare('$1', '$2') > 0 else 1)"
           }
+          # Whether two commits ship the same integration. The manifest version
+          # doesn't count: every candidate and release stamps its own.
+          same_code() {
+            git diff --quiet "$1" "$2" -- custom_components hacs.json ":(exclude)$MANIFEST" \
+              && [ "$(git show "$1:$MANIFEST" | jq -S 'del(.version)')" = "$(git show "$2:$MANIFEST" | jq -S 'del(.version)')" ]
+          }
           latest=$(stable_tags | tail -1)
 
-          case "$GITHUB_REF_NAME" in
+          case "$BRANCH" in
             release/*)
-              version="${GITHUB_REF_NAME#release/}"
+              version="${BRANCH#release/}"
               if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                echo "::error::Branch $GITHUB_REF_NAME is not named release/X.Y.Z"
+                if [ -n "$MERGED_HEAD" ]; then
+                  echo "::warning::$BRANCH is not named release/X.Y.Z; not releasing it"
+                  echo "DONE=true" >> "$GITHUB_ENV"
+                  exit 0
+                fi
+                echo "::error::Branch $BRANCH is not named release/X.Y.Z"
                 exit 1
               fi
               if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
                 # Only the newest release can be resumed; an older one is done.
                 if [ "$version" != "$latest" ]; then
+                  if [ -n "$MERGED_HEAD" ]; then
+                    # A release cut by running Release on its branch, merged back
+                    # after a newer one.
+                    echo "::notice::v$version was released before v$latest; nothing to do"
+                    echo "DONE=true" >> "$GITHUB_ENV"
+                    exit 0
+                  fi
                   echo "::error::v$version was released before v$latest; nothing to do"
                   exit 1
                 fi
-                if ! git merge-base --is-ancestor "v$version" HEAD; then
-                  echo "::error::v$version exists but is not on $GITHUB_REF_NAME"
+                # Cut from this branch: the tag is on it, or (cut when the branch
+                # was merged) the tag is the version bump on top of it.
+                if ! git merge-base --is-ancestor "v$version" HEAD \
+                  && ! { [ -n "$MERGED_HEAD" ] && git merge-base --is-ancestor HEAD "v$version"; }; then
+                  echo "::error::v$version exists but is not on $BRANCH"
                   exit 1
                 fi
                 echo "::notice::v$version is already tagged; resuming the remaining steps"
                 echo "RESUME=true" >> "$GITHUB_ENV"
-              elif [ -n "$latest" ] && ! newer "$version" "$latest"; then
-                echo "::error::$GITHUB_REF_NAME is not newer than the latest release, v$latest"
-                exit 1
+              else
+                if [ -n "$latest" ] && ! newer "$version" "$latest"; then
+                  echo "::error::$BRANCH is not newer than the latest release, v$latest"
+                  exit 1
+                fi
+                # A hotfix branch (Z > 0) is cut from the latest release and doesn't
+                # receive master. Merging master into it (say, to resolve conflicts
+                # on its PR) brings in master's unreleased work, which must not ship
+                # as a patch: whatever it shares with master must be released.
+                if [ "${version##*.}" != 0 ] && [ -n "$latest" ]; then
+                  master=origin/master
+                  if [ -n "$MERGED_HEAD" ]; then
+                    master="$MERGE_SHA^1"  # master before the merge
+                  fi
+                  if ! same_code "v$latest" "$(git merge-base HEAD "$master")"; then
+                    echo "::error::$BRANCH holds work from master that isn't in v$latest, and a hotfix must not ship it. Cut the hotfix from the release tag and cherry-pick the fixes onto it (see CONTRIBUTING.md)."
+                    exit 1
+                  fi
+                fi
               fi
-              echo "BACK_MERGE=true" >> "$GITHUB_ENV"
+              if [ -n "$MERGED_HEAD" ]; then
+                echo "MERGE_INTO_MASTER=true" >> "$GITHUB_ENV"
+              else
+                echo "BACK_MERGE=true" >> "$GITHUB_ENV"
+              fi
               ;;
             master)
-              open=$(git branch -r --list 'origin/release/*' | sed 's|^ *origin/||' | paste -sd ' ' -)
-              if [ -n "$open" ]; then
-                echo "::warning::Releasing from master while release branches are open ($open). Master may contain unreleased features; prefer a release/X.Y.Z hotfix branch cut from the last release tag."
+              # Master holds the work of every unreleased release branch; releasing
+              # it would ship that as a patch (or take a hotfix branch's version).
+              pending=()
+              for branch in $(git branch -r --list 'origin/release/*' | sed 's|^ *origin/||'); do
+                v="${branch#release/}"
+                [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+                # Released, or older than the latest release: nothing left to ship.
+                git rev-parse -q --verify "refs/tags/v$v" > /dev/null && continue
+                [ -n "$latest" ] && ! newer "$v" "$latest" && continue
+                pending+=("$branch")
+              done
+              if [ ${#pending[@]} -gt 0 ]; then
+                echo "::error::Not releasing master while ${pending[*]} is unreleased: release through the branch, by merging it into master. For a hotfix, cut release/X.Y.Z from the latest release tag (see CONTRIBUTING.md)."
+                exit 1
               fi
               current=$(jq -r '.version' "$MANIFEST")
               if [ -z "$latest" ] || { python -c "import semver; semver.Version.parse('$current')" 2> /dev/null && newer "$current" "$latest"; }; then
@@ -106,8 +192,8 @@ jobs:
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "PREVIOUS=$previous" >> "$GITHUB_ENV"
 
-      - name: Commit and push version bump
-        if: env.RESUME != 'true'
+      - name: Commit the version bump
+        if: env.RESUME != 'true' && env.DONE != 'true'
         run: |
           jq --arg v "$VERSION" '.version = $v' "$MANIFEST" > manifest.tmp.json && mv manifest.tmp.json "$MANIFEST"
           git config user.name "github-actions[bot]"
@@ -119,12 +205,25 @@ jobs:
             # release_branch.yaml skips pushes with this message, so no release
             # candidate is published after the release.
             git commit -m "chore: bump version to v$VERSION"
-            git push origin "HEAD:$GITHUB_REF_NAME"
+            if [ -z "$MERGED_HEAD" ]; then
+              git push origin "HEAD:$BRANCH"
+            fi
+          fi
+          if [ -n "$MERGED_HEAD" ]; then
+            # The merged branch is finished, so the bump commit goes on no branch
+            # yet: push it as the tag, so GitHub can release it. Tagged before
+            # master gets the bump, so the workflows that push starts see vX.Y.Z
+            # released.
+            git tag "v$VERSION"
+            git push origin "refs/tags/v$VERSION"
           fi
 
       - name: Find the release commit
+        if: env.DONE != 'true'
         run: |
-          if [ "$RESUME" = "true" ]; then
+          # The tag once there is one (resuming, or a merged branch just tagged),
+          # or else the bump just pushed.
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
             sha=$(git rev-list -n 1 "v$VERSION")
           else
             sha=$(git rev-parse HEAD)
@@ -143,13 +242,13 @@ jobs:
           fi
 
       - name: Zip ${{ env.COMPONENT_NAME }} dir
-        if: env.RELEASE_EXISTS != 'true'
+        if: env.DONE != 'true' && env.RELEASE_EXISTS != 'true'
         run: |
           cd "custom_components/${COMPONENT_NAME}"
           zip -r -y "${GITHUB_WORKSPACE}/${COMPONENT_NAME}.zip" ./ -x '__pycache__/*' '*/__pycache__/*'
 
       - name: Generate release notes
-        if: env.RELEASE_EXISTS != 'true'
+        if: env.DONE != 'true' && env.RELEASE_EXISTS != 'true'
         run: |
           # Name the previous stable tag explicitly: left to GitHub, a release
           # candidate could be picked and the notes would only cover its tail.
@@ -164,7 +263,7 @@ jobs:
             --jq .body > release_notes.md
 
       - name: Publish release
-        if: env.RELEASE_EXISTS != 'true'
+        if: env.DONE != 'true' && env.RELEASE_EXISTS != 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.COMPONENT_NAME }}.zip
@@ -178,6 +277,7 @@ jobs:
           make_latest: true
 
       - name: Move the latest tag
+        if: env.DONE != 'true'
         run: |
           git tag -f latest "$SHA"
           git push -f origin refs/tags/latest
@@ -185,8 +285,8 @@ jobs:
       - name: Open PR merging the release branch into master
         if: env.BACK_MERGE == 'true'
         run: |
-          if [ -n "$(gh pr list --base master --head "$GITHUB_REF_NAME" --state open --json number --jq '.[].number')" ]; then
-            echo "A PR from $GITHUB_REF_NAME into master is already open"
+          if [ -n "$(gh pr list --base master --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            echo "A PR from $BRANCH into master is already open"
             exit 0
           fi
 
@@ -195,7 +295,7 @@ jobs:
           # merging this PR closes them.
           issues=$(gh issue list --milestone "$VERSION" --state open --limit 200 --json number --jq '.[].number')
           {
-            echo "Merges the changes made on \`$GITHUB_REF_NAME\` for v$VERSION back into master."
+            echo "Merges the changes made on \`$BRANCH\` for v$VERSION back into master."
             if [ -n "$issues" ]; then
               echo
               echo "Open issues in milestone $VERSION. **Remove the line for any issue this release does not fix before merging:**"
@@ -208,17 +308,53 @@ jobs:
 
           # A PAT (GH_TOKEN), so the PR's checks run: events from GITHUB_TOKEN
           # trigger no workflows.
-          gh pr create --base master --head "$GITHUB_REF_NAME" \
-            --title "Merge $GITHUB_REF_NAME into master" \
+          gh pr create --base master --head "$BRANCH" \
+            --title "Merge $BRANCH into master" \
             --body-file backmerge.md
 
-      - name: Close milestone
+      - name: Merge the version bump into master
+        if: env.MERGE_INTO_MASTER == 'true'
         run: |
-          number=$(gh api --paginate "repos/$GH_REPO/milestones?state=open&per_page=100" \
-            --jq ".[] | select(.title == \"$VERSION\") | .number" | head -1)
-          if [ -z "$number" ]; then
+          # The release commit is the merged branch plus its version bump, so
+          # merging it brings master the bump, and puts vX.Y.Z on master's
+          # history as a back-merge would.
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for _ in 1 2 3; do
+            git fetch -q origin master
+            if git merge-base --is-ancestor "$SHA" origin/master; then
+              echo "master already has v$VERSION"
+              exit 0
+            fi
+            git checkout -q --detach origin/master
+            if ! git merge -q --no-ff -m "Merge v$VERSION into master" "$SHA"; then
+              echo "::error::v$VERSION is released, but its version bump conflicts with master. Set the version in $MANIFEST to $VERSION on master by hand."
+              exit 1
+            fi
+            # Rejected if master moved since the fetch; then merge onto the new tip.
+            if git push -q origin HEAD:master; then
+              echo "Merged v$VERSION into master" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo "::error::v$VERSION is released, but master kept moving, so its version bump wasn't merged. Set the version in $MANIFEST to $VERSION on master by hand."
+          exit 1
+
+      - name: Close milestone
+        if: env.DONE != 'true'
+        run: |
+          milestone=$(gh api --paginate "repos/$GH_REPO/milestones?state=open&per_page=100" \
+            --jq ".[] | select(.title == \"$VERSION\") | \"\(.number) \(.open_issues)\"" | head -1)
+          if [ -z "$milestone" ]; then
             echo "No open milestone $VERSION"
             exit 0
+          fi
+          number="${milestone%% *}"
+          open="${milestone##* }"
+          # A back-merge PR lists the open issues to close; a merged branch has
+          # had no such PR, so point them out.
+          if [ -n "$MERGED_HEAD" ] && [ "$open" != 0 ]; then
+            echo "::warning::Milestone $VERSION still has $open open issue(s) or PR(s). Close the ones this release fixed, and move the rest to the next milestone."
           fi
           gh api -X PATCH "repos/$GH_REPO/milestones/$number" -f state=closed > /dev/null
           echo "Closed milestone $VERSION (#$number)"
