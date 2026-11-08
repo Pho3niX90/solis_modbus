@@ -1,28 +1,53 @@
-name: Open Next Release Branch
+name: Release on Merge
 
-# When a `release/X.Y.Z` branch is merged back into master, open
-# `release/X.(Y+1).0` from the merge commit, so the next version has a branch
-# (and, through release_branch.yaml, a milestone) to collect PRs and issues.
-# Hotfix branches (`release/X.Y.Z`, Z > 0) don't advance it: merging 4.3.1
-# finds release/4.4.0 already open. Other open release branches get master
-# through release_sync.yaml; ones older than the merged release can no longer be
-# released, and the merged PR gets a comment naming them.
+# Merging a `release/X.Y.Z` branch into master releases it:
+#
+# 1. release.yaml releases vX.Y.Z from the branch as it was merged, merges the
+#    version bump into master, and closes milestone X.Y.Z. A version already
+#    released by running Release on the branch is left as it is.
+# 2. `release/X.(Y+1).0` is opened from master, so the next version has a branch
+#    (and, through release_branch.yaml, a milestone) to collect PRs and issues.
+#    Hotfix branches (`release/X.Y.Z`, Z > 0) don't advance it: merging 4.3.1
+#    finds release/4.4.0 already open. Other open release branches get master
+#    through release_sync.yaml; ones older than the merged release can no longer
+#    be released, and the merged PR gets a comment naming them.
+#
+# If the release fails, the next branch isn't opened; re-running the failed jobs
+# resumes both.
 
 on:
   pull_request:
     types: [closed]
     branches: [master]
 
-# The job acts only through the PAT; GITHUB_TOKEN needs no access.
+# The jobs act only through the PAT; GITHUB_TOKEN needs no access.
 permissions: {}
 
 jobs:
-  open-next:
-    name: Open next release branch
+  release:
+    name: Release
     if: >-
       github.event.pull_request.merged
       && startsWith(github.event.pull_request.head.ref, 'release/')
       && github.event.pull_request.head.repo.full_name == github.repository
+    # What release.yaml's job asks for: a called workflow gets no more than this.
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/release.yaml
+    with:
+      branch: ${{ github.event.pull_request.head.ref }}
+      sha: ${{ github.event.pull_request.head.sha }}
+      merge_sha: ${{ github.event.pull_request.merge_commit_sha }}
+    secrets:
+      PAT: ${{ secrets.PAT }}
+
+  open-next:
+    name: Open next release branch
+    # After the release, so the new branch starts from the released version.
+    needs: release
     runs-on: ubuntu-latest
     env:
       # A PAT, so creating the branch triggers release_branch.yaml (events from
@@ -30,7 +55,6 @@ jobs:
       GH_TOKEN: ${{ secrets.PAT }}
       GH_REPO: ${{ github.repository }}
       MERGED_BRANCH: ${{ github.event.pull_request.head.ref }}
-      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
     steps:
       - name: Work out the next version
         run: |
@@ -56,10 +80,14 @@ jobs:
             exit 0
           fi
 
+          # master as it is now, holding the release's version bump: the branch
+          # starts level with the release, so its first candidate waits until
+          # something new reaches it.
+          sha=$(gh api "repos/$GH_REPO/git/ref/heads/master" --jq .object.sha)
           gh api -X POST "repos/$GH_REPO/git/refs" \
             -f ref="refs/heads/$branch" \
-            -f sha="$MERGE_SHA" > /dev/null
-          echo "Opened $branch at $MERGE_SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+            -f sha="$sha" > /dev/null
+          echo "Opened $branch at $sha" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Flag release branches older than this release
         if: env.SKIP != 'true'
