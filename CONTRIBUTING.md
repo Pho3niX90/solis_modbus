@@ -49,7 +49,7 @@ If the release fails partway, re-run the failed jobs of its *Release on Merge* r
 
 To release before merging, run the *Release* workflow on the release branch instead. It publishes the release and opens a PR merging the branch back into master (listing the milestone's open issues as `Closes #N`; remove any that aren't fixed); merging that PR opens the next branch. Don't run *Release* on master: that releases master as a patch (the old flow), so it refuses while any release branch is unreleased.
 
-Fixes meant only for the release can be PR'd straight to the release branch; merging the release brings them to master. Candidates stamp `X.Y.Z-rc.N` into `manifest.json` in a commit only their tag points to, so the branch carries no version-bump commits until the final release. A push that changes nothing under `custom_components/` publishes no candidate.
+Fixes meant only for the release can be PR'd straight to the release branch; merging the release brings them to master. Candidates stamp `X.Y.Z-rc.N` into `manifest.json` in a commit only their tag points to, so the branch carries no version-bump commits until the final release. A push that changes nothing under `custom_components/` (the manifest version aside) publishes no candidate.
 
 **Major versions.** Breaking work for the next major goes straight to its branch, e.g. `release/5.0.0`, not master (or it would ship in 4.x). That branch still receives every master push, so 4.x fixes reach it; a conflicting merge opens a `sync/master-into-5.0.0` PR. Once 5.0.0 is released, open 4.x branches can no longer be released; the merged PR gets a comment naming them.
 

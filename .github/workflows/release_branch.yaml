@@ -129,7 +129,12 @@ jobs:
           else
             base="$LATEST_STABLE"
           fi
-          if [ -n "$base" ] && git diff --quiet "$base" HEAD -- custom_components hacs.json; then
+          # The manifest version doesn't count: each candidate stamps its own, so a
+          # release's version bump reaching the branch ships nothing new.
+          manifest="custom_components/${COMPONENT_NAME}/manifest.json"
+          if [ -n "$base" ] \
+            && git diff --quiet "$base" HEAD -- custom_components hacs.json ":(exclude)$manifest" \
+            && [ "$(git show "$base:$manifest" | jq -S 'del(.version)')" = "$(git show "HEAD:$manifest" | jq -S 'del(.version)')" ]; then
             echo "Nothing to ship since ${last_rc:-$LATEST_STABLE}"
             echo "SKIP=true" >> "$GITHUB_ENV"
             exit 0
