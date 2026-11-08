@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -189,3 +190,49 @@ async def test_setup_entry_clock_sync_option_controls_clock_sensor(hass: HomeAss
         assert any(90007 in sensor.registrars for sensor in derived) is expected
         assert await hass.config_entries.async_unload(config_entry.entry_id)
         await hass.async_block_till_done()
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_logs_skipped_feature_groups_at_debug(hass: HomeAssistant, caplog):
+    """Groups for features the user left unticked are routine skips, not warnings (#552)."""
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="SN123456",
+        data={
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "inverter_serial": "SN123456",
+            "model": "S6-EH3P",
+            "poll_profile": "essential",
+            "has_generator": False,
+            "has_ac_coupling": False,
+            "has_parallel": False,
+            "has_dual_meter": False,
+            "poll_interval_fast": 10,
+            "poll_interval_normal": 15,
+            "poll_interval_slow": 30,
+        },
+        title="Solis Inverter",
+    )
+    config_entry.add_to_hass(hass)
+    caplog.set_level(logging.DEBUG, logger="custom_components.solis_modbus")
+
+    with (
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connect", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connected", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_input_register", return_value=[1, 2, 3]),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.process_write_queue"),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.async_read_holding_register", return_value=[1, 2, 3]),
+    ):
+        assert await hass.config_entries.async_setup(config_entry.entry_id)
+        await hass.async_block_till_done()
+        assert await hass.config_entries.async_unload(config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    skips = [record for record in caplog.records if record.getMessage().startswith("Skipping sensor group")]
+    # The dual meter, generator, parallel and AC coupling groups from the report.
+    assert {"33300", "33316", "33530", "34243", "34445", "34496"} <= {record.getMessage().split("'")[1] for record in skips}
+    assert {record.levelname for record in skips} == {"DEBUG"}
+    # Features read as their config value, not the enum repr.
+    assert "Skipping sensor group '33300' due to missing required features: dual_meter" in {record.getMessage() for record in skips}
