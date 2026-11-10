@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 import voluptuous as vol
 
-from custom_components.solis_modbus import config_flow
+from custom_components.solis_modbus import client_manager, config_flow
 from custom_components.solis_modbus.const import CONF_SERIAL_PORT
 
 MANIFEST = Path(__file__).parent.parent / "custom_components" / "solis_modbus" / "manifest.json"
@@ -97,7 +97,7 @@ async def test_validate_config_rejects_unsupported_port(hass):
     flow = config_flow.ModbusConfigFlow()
     flow.hass = hass
 
-    with patch.object(config_flow, "AsyncModbusSerialClient") as serial_client, patch.object(config_flow, "SerialProxyClient") as proxy_client:
+    with patch.object(client_manager, "AsyncModbusSerialClient") as serial_client, patch.object(config_flow, "SerialProxyClient") as proxy_client:
         valid, err = await flow._validate_config(
             {
                 "connection_type": "serial",
@@ -127,7 +127,7 @@ async def test_validate_config_probes_esphome_proxy_through_serialx(hass):
     client.read_input_registers = AsyncMock(return_value=probe)
 
     with (
-        patch.object(config_flow, "AsyncModbusSerialClient") as serial_client,
+        patch.object(client_manager, "AsyncModbusSerialClient") as serial_client,
         patch.object(config_flow, "SerialProxyClient", return_value=client) as proxy_client,
     ):
         valid, err = await flow._validate_config(
@@ -143,3 +143,54 @@ async def test_validate_config_probes_esphome_proxy_through_serialx(hass):
     serial_client.assert_not_called()
     assert proxy_client.call_args.kwargs["port"] == "esphome-hass://aux-2/0"
     assert client.read_input_registers.await_args.kwargs["device_id"] == 4
+
+
+async def test_validate_config_probes_serial_port_with_the_resync_framer_and_serial_timing(hass):
+    """The config-flow probe client waits 1.5 s, retries 3 times and carries the resync framer, like the runtime client."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pymodbus.framer import FramerRTU
+    from pymodbus.pdu import DecodePDU
+
+    from custom_components.solis_modbus.rtu_framer import ResyncFramerRTU
+
+    created = []
+
+    class FakeSerialClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.ctx = MagicMock(framer=FramerRTU(DecodePDU(False)))
+            self.connected = True
+            self.connect = AsyncMock()
+            self.close = MagicMock()
+            probe = MagicMock()
+            probe.isError.return_value = False
+            self.read_input_registers = AsyncMock(return_value=probe)
+            created.append(self)
+
+    flow = config_flow.ModbusConfigFlow()
+    flow.hass = hass
+
+    with patch.object(client_manager, "AsyncModbusSerialClient", FakeSerialClient):
+        valid, err = await flow._validate_config({"connection_type": "serial", CONF_SERIAL_PORT: "/dev/ttyUSB0", "slave": 1, "model": "S6-EH1P"})
+
+    assert (valid, err) == (True, None)
+    (probe_client,) = created
+    assert (probe_client.kwargs["timeout"], probe_client.kwargs["retries"]) == (1.5, 3)
+    assert isinstance(probe_client.ctx.framer, ResyncFramerRTU)
+
+
+async def test_validate_config_keeps_proxy_client_timing(hass):
+    """The ESPHome proxy probe keeps its own timing."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    flow = config_flow.ModbusConfigFlow()
+    flow.hass = hass
+    probe = MagicMock()
+    probe.isError.return_value = False
+    client = MagicMock(connected=True, connect=AsyncMock(), read_input_registers=AsyncMock(return_value=probe))
+
+    with patch.object(config_flow, "SerialProxyClient", return_value=client) as proxy_client:
+        await flow._validate_config({"connection_type": "serial", CONF_SERIAL_PORT: "esphome-hass://aux-2/0", "slave": 1, "model": "S6-EH1P"})
+
+    assert (proxy_client.call_args.kwargs["timeout"], proxy_client.call_args.kwargs["retries"]) == (5, 1)

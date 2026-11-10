@@ -8,6 +8,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from .const import CONF_INVERTER_SERIAL, DOMAIN, VALUES
+from .rtu_framer import ResyncFramerRTU
 from .runtime import SolisConfigEntry
 
 TO_REDACT = {"host", CONF_INVERTER_SERIAL, "serial_port", "identification"}
@@ -19,6 +20,21 @@ _SERIAL_REGISTER_RANGE = range(33004, 33020)
 def _partial(value) -> str | None:
     """Keep the last 4 characters so support can still correlate reports."""
     return f"***{str(value)[-4:]}" if value else None
+
+
+def _framer_counters(controller) -> dict[str, Any]:
+    """Serial line quality counters kept by the resync framer, empty for clients without one."""
+    framer = getattr(getattr(getattr(controller, "client", None), "ctx", None), "framer", None)
+    if not isinstance(framer, ResyncFramerRTU):
+        return {}
+    return {
+        "serial_junk_bytes_skipped": framer.junk_bytes_skipped,
+        "serial_frames_rescued": framer.frames_rescued,
+        "serial_first_byte_latency_last_ms": framer.first_byte_latency_last_ms,
+        "serial_first_byte_latency_max_ms": framer.first_byte_latency_max_ms,
+        "serial_attempts_no_answer": framer.attempts_no_answer,
+        "serial_attempts_bad_answer": framer.attempts_bad_answer,
+    }
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: SolisConfigEntry) -> dict[str, Any]:
@@ -58,6 +74,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: SolisCo
             "last_modbus_success": last_success.isoformat() if last_success else None,
             "poll_speed": {speed.name: interval for speed, interval in controller.poll_speed.items()},
             "sw_version": controller.sw_version,
+            **_framer_counters(controller),
         },
         "inverter_config": {
             "model": controller.inverter_config.model,

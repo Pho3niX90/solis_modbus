@@ -3,8 +3,11 @@ import logging
 import time
 
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
+from pymodbus.framer import FramerRTU
+from pymodbus.pdu import DecodePDU
 
 from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP
+from custom_components.solis_modbus.rtu_framer import EarlyEnd, ResyncFramerRTU
 from custom_components.solis_modbus.serial_proxy import SerialProxyClient, is_serial_proxy
 
 _LOGGER = logging.getLogger(__name__)
@@ -14,6 +17,40 @@ _LOGGER = logging.getLogger(__name__)
 # interval is required." Applies to every request on the link, read or write. 310ms gives
 # a small margin above the documented floor (see issue #480).
 MIN_INTER_FRAME_MS = 310
+
+# Serial timeout and retries of the pymodbus serial client. The timeout is only the backstop: the
+# framer ends a failed attempt earlier (no first byte 0.5 s after the request, or the line silent for
+# MIN_INTER_FRAME_MS without a valid answer), so a corrupted answer costs about its own line time plus
+# 0.31 s and a silent attempt about 0.5 s plus the request's line time. 1.5 s still covers the longest
+# healthy exchange: 0.5 s to the first byte plus the longest answer (125 registers = 255 bytes, 0.29 s
+# of line time at 9600 baud). Three retries because corrupted frames are routine on this line.
+SERIAL_TIMEOUT_S = 1.5
+SERIAL_RETRIES = 3
+
+
+def create_serial_client(serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient:
+    """Create a pymodbus serial client that resyncs past junk and ends failed attempts early."""
+    client = AsyncModbusSerialClient(
+        port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=SERIAL_TIMEOUT_S, retries=SERIAL_RETRIES
+    )
+
+    def capture_attempt():
+        """End function for the attempt being sent: `execute` creates its `response_future` just before sending."""
+        future = client.ctx.response_future
+
+        def end_attempt() -> None:
+            if not future.done():
+                future.set_exception(TimeoutError("attempt ended early by the RTU framer"))  # `execute` takes this like its own timeout: retry
+
+        return end_attempt
+
+    # `ctx.framer` is a plain attribute of pymodbus's transaction manager (3.11.4 - 3.13.1).
+    framer = getattr(getattr(client, "ctx", None), "framer", None)
+    if isinstance(framer, FramerRTU):
+        client.ctx.framer = ResyncFramerRTU(DecodePDU(False), early_end=EarlyEnd(baudrate, MIN_INTER_FRAME_MS / 1000, capture_attempt))
+    else:
+        _LOGGER.warning("pymodbus serial client has no RTU framer to replace (%s); keeping its stock framer", type(framer).__name__)
+    return client
 
 
 class ModbusClientManager:
@@ -60,10 +97,7 @@ class ModbusClientManager:
                 # ESPHome serial proxies (e.g. Connect AUX-2): pyserial can't open them.
                 client = SerialProxyClient(serial_port, baudrate, bytesize, parity, stopbits, timeout=5)
             else:
-                # retries=1 for the same reason as the TCP client: the integration's own
-                # reconnect watchdog handles recovery, and pymodbus retry storms only
-                # add latency on an already-struggling link.
-                client = AsyncModbusSerialClient(port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=5, retries=1)
+                client = create_serial_client(serial_port, baudrate, bytesize, parity, stopbits)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,

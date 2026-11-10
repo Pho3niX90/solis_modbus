@@ -293,7 +293,7 @@ class ModbusController:
                         f"({self.host}.{self.device_id}) Exception during write holding registers "
                         f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}"
                     )
-                    self._safe_close()
+                    self._close_after_failed_request()
                     return None
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
@@ -381,7 +381,7 @@ class ModbusController:
                 error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
                 log_fn(f"({self.host}.{self.device_id}) Exception reading input registers at {register}: {error_msg}")
-                self._safe_close()
+                self._close_after_failed_request()
                 return None, None
 
     async def _async_read_input_register_raw(self, register, count):
@@ -446,7 +446,7 @@ class ModbusController:
                 error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
                 log_fn(f"({self.host}.{self.device_id}) Exception reading holding registers at {register}: {error_msg}")
-                self._safe_close()
+                self._close_after_failed_request()
                 return None, None
 
     async def _async_read_holding_register_raw(self, register, count):
@@ -507,7 +507,7 @@ class ModbusController:
                 result = await self.client.read_input_registers(address=register, count=1, device_id=device_id)
             except Exception as e:
                 _LOGGER.debug("(%s.%s) No answer from unit %s at register %s: %s", self.host, self.device_id, device_id, register, e)
-                self._safe_close()
+                self._close_after_failed_request()
                 return False
         return not result.isError()
 
@@ -573,6 +573,18 @@ class ModbusController:
                 self.client.close()
         except Exception:
             pass
+
+    def _close_after_failed_request(self) -> None:
+        """Close the client after a failed read, write or probe, unless it is a pymodbus serial client.
+
+        The close cures half-open TCP and stale TCP responses. A lost frame on serial is routine:
+        pymodbus clears its receive buffer on every attempt and drops the port itself after
+        repeated unanswered requests, and closing here only parks the write queue and fails the
+        other inverters on the port.
+        """
+        if isinstance(self.client, AsyncModbusSerialClient):
+            return
+        self._safe_close()
 
     def force_close(self):
         """Close the underlying client so a fresh connection can be established.

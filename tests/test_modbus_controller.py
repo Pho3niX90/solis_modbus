@@ -5,7 +5,7 @@ from datetime import datetime
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
-from pymodbus.client import AsyncModbusSerialClient
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from custom_components.solis_modbus.const import (
     CONN_TYPE_SERIAL,
@@ -17,6 +17,7 @@ from custom_components.solis_modbus.const import (
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.modbus_controller import WRITE_MAX_AGE, ModbusController
+from custom_components.solis_modbus.serial_proxy import SerialProxyClient
 
 
 class TestModbusControllerTCP(IsolatedAsyncioTestCase):
@@ -786,3 +787,63 @@ class TestModbusControllerProperties(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _controller_failing_requests(client_spec, connection_type):
+    """A connected controller whose every request raises like a pymodbus request that got no answer."""
+    manager = MagicMock()
+    manager.inter_frame_wait = AsyncMock()
+    lock = MagicMock()
+    lock.__aenter__ = AsyncMock(return_value=None)
+    lock.__aexit__ = AsyncMock(return_value=None)
+    manager.get_client_lock.return_value = lock
+
+    client = MagicMock(spec=client_spec)
+    client.connected = True
+    for method in ("read_input_registers", "read_holding_registers", "write_register", "write_registers"):
+        setattr(client, method, AsyncMock(side_effect=TimeoutError("No response received after 3 retries")))
+    manager.get_tcp_client.return_value = client
+    manager.get_serial_client.return_value = client
+
+    with patch("custom_components.solis_modbus.modbus_controller.ModbusClientManager") as manager_class:
+        manager_class.get_instance.return_value = manager
+        controller = ModbusController(
+            hass=MagicMock(),
+            connection_type=connection_type,
+            host="1.2.3.4" if connection_type == CONN_TYPE_TCP else None,
+            serial_port="/dev/ttyUSB0" if connection_type == CONN_TYPE_SERIAL else None,
+            inverter_config=MagicMock(),
+            device_id=1,
+        )
+    return controller, client
+
+
+async def _fail_every_kind_of_request(controller):
+    await controller.async_read_input_register(33000, 1)
+    await controller.async_read_holding_register(43000, 1)
+    await controller._execute_write_holding_registers(43141, [1, 2])
+    await controller.async_unit_answers(2)
+
+
+async def test_failed_requests_do_not_close_a_pymodbus_serial_client():
+    controller, client = _controller_failing_requests(AsyncModbusSerialClient, CONN_TYPE_SERIAL)
+
+    await _fail_every_kind_of_request(controller)
+
+    client.close.assert_not_called()
+
+
+async def test_failed_requests_close_a_tcp_client():
+    controller, client = _controller_failing_requests(AsyncModbusTcpClient, CONN_TYPE_TCP)
+
+    await _fail_every_kind_of_request(controller)
+
+    assert client.close.call_count == 4
+
+
+async def test_failed_requests_close_an_esphome_serial_proxy_client():
+    controller, client = _controller_failing_requests(SerialProxyClient, CONN_TYPE_SERIAL)
+
+    await _fail_every_kind_of_request(controller)
+
+    assert client.close.call_count == 4

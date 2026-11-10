@@ -93,3 +93,50 @@ async def test_diagnostics_without_runtime_data():
     entry.runtime_data = None
     diag = await async_get_config_entry_diagnostics(MagicMock(), entry)
     assert "error" in diag
+
+
+async def test_diagnostics_show_serial_line_counters_for_a_resync_framer(hass_with_cache):
+    from pymodbus.pdu import DecodePDU
+    from pymodbus.pdu.register_message import ReadInputRegistersRequest
+
+    from custom_components.solis_modbus.rtu_framer import EarlyEnd, ResyncFramerRTU
+
+    now_s = [10.0]
+    timers = []
+
+    def call_later(delay_s, callback):
+        timers.append(callback)
+        return MagicMock()
+
+    framer = ResyncFramerRTU(
+        DecodePDU(False),
+        clock=lambda: now_s[0],
+        early_end=EarlyEnd(9600, 0.31, lambda: lambda: None),
+        call_later=call_later,
+    )
+    request = ReadInputRegistersRequest(dev_id=1, address=33000, count=1)
+    framer.buildFrame(request)
+    timers.pop()()  # no first byte: a no-answer attempt
+    framer.buildFrame(request)
+    now_s[0] += 0.125
+    framer.handleFrame(bytes.fromhex("01 90 0b 54"), 1, 0)
+    timers.pop()()  # junk, then silence: a bad-answer attempt
+    framer.buildFrame(request)
+    framer.handleFrame(bytes.fromhex("ff 01 04 02 aa 55 07 af"), 1, 0)  # a valid answer behind one junk byte
+    controller = make_controller()
+    controller.client.ctx.framer = framer
+
+    diag = await async_get_config_entry_diagnostics(hass_with_cache, make_entry(controller))
+
+    section = diag["controller"]
+    assert section["serial_junk_bytes_skipped"] == 5
+    assert section["serial_frames_rescued"] == 1
+    assert section["serial_attempts_no_answer"] == 1
+    assert section["serial_attempts_bad_answer"] == 1
+    assert section["serial_first_byte_latency_max_ms"] == pytest.approx(125.0 - 8 * 11 / 9600 * 1000.0)
+
+
+async def test_diagnostics_have_no_serial_line_counters_for_other_clients(hass_with_cache):
+    diag = await async_get_config_entry_diagnostics(hass_with_cache, make_entry(make_controller()))
+
+    assert [key for key in diag["controller"] if key.startswith("serial_")] == []
