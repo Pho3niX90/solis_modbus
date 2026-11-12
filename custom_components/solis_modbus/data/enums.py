@@ -31,6 +31,7 @@ class InverterFeature(Enum):
     ZONNEPLAN = "zonneplan"
     AC_COUPLING = "ac_coupling"
     PARALLEL = "parallel"
+    PARALLEL_READINGS = "parallel_readings"
     DUAL_METER = "dual_meter"
     EPM = "epm"
 

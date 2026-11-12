@@ -122,6 +122,7 @@
           "has_ac_coupling": "Has AC Coupling",
           "has_smart_port": "Smart Port in uso (FV accoppiato in AC, generatore o carico intelligente collegato)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Mantieni le letture dell'inverter in parallelo senza funzionamento in parallelo (installazioni esistenti)",
           "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
           "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }

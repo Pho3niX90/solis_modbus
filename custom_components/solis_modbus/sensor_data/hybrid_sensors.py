@@ -1081,7 +1081,9 @@ hybrid_sensors = [
     {
         "register_start": 33243,
         "poll_speed": PollSpeed.NORMAL,
-        "feature_requirement": [InverterFeature.PARALLEL],
+        # Either one: entries from before #562 keep these readings through
+        # PARALLEL_READINGS without having ticked the parallel option.
+        "feature_requirement": [InverterFeature.PARALLEL, InverterFeature.PARALLEL_READINGS],
         "entities": [
             {
                 "name": "Parallel Inverter AC Current",

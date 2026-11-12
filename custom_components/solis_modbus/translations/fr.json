@@ -122,6 +122,7 @@
           "has_ac_coupling": "Has AC Coupling",
           "has_smart_port": "Smart Port utilisé (PV couplé AC, générateur ou charge intelligente raccordé)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Conserver les mesures d'onduleur en parallèle sans fonctionnement en parallèle (installations existantes)",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
           "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }

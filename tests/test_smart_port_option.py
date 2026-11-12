@@ -50,9 +50,15 @@ def test_smart_port_groups_are_skipped_without_the_feature():
         assert not set(group["feature_requirement"]) <= features
 
 
+def _polled(group, config):
+    """Same rule as setup: a group is polled when any of its required features is present."""
+    requirement = group.get("feature_requirement") or []
+    return not requirement or any(f in _features(config) for f in requirement)
+
+
 def test_parallel_registers_are_gated():
     (parallel,) = _groups(33243)
-    assert parallel.get("feature_requirement") == [InverterFeature.PARALLEL]
+    assert parallel.get("feature_requirement") == [InverterFeature.PARALLEL, InverterFeature.PARALLEL_READINGS]
     registers = {r for e in parallel["entities"] for r in e["register"]}
     assert registers == {"33243", "33244", "33245", "33246"}
 
@@ -80,3 +86,32 @@ def test_poll_profiles_treat_the_new_group_like_the_old_one():
     for key in ("poll_speed", "essential", "extreme"):
         assert epm.get(key) == parallel.get(key)
     assert group_in_poll_profile(epm, "full", False, False)
+
+
+def test_new_single_inverter_entry_skips_parallel_readings():
+    (parallel,) = _groups(33243)
+    assert not _polled(parallel, {})
+
+
+def test_parallel_option_polls_parallel_readings():
+    (parallel,) = _groups(33243)
+    assert _polled(parallel, {"has_parallel": True})
+
+
+def test_migrated_entry_keeps_parallel_readings_without_the_parallel_option():
+    """Existing parallel installs may never have ticked has_parallel (#562)."""
+    (parallel,) = _groups(33243)
+    config = {"has_parallel": False, "parallel_readings": True}
+    assert _polled(parallel, config)
+    assert InverterFeature.PARALLEL not in _features(config)
+
+
+def test_parallel_readings_do_not_enable_the_other_parallel_group():
+    """Only the readings carry over; 34243 still needs the parallel option."""
+    (sync,) = _groups(34243)
+    assert not _polled(sync, {"parallel_readings": True})
+
+
+def test_epm_status_is_polled_either_way():
+    (epm,) = _groups(33247)
+    assert _polled(epm, {}) and _polled(epm, {"parallel_readings": True})

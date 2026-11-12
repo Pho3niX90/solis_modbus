@@ -122,6 +122,7 @@
           "has_ac_coupling": "Has AC Coupling",
           "has_smart_port": "Smart Port em uso (FV acoplado em CA, gerador ou carga inteligente ligada)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Manter leituras do inversor em paralelo sem operação em paralelo (instalações existentes)",
           "has_dual_meter": "Segundo medidor inteligente instalado (configuração de medidor duplo Rede + inversor FV)",
           "has_epm": "EPM / gestor de potência de exportação instalado (registos de contador 36xxx)"
         }

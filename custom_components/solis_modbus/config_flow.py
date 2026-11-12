@@ -16,6 +16,7 @@ from .const import (
     CONF_EXTREME_INCLUDE_BATTERY,
     CONF_EXTREME_INCLUDE_SMART_PORT,
     CONF_INVERTER_SERIAL,
+    CONF_PARALLEL_READINGS,
     CONF_PARITY,
     CONF_POLL_PROFILE,
     CONF_SERIAL_PORT,
@@ -139,6 +140,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_ac_coupling", default=False): bool,
         vol.Required("has_smart_port", default=True): bool,
         vol.Required("has_parallel", default=False): bool,
+        vol.Required(CONF_PARALLEL_READINGS, default=False): bool,
         vol.Required("has_battery", default=True): bool,
         vol.Required("has_hv_battery", default=False): bool,
         vol.Required("has_generator", default=True): bool,
@@ -176,7 +178,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
     VERSION = 5
-    MINOR_VERSION = 0
+    MINOR_VERSION = 2
 
     def __init__(self):
         """Initialize the config flow."""

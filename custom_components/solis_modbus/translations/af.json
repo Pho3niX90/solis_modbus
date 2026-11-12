@@ -122,6 +122,7 @@
           "has_ac_coupling": "Has AC Coupling",
           "has_smart_port": "Slim poort in gebruik (AC-gekoppelde PV, kragopwekker of slim las gekoppel)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Hou parallelle omsetter-lesings sonder parallelle werking (bestaande installasies)",
           "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
           "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
         }
