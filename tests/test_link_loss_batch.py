@@ -1,4 +1,8 @@
-"""A poll batch must never open a connection: only check_connection reconnects."""
+"""A poll batch must never open a connection: only check_connection reconnects.
+
+A batch that finds the link down starts check_connection straight away (issue #556)
+instead of leaving it to the 2-minute watchdog.
+"""
 
 import asyncio
 import contextlib
@@ -104,6 +108,7 @@ def rig():
     with patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client):
         hass = MagicMock()
         hass.is_running = False
+        hass.async_create_background_task = MagicMock(side_effect=lambda coro, name: asyncio.get_running_loop().create_task(coro))
         inverter_config = MagicMock()
         controller = ModbusController(hass, inverter_config, sensor_groups=[*fast, *normal, *slow], connection_type=CONN_TYPE_TCP, host=HOST, port=502)
     with patch("custom_components.solis_modbus.data_retrieval.cache_save"), patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
@@ -132,9 +137,13 @@ async def test_failed_read_drops_link_and_queued_batches_do_not_reconnect(rig):
     client.read_input_registers = failing_read
     await _poll_all(retrieval)
 
-    assert client.reads == [33000, 33100]
-    assert client.connects == 0
+    # The failed batch stops; the queued batches read on the link check_connection
+    # reopened (started by the failed batch), so there is only that one connection.
+    assert client.reads == [33000, 33100, 34000, 35000]
     assert retrieval.poll_updating[PollSpeed.FAST] == {}
+    await _settle()
+    assert client.connects == 1
+    assert controller.connected()
 
 
 async def test_link_dropped_between_groups_does_not_reconnect(rig):
@@ -144,7 +153,8 @@ async def test_link_dropped_between_groups_does_not_reconnect(rig):
     await _poll_all(retrieval)
 
     assert client.reads == [33000]
-    assert client.connects == 0
+    await _settle()
+    assert client.connects == 1
 
 
 async def test_stop_and_close_with_batches_in_flight_open_no_connection(rig):
@@ -292,3 +302,87 @@ async def test_reload_leaves_no_connection_parked_on_a_one_connection_gateway(so
             writer.close()
         with contextlib.suppress(Exception):
             await server.wait_closed()
+
+
+async def test_failed_read_reconnects_without_waiting_for_the_watchdog(rig):
+    retrieval, controller, client = rig
+    fail = {33100}
+
+    async def failing_read(address, count, device_id):
+        if not client.connected:
+            raise ConnectionError("Not connected")
+        client.reads.append(address)
+        if address in fail:
+            fail.discard(address)
+            raise ConnectionError("no response")
+        return MagicMock(isError=lambda: False, registers=[0] * count)
+
+    client.read_input_registers = failing_read
+    await retrieval.modbus_update_fast()
+    await _settle()
+
+    assert client.connects == 1
+    client.reads.clear()
+    await retrieval.modbus_update_fast()
+    assert client.reads == [33000, 33100, 33200]
+
+
+async def test_link_down_before_a_batch_starts_a_reconnect(rig):
+    retrieval, controller, client = rig
+    client.connected = False  # e.g. a failed write closed it between batches
+
+    await retrieval.modbus_update_fast()
+    assert client.reads == []
+    await _settle()
+
+    assert client.connects == 1
+    assert controller.connected()
+
+
+async def test_batches_finding_the_link_down_start_one_reconnect(rig):
+    retrieval, controller, client = rig
+    client.connected = False
+    client.connect_gate = asyncio.Event()
+
+    await _poll_all(retrieval)
+    await _settle()
+    await _poll_all(retrieval)
+    await _settle()
+
+    assert client.connects == 1
+    assert retrieval.hass.async_create_background_task.call_count == 1
+    client.connect_gate.set()
+    await _settle()
+    assert controller.connected()
+
+
+async def test_stop_cancels_a_reconnect_in_flight(rig):
+    retrieval, controller, client = rig
+    client.connected = False
+    client.connect_gate = asyncio.Event()
+
+    await retrieval.modbus_update_fast()
+    await _settle()
+    task = retrieval._reconnect_task
+    assert client.connects == 1
+
+    await retrieval.async_stop()
+
+    assert task.cancelled()
+    assert retrieval._reconnect_task is None
+    assert retrieval.connection_check is False
+
+
+async def test_no_reconnect_is_started_once_stopping_or_disabled(rig):
+    retrieval, controller, client = rig
+    client.connected = False
+
+    controller.disable_connection()
+    await retrieval.modbus_update_fast()
+    controller.enable_connection()
+    retrieval._stopping = True
+    await retrieval.modbus_update_fast()
+    await _settle()
+
+    retrieval.hass.async_create_background_task.assert_not_called()
+    assert client.connects == 0
