@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
+from pymodbus.exceptions import ModbusIOException
 
 from custom_components.solis_modbus.client_manager import ModbusClientManager
 from custom_components.solis_modbus.const import (
@@ -165,6 +166,9 @@ class ModbusController:
         # Whether this inverter has answered a read since startup (unlike
         # _last_modbus_success, which starts at "now").
         self.has_answered = False
+        # Whether the last register read got no answer while the serial port stayed open: the
+        # poll batch stops on it, as it does on TCP when the failed read closes the link.
+        self.last_read_unanswered = False
 
     async def process_write_queue(self):
         """Process queued Modbus write requests sequentially.
@@ -293,7 +297,7 @@ class ModbusController:
                         f"({self.host}.{self.device_id}) Exception during write holding registers "
                         f"{start_register}-{start_register + len(values) - 1}: {str(write_error)}"
                     )
-                    self._safe_close()
+                    self._close_after_failed_request(write_error)
                     return None
         except Exception as e:
             _LOGGER.error(f"({self.host}.{self.device_id}) Failed to write holding registers {start_register}-{start_register + len(values) - 1}: {str(e)}")
@@ -363,6 +367,7 @@ class ModbusController:
             await self.inter_frame_wait()
 
             try:
+                self.last_read_unanswered = False
                 result = await self.client.read_input_registers(address=register, count=count, device_id=self.device_id)
 
                 _LOGGER.debug("(%s.%s) Read Input Registers: register = %s, count = %s", self.host, self.device_id, register, count)
@@ -381,7 +386,7 @@ class ModbusController:
                 error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
                 log_fn(f"({self.host}.{self.device_id}) Exception reading input registers at {register}: {error_msg}")
-                self._safe_close()
+                self.last_read_unanswered = self._close_after_failed_request(e)
                 return None, None
 
     async def _async_read_input_register_raw(self, register, count):
@@ -428,6 +433,7 @@ class ModbusController:
             await self.inter_frame_wait()
 
             try:
+                self.last_read_unanswered = False
                 result = await self.client.read_holding_registers(address=register, count=count, device_id=self.device_id)
 
                 _LOGGER.debug("(%s.%s) Read Holding Registers: register = %s, count = %s", self.host, self.device_id, register, count)
@@ -446,7 +452,7 @@ class ModbusController:
                 error_msg = str(e)
                 log_fn = _LOGGER.debug if quiet else _LOGGER.error
                 log_fn(f"({self.host}.{self.device_id}) Exception reading holding registers at {register}: {error_msg}")
-                self._safe_close()
+                self.last_read_unanswered = self._close_after_failed_request(e)
                 return None, None
 
     async def _async_read_holding_register_raw(self, register, count):
@@ -507,7 +513,7 @@ class ModbusController:
                 result = await self.client.read_input_registers(address=register, count=1, device_id=device_id)
             except Exception as e:
                 _LOGGER.debug("(%s.%s) No answer from unit %s at register %s: %s", self.host, self.device_id, device_id, register, e)
-                self._safe_close()
+                self._close_after_failed_request(e)
                 return False
         return not result.isError()
 
@@ -573,6 +579,22 @@ class ModbusController:
                 self.client.close()
         except Exception:
             pass
+
+    def _close_after_failed_request(self, error: Exception) -> bool:
+        """Close the client after a failed read, write or probe, unless a pymodbus serial request went unanswered.
+
+        The close cures half-open TCP and stale TCP responses. A lost frame on serial is routine:
+        pymodbus clears its receive buffer on every attempt and drops the port itself after
+        repeated unanswered requests, and closing here only parks the write queue and fails the
+        other inverters on the port. Any other failure on serial (the port erroring while sending,
+        say) skips pymodbus's own bookkeeping, so the port is closed and check_connection reopens it.
+
+        Returns True when the port was left open after an unanswered request.
+        """
+        if isinstance(self.client, AsyncModbusSerialClient) and isinstance(error, ModbusIOException):
+            return True
+        self._safe_close()
+        return False
 
     def force_close(self):
         """Close the underlying client so a fresh connection can be established.

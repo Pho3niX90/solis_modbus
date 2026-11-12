@@ -377,6 +377,34 @@ async def test_poll_continues_after_failure_when_link_up():
     assert controller.async_read_holding_registers_with_exception.await_count == 3
 
 
+async def test_poll_stops_after_an_unanswered_serial_read():
+    """On serial an unanswered read leaves the port open (other inverters share it), so connected()
+    stays True; the batch must still stop instead of spending ~2 s of retries on every group."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC))
+    controller.enabled = True
+    controller.connected = MagicMock(return_value=True)
+    groups = []
+    for start in (43007, 43128, 43173):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.SLOW
+        group.start_register = start
+        group.registrar_count = 1
+        groups.append(group)
+    controller.sensor_groups = list(groups)
+
+    async def read(start, count):
+        controller.last_read_unanswered = start == 43128
+        return (None, None) if start == 43128 else ([1] * count, None)
+
+    controller.async_read_holding_registers_with_exception = AsyncMock(side_effect=read)
+
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        await retrieval.get_modbus_updates(groups, PollSpeed.SLOW)
+
+    read_starts = [c.args[0] for c in controller.async_read_holding_registers_with_exception.await_args_list]
+    assert read_starts == [43007, 43128]
+
+
 async def test_poll_controller_starts_write_queue_as_background_task():
     """Issue #546: process_write_queue() runs until it is cancelled, and entries are not
     unloaded at shutdown, so as a tracked task it kept Home Assistant waiting ("was still

@@ -190,7 +190,7 @@ async def test_serial_connect_failure_retries_and_reports_cannot_connect():
     client.connected = False
 
     with (
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusSerialClient", return_value=client),
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusSerialClient", return_value=client),
         patch("asyncio.sleep", AsyncMock()),
     ):
         ok, err = await ModbusConfigFlow()._validate_config({"connection_type": "serial", "serial_port": "/dev/ttyUSB0", "model": "S6-EH1P", "slave": 1})

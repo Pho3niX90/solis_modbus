@@ -292,7 +292,7 @@ async def test_serial_probe_passes_device_id(hass: HomeAssistant):
     mock_client.read_input_registers = AsyncMock(return_value=probe_result)
 
     with patch(
-        "custom_components.solis_modbus.config_flow.AsyncModbusSerialClient",
+        "custom_components.solis_modbus.client_manager.AsyncModbusSerialClient",
         return_value=mock_client,
     ):
         valid, err = await flow._validate_config(
