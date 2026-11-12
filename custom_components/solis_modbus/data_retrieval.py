@@ -84,6 +84,7 @@ class DataRetrieval:
         self._startup_unsub = None  # Store startup listener separately
         self._write_task = None  # process_write_queue task, cancelled on unload
         self._poll_task = None  # poll_controller task, cancelled on unload
+        self._reconnect_task = None  # check_connection started by a poll, cancelled on unload
         self._stopping = False  # set on async_stop so in-flight reconnect loops exit
 
         if self.hass.is_running:
@@ -95,6 +96,23 @@ class DataRetrieval:
     def _can_poll(self) -> bool:
         """True while a poll batch may keep reading."""
         return not self._stopping and self.controller.enabled and self.controller.connected()
+
+    def _request_reconnect(self) -> None:
+        """Start check_connection now instead of waiting for the next watchdog tick.
+
+        A failed read closes the link and poll batches never reconnect (#527), so
+        without this the link, and with it the queued writes, stayed down until the
+        2-minute watchdog ran (issue #556). check_connection stays the only place
+        that connects, and its guard keeps it to one connection at a time.
+        """
+        if self._stopping or not self.controller.enabled or self.controller.connected() or self.connection_check:
+            return
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        self._reconnect_task = self.hass.async_create_background_task(
+            self.check_connection(),
+            f"{DOMAIN} reconnect {self.controller.host}.{self.controller.slave}",
+        )
 
     async def _read_register_block_with_exception(self, start_register: int, count: int, is_holding: bool) -> tuple[list[int] | None, int | None]:
         # The controller's read wrappers reconnect; only check_connection may.
@@ -278,7 +296,7 @@ class DataRetrieval:
         # FIRST: poll_controller() creates _write_task as its last step, so stopping
         # poll first prevents it spawning a fresh write task after we've cancelled the
         # old one. getattr re-reads _write_task afterwards, catching any it just created.
-        for task_attr in ("_poll_task", "_write_task"):
+        for task_attr in ("_poll_task", "_write_task", "_reconnect_task"):
             task = getattr(self, task_attr)
             if task is not None:
                 task.cancel()
@@ -584,6 +602,8 @@ class DataRetrieval:
             None
         """
         if not self._can_poll():
+            # Covers a link that dropped outside a batch (e.g. a failed write).
+            self._request_reconnect()
             return
 
         group_hash = frozenset({group.start_register for group in groups})
@@ -651,11 +671,12 @@ class DataRetrieval:
                             # A failed read closes the link; on serial an unanswered read leaves
                             # the port open for the other inverters on it, so connected() alone
                             # wouldn't stop the batch. Reading the remaining groups would each
-                            # fail again (issue #478); leave recovery to the check_connection
-                            # watchdog.
+                            # fail again (issue #478); leave reconnection to check_connection,
+                            # started now when the link is down (issue #556).
                             _LOGGER.debug(
                                 f"⚠️ Link to ({self.controller.host}.{self.controller.slave}) down or stopping, skipping remaining {speed.name} groups."
                             )
+                            self._request_reconnect()
                             break
                         continue
                     if len(values) != count:

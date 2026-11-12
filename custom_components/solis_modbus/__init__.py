@@ -724,8 +724,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         for group in sensors:
             feature_requirement = group.get("feature_requirement", [])
             if feature_requirement and not any(feature in inverter_config.features for feature in feature_requirement):
-                group_name = group.get("name", group.get("register_start", "Unnamed"))
-                _LOGGER.warning(f"Skipping sensor group '{group_name}' due to missing required features: {feature_requirement}")
+                # Every optional feature the user leaves unticked lands here, so
+                # this is routine detail, not something to warn about (#552).
+                _LOGGER.debug(
+                    "Skipping sensor group '%s' due to missing required features: %s",
+                    group.get("name", group.get("register_start", "Unnamed")),
+                    ", ".join(feature.value for feature in feature_requirement),
+                )
                 continue
 
             if not group_in_poll_profile(group, poll_profile, include_battery, include_smart_port):
