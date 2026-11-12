@@ -17,6 +17,7 @@ from .const import (
     CONF_BYTESIZE,
     CONF_CONNECTION_TYPE,
     CONF_INVERTER_SERIAL,
+    CONF_PARALLEL_READINGS,
     CONF_PARITY,
     CONF_POLL_PROFILE,
     CONF_SERIAL_PORT,
@@ -1110,8 +1111,28 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         _migrate_essential_only_to_poll_profile(hass, config_entry)
         hass.config_entries.async_update_entry(config_entry, version=5)
 
-    _LOGGER.info("Migration to version %s successful", config_entry.version)
+    if config_entry.version == 5 and config_entry.minor_version < 2:
+        _migrate_keep_parallel_readings(hass, config_entry)
+        hass.config_entries.async_update_entry(config_entry, minor_version=2)
+
+    _LOGGER.info("Migration to version %s.%s successful", config_entry.version, config_entry.minor_version)
     return True
+
+
+def _migrate_keep_parallel_readings(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Keep polling the parallel-inverter readings on existing entries (#562).
+
+    Registers 33243-33246 were polled for every install until they were gated on
+    the parallel option, which defaults to off, so a parallel install may never
+    have ticked it. Nothing in the entry tells the two apart, so every existing
+    entry keeps the readings; a single-inverter install can switch them off in
+    the options.
+    """
+    merged = {**config_entry.data, **config_entry.options}
+    if CONF_PARALLEL_READINGS in merged:
+        return
+    hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, CONF_PARALLEL_READINGS: True})
+    _LOGGER.info("Kept the parallel inverter readings (33243-33246) polled for this existing entry")
 
 
 def _migrate_essential_only_to_poll_profile(hass: HomeAssistant, config_entry: ConfigEntry) -> None:

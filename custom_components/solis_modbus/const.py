@@ -62,6 +62,12 @@ CONF_POLL_PROFILE = "poll_profile"
 CONF_EXTREME_INCLUDE_BATTERY = "extreme_include_battery"
 CONF_EXTREME_INCLUDE_SMART_PORT = "extreme_include_smart_port"
 
+# Keep polling the parallel-inverter readings (33243-33246) without the parallel
+# option. Those registers were polled for every install before #562, and parallel
+# installs never had to tick the option to get them, so the config entry migration
+# sets this on existing entries; new entries follow the parallel option.
+CONF_PARALLEL_READINGS = "parallel_readings"
+
 # Skip the "datalogger unreachable" repair issue while the sun is below the
 # horizon (issue #465): solar inverters normally power off overnight, so a
 # stale/absent Modbus link then is expected rather than a fault. Opt-in
