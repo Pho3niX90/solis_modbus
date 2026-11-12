@@ -5,17 +5,18 @@ import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.solis_modbus import async_migrate_dict_unique_ids, async_migrate_entry
-from custom_components.solis_modbus.const import CONF_INVERTER_SERIAL, DOMAIN
+from custom_components.solis_modbus.const import CONF_INVERTER_SERIAL, CONF_PARALLEL_READINGS, DOMAIN
 from custom_components.solis_modbus.helpers import unique_id_generator
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
 
 
 def _apply_version_updates(entry):
-    """Make mocked async_update_entry actually bump entry.version."""
+    """Make mocked async_update_entry actually apply version, minor_version, data and options."""
 
     def _update(config_entry, **kwargs):
-        if "version" in kwargs:
-            config_entry.version = kwargs["version"]
+        for key in ("version", "minor_version", "data", "options"):
+            if key in kwargs:
+                setattr(config_entry, key, kwargs[key])
 
     return _update
 
@@ -26,6 +27,7 @@ class TestMigration:
         self.hass = MagicMock()
         self.entry = MagicMock()
         self.entry.version = 1
+        self.entry.minor_version = 0
         self.entry.domain = DOMAIN
         self.entry.entry_id = "entry-1"
         self.entry.data = {CONF_HOST: "192.168.1.10", CONF_PORT: 502, "slave": 1, CONF_INVERTER_SERIAL: "SN123456", "model": "S6-EH1P"}
@@ -124,6 +126,7 @@ class TestDictUniqueIdMigration:
         self.hass = MagicMock()
         self.entry = MagicMock()
         self.entry.version = 3
+        self.entry.minor_version = 0
         self.entry.entry_id = "entry-dict-1"
         self.entry.data = {
             CONF_HOST: "192.168.1.10",
@@ -342,3 +345,53 @@ class TestUniqueIdCallSite:
         assert uid == f"{DOMAIN}_SN1_{UNIQUE_KEY}"
         assert "{" not in uid
         assert "data_type" not in uid
+
+
+@pytest.mark.asyncio
+class TestParallelReadingsMigration:
+    """Entries from before #562 keep the parallel readings (33243-33246) polled."""
+
+    def setup_method(self):
+        self.hass = MagicMock()
+        self.entry = MagicMock()
+        self.entry.version = 5
+        self.entry.minor_version = 0
+        self.entry.data = {"model": "S6-EH3P"}
+        self.entry.options = {}
+        self.hass.config_entries.async_update_entry.side_effect = _apply_version_updates(self.entry)
+
+    async def test_existing_entry_keeps_parallel_readings(self):
+        assert await async_migrate_entry(self.hass, self.entry)
+        assert self.entry.data[CONF_PARALLEL_READINGS] is True
+        assert self.entry.minor_version == 2
+
+    async def test_entry_from_before_minor_versions_is_migrated(self):
+        """Entries created before MINOR_VERSION was set carry HA's default of 1."""
+        self.entry.minor_version = 1
+        assert await async_migrate_entry(self.hass, self.entry)
+        assert self.entry.data[CONF_PARALLEL_READINGS] is True
+        assert self.entry.minor_version == 2
+
+    async def test_entry_with_parallel_option_on_also_keeps_readings(self):
+        self.entry.options = {"has_parallel": True}
+        assert await async_migrate_entry(self.hass, self.entry)
+        assert self.entry.data[CONF_PARALLEL_READINGS] is True
+
+    async def test_explicit_choice_is_not_overwritten(self):
+        self.entry.options = {CONF_PARALLEL_READINGS: False}
+        assert await async_migrate_entry(self.hass, self.entry)
+        assert CONF_PARALLEL_READINGS not in self.entry.data
+        assert self.entry.minor_version == 2
+
+    async def test_current_entry_is_left_alone(self):
+        self.entry.minor_version = 2
+        assert await async_migrate_entry(self.hass, self.entry)
+        assert CONF_PARALLEL_READINGS not in self.entry.data
+        self.hass.config_entries.async_update_entry.assert_not_called()
+
+    async def test_older_entry_runs_through_to_the_new_step(self):
+        """A v4 entry also gets the readings kept once it reaches version 5."""
+        self.entry.version = 4
+        assert await async_migrate_entry(self.hass, self.entry)
+        assert (self.entry.version, self.entry.minor_version) == (5, 2)
+        assert self.entry.data[CONF_PARALLEL_READINGS] is True

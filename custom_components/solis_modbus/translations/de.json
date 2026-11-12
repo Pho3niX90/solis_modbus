@@ -36,6 +36,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port in Verwendung (AC-gekoppelte PV, Generator oder Smart Load angeschlossen)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -71,6 +72,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port in Verwendung (AC-gekoppelte PV, Generator oder Smart Load angeschlossen)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -118,7 +120,9 @@
           "connection": "Verbindungstyp",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port in Verwendung (AC-gekoppelte PV, Generator oder Smart Load angeschlossen)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Parallel-Wechselrichter-Messwerte ohne Parallelbetrieb beibehalten (bestehende Installationen)",
           "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
           "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }

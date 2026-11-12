@@ -36,6 +36,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port utilisé (PV couplé AC, générateur ou charge intelligente raccordé)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -71,6 +72,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port utilisé (PV couplé AC, générateur ou charge intelligente raccordé)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -118,7 +120,9 @@
           "connection": "Type de connexion",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port utilisé (PV couplé AC, générateur ou charge intelligente raccordé)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Conserver les mesures d'onduleur en parallèle sans fonctionnement en parallèle (installations existantes)",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
           "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }

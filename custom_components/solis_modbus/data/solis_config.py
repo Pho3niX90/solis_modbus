@@ -15,6 +15,8 @@ class InverterOptions:
         parallel: bool = False,
         dual_meter: bool = False,
         epm: bool = True,
+        smart_port: bool = True,
+        parallel_readings: bool = False,
     ):
         self.pv = pv
         self.battery = battery
@@ -25,6 +27,11 @@ class InverterOptions:
         self.parallel = parallel
         self.dual_meter = dual_meter
         self.epm = epm
+        # Only meaningful for models whose template lists SMART_PORT; lets users without
+        # anything on the Smart Port stop polling its registers.
+        self.smart_port = smart_port
+        # Parallel-inverter readings without the parallel option (see CONF_PARALLEL_READINGS).
+        self.parallel_readings = parallel_readings
 
 
 class InverterConfig:
@@ -55,6 +62,8 @@ class InverterConfig:
     def _rebuild_features(self) -> None:
         opts = self.options
         feats = list(self._intrinsic_features)
+        if not opts.smart_port:
+            feats = [f for f in feats if f != InverterFeature.SMART_PORT]
         feats.append(InverterFeature.BMS)
         if opts.pv:
             feats.append(InverterFeature.PV)
@@ -70,6 +79,8 @@ class InverterConfig:
             feats.append(InverterFeature.AC_COUPLING)
         if opts.parallel:
             feats.append(InverterFeature.PARALLEL)
+        if opts.parallel_readings:
+            feats.append(InverterFeature.PARALLEL_READINGS)
         if opts.dual_meter:
             feats.append(InverterFeature.DUAL_METER)
         if opts.epm:
@@ -113,6 +124,8 @@ def inverter_options_from_config(config: dict, template: InverterConfig) -> Inve
         hv_battery=config.get("has_hv_battery", False),
         dual_meter=config.get("has_dual_meter", False),
         epm=config.get("has_epm", True),
+        smart_port=config.get("has_smart_port", True),
+        parallel_readings=config.get("parallel_readings", False),
     )
 
 

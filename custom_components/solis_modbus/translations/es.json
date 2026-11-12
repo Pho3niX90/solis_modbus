@@ -36,6 +36,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port en uso (FV acoplada en CA, generador o carga inteligente conectada)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -71,6 +72,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port en uso (FV acoplada en CA, generador o carga inteligente conectada)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -118,7 +120,9 @@
           "connection": "Tipo de conexión",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Smart Port en uso (FV acoplada en CA, generador o carga inteligente conectada)",
           "has_parallel": "Parallel inverter operation (multiple units)",
+          "parallel_readings": "Mantener lecturas de inversor en paralelo sin operación en paralelo (instalaciones existentes)",
           "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)",
           "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)"
         }
