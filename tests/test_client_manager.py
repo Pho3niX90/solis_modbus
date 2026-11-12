@@ -148,6 +148,26 @@ async def test_serial_client_waits_1500_ms_and_retries_3_times(pyserial_present)
     assert client.ctx.retries == 3
 
 
+async def test_serial_client_leaves_reconnecting_to_the_integration(pyserial_present):
+    """pymodbus's own reconnect (after retries+3 unanswered requests) would race check_connection."""
+    client = create_serial_client("/dev/ttyUSB0", 9600, 8, "N", 1)
+
+    assert client.ctx.comm_params.reconnect_delay == 0
+
+
+async def test_serial_client_without_a_response_future_leaves_the_attempt_to_the_timeout(pyserial_present):
+    """If pymodbus stops exposing ctx.response_future, building a request must not fail it."""
+    client = create_serial_client("/dev/ttyUSB0", 9600, 8, "N", 1)
+    client.ctx.response_future = None
+    framer = client.ctx.framer
+
+    framer.buildFrame(ReadInputRegistersRequest(address=33000, count=1, dev_id=1))
+
+    assert framer._end_attempt is client_manager._no_early_end
+    framer._end_attempt()  # nothing to end, nothing raised
+    framer._cancel_timers()
+
+
 async def test_serial_client_uses_the_resync_framer(pyserial_present):
     client = create_serial_client("/dev/ttyUSB0", 9600, 8, "N", 1)
 

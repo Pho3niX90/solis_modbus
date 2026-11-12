@@ -6,6 +6,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
+from pymodbus.exceptions import ModbusIOException
 
 from custom_components.solis_modbus.const import (
     CONN_TYPE_SERIAL,
@@ -789,8 +790,9 @@ if __name__ == "__main__":
     unittest.main()
 
 
-def _controller_failing_requests(client_spec, connection_type):
+def _controller_failing_requests(client_spec, connection_type, error=None):
     """A connected controller whose every request raises like a pymodbus request that got no answer."""
+    error = error or ModbusIOException("No response received after 3 retries, continue with next request")
     manager = MagicMock()
     manager.inter_frame_wait = AsyncMock()
     lock = MagicMock()
@@ -801,7 +803,7 @@ def _controller_failing_requests(client_spec, connection_type):
     client = MagicMock(spec=client_spec)
     client.connected = True
     for method in ("read_input_registers", "read_holding_registers", "write_register", "write_registers"):
-        setattr(client, method, AsyncMock(side_effect=TimeoutError("No response received after 3 retries")))
+        setattr(client, method, AsyncMock(side_effect=error))
     manager.get_tcp_client.return_value = client
     manager.get_serial_client.return_value = client
 
@@ -831,6 +833,28 @@ async def test_failed_requests_do_not_close_a_pymodbus_serial_client():
     await _fail_every_kind_of_request(controller)
 
     client.close.assert_not_called()
+
+
+async def test_unanswered_serial_read_is_flagged_and_cleared_by_the_next_read():
+    controller, client = _controller_failing_requests(AsyncModbusSerialClient, CONN_TYPE_SERIAL)
+
+    await controller.async_read_input_registers_with_exception(33000, 1)
+    assert controller.last_read_unanswered is True
+
+    client.read_input_registers.side_effect = None
+    client.read_input_registers.return_value = MagicMock(isError=MagicMock(return_value=False), registers=[1])
+    await controller.async_read_input_registers_with_exception(33000, 1)
+    assert controller.last_read_unanswered is False
+
+
+async def test_serial_send_errors_close_a_pymodbus_serial_client():
+    """An error raised while sending skips pymodbus's own retry and disconnect bookkeeping, so close."""
+    controller, client = _controller_failing_requests(AsyncModbusSerialClient, CONN_TYPE_SERIAL, error=OSError("write failed"))
+
+    await _fail_every_kind_of_request(controller)
+
+    assert client.close.call_count == 4
+    assert controller.last_read_unanswered is False
 
 
 async def test_failed_requests_close_a_tcp_client():

@@ -647,10 +647,12 @@ class DataRetrieval:
                                 f"⚠️ Received None for register {start_register} - {end_register}, "
                                 f"for ({self.controller.host}.{self.controller.slave}), skipping."
                             )
-                        if not self._can_poll():
-                            # A failed read closes the link. Reading the remaining groups would
-                            # each retry the connection and fail again (issue #478); leave
-                            # reconnection to the check_connection watchdog.
+                        if not self._can_poll() or self.controller.last_read_unanswered is True:
+                            # A failed read closes the link; on serial an unanswered read leaves
+                            # the port open for the other inverters on it, so connected() alone
+                            # wouldn't stop the batch. Reading the remaining groups would each
+                            # fail again (issue #478); leave recovery to the check_connection
+                            # watchdog.
                             _LOGGER.debug(
                                 f"⚠️ Link to ({self.controller.host}.{self.controller.slave}) down or stopping, skipping remaining {speed.name} groups."
                             )

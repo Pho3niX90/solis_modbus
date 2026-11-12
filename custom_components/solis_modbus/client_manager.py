@@ -28,15 +28,31 @@ SERIAL_TIMEOUT_S = 1.5
 SERIAL_RETRIES = 3
 
 
+def _no_early_end() -> None:
+    """End function used when the pending attempt's future can't be found: nothing to end."""
+
+
 def create_serial_client(serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient:
     """Create a pymodbus serial client that resyncs past junk and ends failed attempts early."""
+    # reconnect_delay=0: pymodbus drops the port itself after retries+3 unanswered requests in a row. Its
+    # own reconnect would then race the integration's check_connection watchdog, the only place that connects.
     client = AsyncModbusSerialClient(
-        port=serial_port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits, timeout=SERIAL_TIMEOUT_S, retries=SERIAL_RETRIES
+        port=serial_port,
+        baudrate=baudrate,
+        bytesize=bytesize,
+        parity=parity,
+        stopbits=stopbits,
+        timeout=SERIAL_TIMEOUT_S,
+        retries=SERIAL_RETRIES,
+        reconnect_delay=0,
     )
 
     def capture_attempt():
         """End function for the attempt being sent: `execute` creates its `response_future` just before sending."""
-        future = client.ctx.response_future
+        future = getattr(getattr(client, "ctx", None), "response_future", None)
+        if not isinstance(future, asyncio.Future):
+            # pymodbus internals moved: leave the attempt to the client timeout instead of failing the request.
+            return _no_early_end
 
         def end_attempt() -> None:
             if not future.done():
