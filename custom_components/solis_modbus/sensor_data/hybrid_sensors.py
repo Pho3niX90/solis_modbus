@@ -1081,6 +1081,7 @@ hybrid_sensors = [
     {
         "register_start": 33243,
         "poll_speed": PollSpeed.NORMAL,
+        "feature_requirement": [InverterFeature.PARALLEL],
         "entities": [
             {
                 "name": "Parallel Inverter AC Current",
@@ -1120,6 +1121,14 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "state_class": SensorStateClass.MEASUREMENT,
             },
+        ],
+    },
+    {
+        # Split from the parallel block above so single-inverter installs keep the EPM status
+        # without polling the parallel registers (33243-33246).
+        "register_start": 33247,
+        "poll_speed": PollSpeed.NORMAL,
+        "entities": [
             {
                 # Export-power-manager live state: setpoint vs realtime backflow +
                 # status bits (bit0 EPM on, bit1 failsafe triggered)

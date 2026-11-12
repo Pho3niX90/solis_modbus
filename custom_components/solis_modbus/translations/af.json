@@ -36,6 +36,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Slim poort in gebruik (AC-gekoppelde PV, kragopwekker of slim las gekoppel)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -71,6 +72,7 @@
           "has_v2": "Updated to V2 Firmware",
           "has_pv": "Has PV (Solar Panels)",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Slim poort in gebruik (AC-gekoppelde PV, kragopwekker of slim las gekoppel)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
@@ -118,6 +120,7 @@
           "connection": "Tipe Verbinding",
           "inverter_serial": "Inverter Serial",
           "has_ac_coupling": "Has AC Coupling",
+          "has_smart_port": "Slim poort in gebruik (AC-gekoppelde PV, kragopwekker of slim las gekoppel)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
           "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
