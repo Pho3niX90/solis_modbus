@@ -5,8 +5,9 @@ import re
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import OptionsFlow
-from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
+from pymodbus.client import AsyncModbusTcpClient
 
+from .client_manager import create_serial_client
 from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
@@ -347,16 +348,16 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host, port = user_input["host"], user_input.get("port", 502)
             client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
         else:  # Serial
-            client_cls = SerialProxyClient if is_serial_proxy(user_input[CONF_SERIAL_PORT]) else AsyncModbusSerialClient
-            client = client_cls(
-                port=user_input[CONF_SERIAL_PORT],
-                baudrate=user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
-                bytesize=user_input.get(CONF_BYTESIZE, DEFAULT_BYTESIZE),
-                parity=user_input.get(CONF_PARITY, DEFAULT_PARITY),
-                stopbits=user_input.get(CONF_STOPBITS, DEFAULT_STOPBITS),
-                timeout=5,
-                retries=1,
-            )
+            serial_params = {
+                "baudrate": user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
+                "bytesize": user_input.get(CONF_BYTESIZE, DEFAULT_BYTESIZE),
+                "parity": user_input.get(CONF_PARITY, DEFAULT_PARITY),
+                "stopbits": user_input.get(CONF_STOPBITS, DEFAULT_STOPBITS),
+            }
+            if is_serial_proxy(user_input[CONF_SERIAL_PORT]):
+                client = SerialProxyClient(port=user_input[CONF_SERIAL_PORT], timeout=5, retries=1, **serial_params)
+            else:
+                client = create_serial_client(user_input[CONF_SERIAL_PORT], **serial_params)
 
         for attempt in range(3):
             try:
