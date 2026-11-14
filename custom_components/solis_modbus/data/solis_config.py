@@ -135,17 +135,16 @@ def inverter_options_from_config(config: dict, template: InverterConfig) -> Inve
     )
 
 
-# Firmware first confirmed to send the standard battery energy values on an
-# S6-EH3P10K-H-ZP (#563: DSP 0x15, HMI 0x22). The #191 unit, which needed the
-# Zonneplan scaling, reported DSP 2 and HMI 2. Nothing is known about versions in
-# between, so only firmware at or above both of these drops the scaling.
-ZONNEPLAN_FIXED_DSP_VERSION = 0x15
-ZONNEPLAN_FIXED_HMI_VERSION = 0x22
+# (DSP, HMI) firmware (registers 33001/33002) confirmed to send the standard battery
+# energy values on an S6-EH3P10K-H-ZP (#563). The version numbers do not order the
+# fix: a ZP on DSP 0x0266 / HMI 0x0260 still sends them 10x/100x too high (#563,
+# 2026-11-14), so only an exact match drops the scaling.
+ZONNEPLAN_FIXED_FIRMWARE: frozenset[tuple[int, int]] = frozenset({(0x0015, 0x0022)})
 
 
 def zonneplan_scaling_for_firmware(dsp_version: int, hmi_version: int) -> bool:
     """Whether a ZP unit on this firmware (registers 33001/33002) needs the Zonneplan scaling."""
-    return not (dsp_version >= ZONNEPLAN_FIXED_DSP_VERSION and hmi_version >= ZONNEPLAN_FIXED_HMI_VERSION)
+    return (dsp_version, hmi_version) not in ZONNEPLAN_FIXED_FIRMWARE
 
 
 # TODO: Need to find a naming convention, and a better way to handle sub models to more finely control the power

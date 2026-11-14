@@ -1,8 +1,8 @@
 """The Zonneplan battery scaling follows the option, and new ZP entries pick it from the firmware (#563).
 
-Early S6-EH3P10K-H-ZP firmware (DSP 2, HMI 2) sent the battery energy registers
-10x/100x too high (#191). Firmware DSP 0x15 / HMI 0x22 sends the standard values,
-so the old scaling made its readings 10x/100x too low.
+Some S6-EH3P10K-H-ZP firmware sends the battery energy registers 10x/100x too high
+(#191; still on DSP 0x0266 / HMI 0x0260 in 2026). Firmware DSP 0x15 / HMI 0x22 sends
+the standard values, so the scaling made its readings 10x/100x too low.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -24,8 +24,9 @@ from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSe
 
 ZP = "S6-EH3P10K-H-ZP"
 POLL = {"poll_interval_fast": 10, "poll_interval_normal": 15, "poll_interval_slow": 30}
-ZP_REGISTERS = (33142, 33161, 33163, 33164, 33165, 33167, 33168)
-DEFAULT_MULTIPLIERS = {33142: 0.1, 33161: 1, 33163: 0.1, 33164: 0.1, 33165: 1, 33167: 0.1, 33168: 0.1}
+ZP_REGISTERS = (33161, 33163, 33164, 33165, 33167, 33168, 33186, 33188)
+U32_TOTALS = (33161, 33165, 33186, 33188)
+DEFAULT_MULTIPLIERS = {33142: 0.1, 33161: 1, 33163: 0.1, 33164: 0.1, 33165: 1, 33167: 0.1, 33168: 0.1, 33186: 1, 33188: 1}
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +47,7 @@ def _multiplier(model, config, register):
         controller=controller,
         unique_id="test",
         name="Test",
-        registrars=[register, register + 1] if register in (33161, 33165) else [register],
+        registrars=[register, register + 1] if register in U32_TOTALS else [register],
         write_register=None,
         multiplier=DEFAULT_MULTIPLIERS[register],
     )
@@ -79,6 +80,18 @@ class TestOption:
     def test_scaling_off_uses_the_standard_multiplier(self, register):
         assert _multiplier(ZP, {CONF_ZONNEPLAN_SCALING: False}, register) == DEFAULT_MULTIPLIERS[register]
 
+    @pytest.mark.parametrize("config", [{}, {CONF_ZONNEPLAN_SCALING: False}])
+    def test_battery_current_is_never_scaled(self, config):
+        """33142 reads standard on both firmwares: 2.26 A with the scaling while 22.6 A flowed (#563)."""
+        assert _multiplier(ZP, config, 33142) == 0.1
+
+    def test_default_multipliers_match_the_definitions(self):
+        """Keep the expectations above in step with hybrid_sensors."""
+        from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors
+
+        declared = {int(e["register"][0]): e.get("multiplier", 1) for g in hybrid_sensors for e in g["entities"] if e.get("register")}
+        assert {r: declared[r] for r in DEFAULT_MULTIPLIERS} == DEFAULT_MULTIPLIERS
+
     @pytest.mark.parametrize("register", ZP_REGISTERS)
     def test_s6_eh3p_is_unaffected(self, register):
         assert _multiplier("S6-EH3P", {}, register) == DEFAULT_MULTIPLIERS[register]
@@ -89,11 +102,11 @@ class TestFirmware:
         ("dsp", "hmi", "scaling"),
         [
             (2, 2, True),  # #191
-            (0x15, 0x22, False),  # #563
-            (0x16, 0x23, False),  # newer
-            (0x15, 0x21, True),  # only one chip at the confirmed level: unknown, keep the scaling
+            (0x15, 0x22, False),  # #563 reporter: confirmed standard values
+            (0x0266, 0x0260, True),  # #563 Dominic-070: higher versions, still 10x/100x too high
+            (0x16, 0x23, True),  # unconfirmed: keep the scaling
+            (0x15, 0x21, True),
             (0x14, 0x22, True),
-            (0x10, 0x10, True),  # between the two data points: unknown, keep the scaling
         ],
     )
     def test_zonneplan_scaling_for_firmware(self, dsp, hmi, scaling):
