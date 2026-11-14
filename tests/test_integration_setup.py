@@ -236,3 +236,63 @@ async def test_setup_entry_logs_skipped_feature_groups_at_debug(hass: HomeAssist
     assert {record.levelname for record in skips} == {"DEBUG"}
     # Features read as their config value, not the enum repr.
     assert "Skipping sensor group '33300' due to missing required features: dual_meter" in {record.getMessage() for record in skips}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("options_flow_reloads", [True, False])
+async def test_update_listener_only_without_options_flow_reload(hass: HomeAssistant, options_flow_reloads):
+    """#565: with OptionsFlowWithReload (HA 2025.8+) no update listener may be
+    registered, or reconfigure logs a deprecation warning and reloads twice.
+    Older HA has no self-reloading options flow and needs the listener."""
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="SN123456",
+        data={
+            "host": "1.2.3.4",
+            "port": 502,
+            "slave": 1,
+            "inverter_serial": "SN123456",
+            "model": "S6-EH1P",
+            "has_v2": True,
+            "poll_interval_fast": 10,
+            "poll_interval_normal": 15,
+            "poll_interval_slow": 30,
+        },
+        title="Solis Inverter",
+    )
+    config_entry.add_to_hass(hass)
+
+    with (
+        patch("custom_components.solis_modbus.OPTIONS_FLOW_RELOADS", options_flow_reloads),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connect", return_value=True),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.connected", return_value=True),
+        patch(
+            "custom_components.solis_modbus.modbus_controller.ModbusController.async_read_input_register",
+            return_value=[1, 2, 3],
+        ),
+        patch("custom_components.solis_modbus.modbus_controller.ModbusController.process_write_queue"),
+        patch(
+            "custom_components.solis_modbus.modbus_controller.ModbusController.async_read_holding_register",
+            return_value=[1, 2, 3],
+        ),
+    ):
+        assert await hass.config_entries.async_setup(config_entry.entry_id)
+        await hass.async_block_till_done()
+
+        assert len(config_entry.update_listeners) == (0 if options_flow_reloads else 1)
+
+        assert await hass.config_entries.async_unload(config_entry.entry_id)
+        await hass.async_block_till_done()
+        assert config_entry.update_listeners == []
+
+
+def test_options_flow_base_matches_reload_flag():
+    """The options flow reloads itself exactly when HA offers OptionsFlowWithReload."""
+    from homeassistant import config_entries
+
+    from custom_components.solis_modbus.compat import OPTIONS_FLOW_RELOADS
+    from custom_components.solis_modbus.config_flow import ModbusOptionsFlowHandler
+
+    assert OPTIONS_FLOW_RELOADS == hasattr(config_entries, "OptionsFlowWithReload")
+    if OPTIONS_FLOW_RELOADS:
+        assert issubclass(ModbusOptionsFlowHandler, config_entries.OptionsFlowWithReload)
