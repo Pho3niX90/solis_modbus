@@ -183,6 +183,12 @@ def clean_identification(iden: str | None) -> str | None:
     return re.sub(r"_+", "_", iden).strip("_")
 
 
+def _has_zonneplan_scaling(model: str | None) -> bool:
+    """Whether the Zonneplan scaling option applies to this model."""
+    template = next((inv for inv in SOLIS_INVERTERS if inv.model == model), None)
+    return template is not None and InverterFeature.ZONNEPLAN in template.features
+
+
 async def _read_firmware_versions(client, device_id: int) -> tuple[int, int] | None:
     """Read the DSP and HMI versions (33001/33002); None if the read fails.
 
@@ -284,8 +290,9 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 valid, err_key = await self._validate_config({**data, CONF_SKIP_CONN_CHECK: user_input.get(CONF_SKIP_CONN_CHECK, False)})
                 if valid:
                     # Only a switch to the ZP model picks the scaling from the firmware;
-                    # an existing ZP entry keeps what it has (or the legacy default).
-                    if entry.data.get("model") != data.get("model"):
+                    # an existing ZP entry keeps what it has (or the legacy default). The
+                    # model can live in options too (options flow), and setup lets that win.
+                    if {**entry.data, **entry.options}.get("model") != data.get("model"):
                         self._apply_zonneplan_firmware(data, {**entry.options, **user_input})
                     # Strip reconfigured keys from options: setup merges
                     # {**data, **options}, so stale option values would silently
@@ -439,9 +446,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _apply_zonneplan_firmware(self, data: dict, current: dict) -> None:
         """Set the Zonneplan scaling on `data` from the firmware read during validation.
 
-        Leaves it alone when the option is already in `current` (the user's choice),
-        when the model is not a ZP, or when the firmware could not be read; the
-        option then defaults to on, which is how every ZP entry behaved before #563.
+        Leaves it alone when the option is already in `current` (set in the options
+        flow, which only keeps it for a ZP model), when the model is not a ZP, or when
+        the firmware could not be read; the option then defaults to on, which is how
+        every ZP entry behaved before #563. A value detected earlier and kept in the
+        entry data is replaced by the new reading.
         """
         if CONF_ZONNEPLAN_SCALING in current or self._zonneplan_firmware is None:
             return
@@ -469,6 +478,11 @@ class ModbusOptionsFlowHandler(OptionsFlow):
 
         if user_input is not None:
             merged = {**self.config_entry.options, **user_input}
+            # The form always submits the Zonneplan toggle. Keep it only for a ZP model,
+            # so saving the options of another model doesn't pin it and stop a later
+            # switch to the ZP from picking it from the firmware.
+            if not _has_zonneplan_scaling(merged.get("model")):
+                merged.pop(CONF_ZONNEPLAN_SCALING, None)
             interval_error = _validate_poll_interval(merged)
             if interval_error is None:
                 return self.async_create_entry(title="", data=merged)

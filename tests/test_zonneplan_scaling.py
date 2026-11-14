@@ -8,6 +8,7 @@ so the old scaling made its readings 10x/100x too low.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -22,6 +23,7 @@ from custom_components.solis_modbus.data.solis_config import (
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 ZP = "S6-EH3P10K-H-ZP"
+POLL = {"poll_interval_fast": 10, "poll_interval_normal": 15, "poll_interval_slow": 30}
 ZP_REGISTERS = (33142, 33161, 33163, 33164, 33165, 33167, 33168)
 DEFAULT_MULTIPLIERS = {33142: 0.1, 33161: 1, 33163: 0.1, 33164: 0.1, 33165: 1, 33167: 0.1, 33168: 0.1}
 
@@ -163,6 +165,20 @@ class TestConfigFlow:
         assert CONF_ZONNEPLAN_SCALING not in data
 
     @pytest.mark.asyncio
+    async def test_error_response_to_the_firmware_read_still_creates_the_entry(self, hass: HomeAssistant):
+        client = _client((0x15, 0x22))
+        error = MagicMock()
+        error.isError.return_value = True
+        probe = client.read_input_registers.side_effect
+
+        async def read(address, count, device_id):
+            return error if address == 33001 else await probe(address, count, device_id)
+
+        client.read_input_registers.side_effect = read
+        data = await _create(hass, ZP, client)
+        assert CONF_ZONNEPLAN_SCALING not in data
+
+    @pytest.mark.asyncio
     async def test_other_models_do_not_read_the_firmware(self, hass: HomeAssistant):
         client = _client((0x15, 0x22))
         data = await _create(hass, "S6-EH3P", client)
@@ -204,15 +220,65 @@ class TestConfigFlow:
         assert CONF_ZONNEPLAN_SCALING not in entry.data
 
     @pytest.mark.asyncio
-    async def test_reconfigure_keeps_the_users_choice(self, hass: HomeAssistant):
-        entry = self._entry(hass, "S6-EH3P", options={CONF_ZONNEPLAN_SCALING: True})
+    async def test_reconfigure_reads_the_model_from_options_too(self, hass: HomeAssistant):
+        """A ZP picked in the options flow is the entry's model; editing the host must not re-detect."""
+        entry = self._entry(hass, "S6-EH3P", options={"model": ZP})
         await self._reconfigure(hass, entry, ZP, _client((0x15, 0x22)))
         assert CONF_ZONNEPLAN_SCALING not in entry.data
-        assert entry.options[CONF_ZONNEPLAN_SCALING] is True
+
+    @pytest.mark.asyncio
+    async def test_reconfigure_keeps_a_choice_made_in_the_options(self, hass: HomeAssistant):
+        entry = self._entry(hass, "S6-EH3P", options={"model": ZP, CONF_ZONNEPLAN_SCALING: False})
+        await self._reconfigure(hass, entry, ZP, _client((2, 2)))
+        assert CONF_ZONNEPLAN_SCALING not in entry.data
+        assert entry.options[CONF_ZONNEPLAN_SCALING] is False
+
+    @pytest.mark.asyncio
+    async def test_reconfigure_replaces_an_earlier_detection(self, hass: HomeAssistant):
+        entry = self._entry(hass, "S6-EH3P")
+        hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_ZONNEPLAN_SCALING: True})
+        await self._reconfigure(hass, entry, ZP, _client((0x15, 0x22)))
+        assert entry.data[CONF_ZONNEPLAN_SCALING] is False
+
+    async def _save_options(self, hass, entry, **changes):
+        with patch("custom_components.solis_modbus.async_setup_entry", return_value=True):
+            result = await hass.config_entries.options.async_init(entry.entry_id)
+            form = {}
+            for key in result["data_schema"].schema:
+                suggested = (key.description or {}).get("suggested_value", vol.UNDEFINED)
+                value = suggested if suggested is not vol.UNDEFINED else key.default()
+                if value is not vol.UNDEFINED:
+                    form[key.schema] = value
+            form.update(changes)
+            result = await hass.config_entries.options.async_configure(result["flow_id"], user_input=form)
+        assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+        return entry.options
+
+    @pytest.mark.asyncio
+    async def test_options_save_on_another_model_does_not_store_the_option(self, hass: HomeAssistant):
+        """Otherwise a later reconfigure to the ZP would treat the form default as the user's choice."""
+        entry = self._entry(hass, "S6-EH3P", options=POLL)
+        options = await self._save_options(hass, entry)
+        assert CONF_ZONNEPLAN_SCALING not in options
+        await self._reconfigure(hass, entry, ZP, _client((0x15, 0x22)))
+        assert entry.data[CONF_ZONNEPLAN_SCALING] is False
+
+    @pytest.mark.asyncio
+    async def test_options_save_on_a_zp_keeps_the_detected_value(self, hass: HomeAssistant):
+        entry = self._entry(hass, ZP, options=POLL)
+        hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_ZONNEPLAN_SCALING: False})
+        options = await self._save_options(hass, entry)
+        assert options[CONF_ZONNEPLAN_SCALING] is False
+
+    @pytest.mark.asyncio
+    async def test_options_save_on_a_zp_stores_the_users_choice(self, hass: HomeAssistant):
+        entry = self._entry(hass, ZP, options=POLL)
+        options = await self._save_options(hass, entry, **{CONF_ZONNEPLAN_SCALING: False})
+        assert options[CONF_ZONNEPLAN_SCALING] is False
 
     @pytest.mark.asyncio
     async def test_options_flow_shows_the_option_on_by_default(self, hass: HomeAssistant):
-        entry = self._entry(hass, ZP, options={"poll_interval_fast": 10, "poll_interval_normal": 15, "poll_interval_slow": 30})
+        entry = self._entry(hass, ZP, options=POLL)
         result = await hass.config_entries.options.async_init(entry.entry_id)
         schema = result["data_schema"].schema
         (key,) = [k for k in schema if k == CONF_ZONNEPLAN_SCALING]
