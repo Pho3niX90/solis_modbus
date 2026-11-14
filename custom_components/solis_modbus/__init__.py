@@ -36,6 +36,7 @@ from .const import (
     POLL_PROFILE_EXTREME,
     POLL_PROFILE_FULL,
 )
+from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
 from .helpers import (
@@ -668,6 +669,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     user_options = inverter_options_from_config(config, inverter_template)
     inverter_config = inverter_template.clone_with_options(user_options, config.get("connection", "S2_WL_ST"))
+    if InverterFeature.ZONNEPLAN in inverter_template.features:
+        _LOGGER.info(
+            "Zonneplan battery scaling (#191) is %s for this S6-EH3P10K-H-ZP",
+            "on" if InverterFeature.ZONNEPLAN in inverter_config.features else "off",
+        )
 
     # Load correct sensor data based on inverter type
     if inverter_config.type in [InverterType.STRING, InverterType.GRID]:

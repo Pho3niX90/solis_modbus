@@ -117,6 +117,7 @@
           "has_smart_port": "Smart Port in use (AC-coupled PV, generator or smart load connected)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Keep parallel inverter readings without parallel operation (existing installs)",
+          "zonneplan_scaling": "Zonneplan battery energy correction (S6-EH3P10K-H-ZP only; turn off if battery energy reads 10x too low)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",

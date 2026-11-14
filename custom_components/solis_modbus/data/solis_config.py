@@ -17,6 +17,7 @@ class InverterOptions:
         epm: bool = True,
         smart_port: bool = True,
         parallel_readings: bool = False,
+        zonneplan_scaling: bool = True,
     ):
         self.pv = pv
         self.battery = battery
@@ -32,6 +33,8 @@ class InverterOptions:
         self.smart_port = smart_port
         # Parallel-inverter readings without the parallel option (see CONF_PARALLEL_READINGS).
         self.parallel_readings = parallel_readings
+        # Only meaningful for models whose template lists ZONNEPLAN (see CONF_ZONNEPLAN_SCALING).
+        self.zonneplan_scaling = zonneplan_scaling
 
 
 class InverterConfig:
@@ -64,6 +67,8 @@ class InverterConfig:
         feats = list(self._intrinsic_features)
         if not opts.smart_port:
             feats = [f for f in feats if f != InverterFeature.SMART_PORT]
+        if not opts.zonneplan_scaling:
+            feats = [f for f in feats if f != InverterFeature.ZONNEPLAN]
         feats.append(InverterFeature.BMS)
         if opts.pv:
             feats.append(InverterFeature.PV)
@@ -126,7 +131,21 @@ def inverter_options_from_config(config: dict, template: InverterConfig) -> Inve
         epm=config.get("has_epm", True),
         smart_port=config.get("has_smart_port", True),
         parallel_readings=config.get("parallel_readings", False),
+        zonneplan_scaling=config.get("zonneplan_scaling", True),
     )
+
+
+# Firmware first confirmed to send the standard battery energy values on an
+# S6-EH3P10K-H-ZP (#563: DSP 0x15, HMI 0x22). The #191 unit, which needed the
+# Zonneplan scaling, reported DSP 2 and HMI 2. Nothing is known about versions in
+# between, so only firmware at or above both of these drops the scaling.
+ZONNEPLAN_FIXED_DSP_VERSION = 0x15
+ZONNEPLAN_FIXED_HMI_VERSION = 0x22
+
+
+def zonneplan_scaling_for_firmware(dsp_version: int, hmi_version: int) -> bool:
+    """Whether a ZP unit on this firmware (registers 33001/33002) needs the Zonneplan scaling."""
+    return not (dsp_version >= ZONNEPLAN_FIXED_DSP_VERSION and hmi_version >= ZONNEPLAN_FIXED_HMI_VERSION)
 
 
 # TODO: Need to find a naming convention, and a better way to handle sub models to more finely control the power

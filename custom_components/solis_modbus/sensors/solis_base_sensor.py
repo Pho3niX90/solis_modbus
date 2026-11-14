@@ -226,8 +226,10 @@ class SolisBaseSensor:
         if inv_model in {"RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"} and 43074 in self.registrars:
             self.multiplier = 1
 
-        # S6-EH3P10K-H-ZP or ZONNEPLAN feature: apply 0.01 multiplier
-        elif inv_model == "S6-EH3P10K-H-ZP" or InverterFeature.ZONNEPLAN in inv_features:
+        # Early S6-EH3P10K-H-ZP firmware sends these 10x/100x too high (#191). The ZP
+        # template carries ZONNEPLAN; the zonneplan_scaling option removes it for
+        # firmware that sends the standard values (#563).
+        elif InverterFeature.ZONNEPLAN in inv_features:
             s6_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
             if _any_in(self.registrars, s6_registers):
                 self.multiplier = 0.01

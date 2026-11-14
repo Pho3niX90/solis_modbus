@@ -123,6 +123,7 @@
           "has_smart_port": "Smart Port in Verwendung (AC-gekoppelte PV, Generator oder Smart Load angeschlossen)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Parallel-Wechselrichter-Messwerte ohne Parallelbetrieb beibehalten (bestehende Installationen)",
+          "zonneplan_scaling": "Zonneplan-Batterieenergie-Korrektur (nur S6-EH3P10K-H-ZP; ausschalten, wenn die Batterieenergie 10x zu niedrig ist)",
           "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
           "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
