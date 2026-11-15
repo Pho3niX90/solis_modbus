@@ -123,6 +123,7 @@
           "has_smart_port": "Smart Port in gebruik (AC-gekoppelde PV, generator of slimme belasting aangesloten)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Parallelle omvormer-metingen behouden zonder parallelle werking (bestaande installaties)",
+          "zonneplan_scaling": "Zonneplan-correctie batterij-energie (alleen S6-EH3P10K-H-ZP; zet uit als de batterij-energie 10x te laag is)",
           "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
           "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
         }

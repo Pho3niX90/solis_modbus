@@ -123,6 +123,7 @@
           "has_smart_port": "Smart Port utilisé (PV couplé AC, générateur ou charge intelligente raccordé)",
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Conserver les mesures d'onduleur en parallèle sans fonctionnement en parallèle (installations existantes)",
+          "zonneplan_scaling": "Correction de l'énergie batterie Zonneplan (S6-EH3P10K-H-ZP uniquement ; désactivez-la si l'énergie batterie est 10x trop basse)",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
           "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
         }

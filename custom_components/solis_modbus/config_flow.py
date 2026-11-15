@@ -23,6 +23,7 @@ from .const import (
     CONF_SKIP_CONN_CHECK,
     CONF_STOPBITS,
     CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
+    CONF_ZONNEPLAN_SCALING,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -36,7 +37,14 @@ from .const import (
     POLL_PROFILE_FULL,
     POLL_PROFILES,
 )
-from .data.solis_config import CONNECTION_METHOD, SOLIS_INVERTERS, InverterConfig, inverter_options_from_config
+from .data.enums import InverterFeature
+from .data.solis_config import (
+    CONNECTION_METHOD,
+    SOLIS_INVERTERS,
+    InverterConfig,
+    inverter_options_from_config,
+    zonneplan_scaling_for_firmware,
+)
 from .serial_proxy import SerialProxyClient, is_serial_proxy
 
 _LOGGER = logging.getLogger(__name__)
@@ -141,6 +149,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_smart_port", default=True): bool,
         vol.Required("has_parallel", default=False): bool,
         vol.Required(CONF_PARALLEL_READINGS, default=False): bool,
+        vol.Required(CONF_ZONNEPLAN_SCALING, default=True): bool,
         vol.Required("has_battery", default=True): bool,
         vol.Required("has_hv_battery", default=False): bool,
         vol.Required("has_generator", default=True): bool,
@@ -174,6 +183,27 @@ def clean_identification(iden: str | None) -> str | None:
     return re.sub(r"_+", "_", iden).strip("_")
 
 
+def _has_zonneplan_scaling(model: str | None) -> bool:
+    """Whether the Zonneplan scaling option applies to this model."""
+    template = next((inv for inv in SOLIS_INVERTERS if inv.model == model), None)
+    return template is not None and InverterFeature.ZONNEPLAN in template.features
+
+
+async def _read_firmware_versions(client, device_id: int) -> tuple[int, int] | None:
+    """Read the DSP and HMI versions (33001/33002); None if the read fails.
+
+    Best effort: a failure here must not fail the connection check that just passed.
+    """
+    try:
+        result = await client.read_input_registers(address=33001, count=2, device_id=device_id)
+        if result.isError() or len(result.registers) < 2:
+            raise ConnectionError(f"Firmware version read failed: {result}")
+        return result.registers[0], result.registers[1]
+    except Exception as e:  # noqa: BLE001 - the option then keeps its default
+        _LOGGER.warning("Could not read the firmware version to pick the Zonneplan scaling: %s", e)
+        return None
+
+
 class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Modbus configuration flow."""
 
@@ -184,6 +214,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._connection_type = None
         self._config_data = {}
+        # (DSP, HMI) firmware versions read by the last _validate_config on a ZP model.
+        self._zonneplan_firmware: tuple[int, int] | None = None
 
     async def async_step_user(self, user_input=None):
         """Handle initial step - ask for connection type."""
@@ -257,6 +289,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 valid, err_key = await self._validate_config({**data, CONF_SKIP_CONN_CHECK: user_input.get(CONF_SKIP_CONN_CHECK, False)})
                 if valid:
+                    # Only a switch to the ZP model picks the scaling from the firmware;
+                    # an existing ZP entry keeps what it has (or the legacy default). The
+                    # model can live in options too (options flow), and setup lets that win.
+                    if {**entry.data, **entry.options}.get("model") != data.get("model"):
+                        self._apply_zonneplan_firmware(data, {**entry.options, **user_input})
                     # Strip reconfigured keys from options: setup merges
                     # {**data, **options}, so stale option values would silently
                     # shadow the freshly reconfigured data otherwise.
@@ -306,6 +343,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # 4. Create the Config Entry
         entry_data = {k: v for k, v in data.items() if k != CONF_SKIP_CONN_CHECK}
+        self._apply_zonneplan_firmware(entry_data, entry_data)
         return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=entry_data)
 
     async def _validate_config(self, user_input):
@@ -322,6 +360,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         Returns (True, None) on success, (False, error_key) on failure.
         """
+        self._zonneplan_firmware = None
         inverter_model = user_input.get("model")
         inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
@@ -384,6 +423,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 result = await client.read_input_registers(address=probe_register, count=1, device_id=device_id)
                 if result.isError():
                     raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
+                if InverterFeature.ZONNEPLAN in inverter_template.features:
+                    self._zonneplan_firmware = await _read_firmware_versions(client, device_id)
                 return True, None
             except Exception as e:
                 _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
@@ -402,6 +443,33 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.error("Connection validation failed after 3 attempts (%s)", conn_type)
         return False, "cannot_connect"
 
+    def _apply_zonneplan_firmware(self, data: dict, current: dict) -> None:
+        """Set the Zonneplan scaling on `data` from the firmware read during validation.
+
+        Leaves it alone when the option is already in `current` (set in the options
+        flow, which only keeps it for a ZP model). A value detected earlier and kept in
+        the entry data is replaced by the new reading, or dropped when there is none
+        (the model is not a ZP, or the firmware could not be read); the option then
+        defaults to on, which is how every ZP entry behaved before #563.
+        """
+        if CONF_ZONNEPLAN_SCALING in current:
+            return
+        if self._zonneplan_firmware is None:
+            data.pop(CONF_ZONNEPLAN_SCALING, None)
+            if _has_zonneplan_scaling(data.get("model")):
+                _LOGGER.info(
+                    "S6-EH3P10K-H-ZP firmware not read: Zonneplan battery scaling left on; turn it off under Configure if battery energy reads 10x too low"
+                )
+            return
+        dsp, hmi = self._zonneplan_firmware
+        data[CONF_ZONNEPLAN_SCALING] = zonneplan_scaling_for_firmware(dsp, hmi)
+        _LOGGER.info(
+            "S6-EH3P10K-H-ZP firmware DSP 0x%02X, HMI 0x%02X: Zonneplan battery scaling %s",
+            dsp,
+            hmi,
+            "on" if data[CONF_ZONNEPLAN_SCALING] else "off",
+        )
+
     @staticmethod
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
@@ -417,6 +485,14 @@ class ModbusOptionsFlowHandler(OptionsFlowBase):
 
         if user_input is not None:
             merged = {**self.config_entry.options, **user_input}
+            # The form always submits the Zonneplan toggle. Keep it only for a ZP model, and
+            # only once the user has changed it, so saving other options doesn't pin it and
+            # stop a later switch to the ZP from picking it from the firmware.
+            if not _has_zonneplan_scaling(merged.get("model")) or (
+                CONF_ZONNEPLAN_SCALING not in self.config_entry.options
+                and merged.get(CONF_ZONNEPLAN_SCALING) == self.config_entry.data.get(CONF_ZONNEPLAN_SCALING, True)
+            ):
+                merged.pop(CONF_ZONNEPLAN_SCALING, None)
             interval_error = _validate_poll_interval(merged)
             if interval_error is None:
                 return self.async_create_entry(title="", data=merged)
