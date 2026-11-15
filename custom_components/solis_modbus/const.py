@@ -68,6 +68,12 @@ CONF_EXTREME_INCLUDE_SMART_PORT = "extreme_include_smart_port"
 # sets this on existing entries; new entries follow the parallel option.
 CONF_PARALLEL_READINGS = "parallel_readings"
 
+# Apply the S6-EH3P10K-H-ZP battery scaling (#191, #563). Early Zonneplan firmware
+# sent the battery energy registers 10x/100x too high; later firmware sends the
+# standard values. Absent means on, so entries from before #563 keep their scaling;
+# a new ZP entry gets it set from the firmware version read in the config flow.
+CONF_ZONNEPLAN_SCALING = "zonneplan_scaling"
+
 # Skip the "datalogger unreachable" repair issue while the sun is below the
 # horizon (issue #465): solar inverters normally power off overnight, so a
 # stale/absent Modbus link then is expected rather than a fault. Opt-in

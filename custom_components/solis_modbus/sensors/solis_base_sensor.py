@@ -130,6 +130,12 @@ HV_BATTERY_VOLTAGE_REGISTERS = {
 # an inverter reporting a value below it would land outside its own entity's range.
 HV_BATTERY_VOLTAGE_MAX = 999
 
+# Registers the Zonneplan scaling sets to 0.01: battery energy (33161-33168) and the
+# AC grid port lifetime totals (33186-33189), which affected ZP firmware sends 10x
+# (daily) or 100x (lifetime) too high (#191, #563). Battery current 33142 reads
+# standard on both firmwares (#563), so it is not scaled.
+ZONNEPLAN_SCALED_REGISTERS = frozenset({33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168, 33186, 33187, 33188, 33189})
+
 
 class SolisBaseSensor:
     """Base class for all Solis sensors."""
@@ -226,10 +232,11 @@ class SolisBaseSensor:
         if inv_model in {"RHI-1P", "RHI-3P", "RAI-3K-48ES-5G"} and 43074 in self.registrars:
             self.multiplier = 1
 
-        # S6-EH3P10K-H-ZP or ZONNEPLAN feature: apply 0.01 multiplier
-        elif inv_model == "S6-EH3P10K-H-ZP" or InverterFeature.ZONNEPLAN in inv_features:
-            s6_registers = {33142, 33161, 33162, 33163, 33164, 33165, 33166, 33167, 33168}
-            if _any_in(self.registrars, s6_registers):
+        # S6-EH3P10K-H-ZP firmware that sends some energy registers 10x/100x too high
+        # (#191). The ZP template carries ZONNEPLAN; the zonneplan_scaling option
+        # removes it for firmware that sends the standard values (#563).
+        elif InverterFeature.ZONNEPLAN in inv_features:
+            if _any_in(self.registrars, ZONNEPLAN_SCALED_REGISTERS):
                 self.multiplier = 0.01
 
     def adjust_max(self, max_default):
