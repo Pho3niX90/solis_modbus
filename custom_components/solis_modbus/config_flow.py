@@ -447,12 +447,15 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Set the Zonneplan scaling on `data` from the firmware read during validation.
 
         Leaves it alone when the option is already in `current` (set in the options
-        flow, which only keeps it for a ZP model), when the model is not a ZP, or when
-        the firmware could not be read; the option then defaults to on, which is how
-        every ZP entry behaved before #563. A value detected earlier and kept in the
-        entry data is replaced by the new reading.
+        flow, which only keeps it for a ZP model). A value detected earlier and kept in
+        the entry data is replaced by the new reading, or dropped when there is none
+        (the model is not a ZP, or the firmware could not be read); the option then
+        defaults to on, which is how every ZP entry behaved before #563.
         """
-        if CONF_ZONNEPLAN_SCALING in current or self._zonneplan_firmware is None:
+        if CONF_ZONNEPLAN_SCALING in current:
+            return
+        if self._zonneplan_firmware is None:
+            data.pop(CONF_ZONNEPLAN_SCALING, None)
             return
         dsp, hmi = self._zonneplan_firmware
         data[CONF_ZONNEPLAN_SCALING] = zonneplan_scaling_for_firmware(dsp, hmi)

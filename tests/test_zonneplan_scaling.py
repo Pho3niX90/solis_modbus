@@ -253,6 +253,14 @@ class TestConfigFlow:
         await self._reconfigure(hass, entry, ZP, _client((0x15, 0x22)))
         assert entry.data[CONF_ZONNEPLAN_SCALING] is False
 
+    @pytest.mark.asyncio
+    async def test_reconfigure_drops_an_earlier_detection_when_the_read_fails(self, hass: HomeAssistant):
+        """A stale value would otherwise beat the default-on fallback (CodeRabbit on #567)."""
+        entry = self._entry(hass, "S6-EH3P")
+        hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_ZONNEPLAN_SCALING: False})
+        await self._reconfigure(hass, entry, ZP, _client(OSError("timeout")))
+        assert CONF_ZONNEPLAN_SCALING not in entry.data
+
     async def _save_options(self, hass, entry, **changes):
         with patch("custom_components.solis_modbus.async_setup_entry", return_value=True):
             result = await hass.config_entries.options.async_init(entry.entry_id)
