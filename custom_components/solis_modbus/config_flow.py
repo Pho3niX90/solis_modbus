@@ -5,6 +5,7 @@ import re
 import voluptuous as vol
 from homeassistant import config_entries
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.framer import FramerType
 
 from .client_manager import create_serial_client
 from .compat import OptionsFlowBase
@@ -24,6 +25,7 @@ from .const import (
     CONF_STOPBITS,
     CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
     CONF_ZONNEPLAN_SCALING,
+    CONN_TYPE_RTU_TCP,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -53,7 +55,11 @@ _LOGGER = logging.getLogger(__name__)
 SOLIS_MODELS = {inverter.model: inverter.model for inverter in SOLIS_INVERTERS}
 
 # Connection type options
-CONNECTION_TYPES = {CONN_TYPE_TCP: "TCP (WiFi Dongle)", CONN_TYPE_SERIAL: "Serial (RS485)"}
+CONNECTION_TYPES = {
+    CONN_TYPE_TCP: "TCP (WiFi Dongle)",
+    CONN_TYPE_SERIAL: "Serial (RS485)",
+    CONN_TYPE_RTU_TCP: "RTU over TCP (RS485 Ethernet Gateway)",
+}
 
 # Parity options
 PARITY_OPTIONS = {"N": "None", "E": "Even", "O": "Odd"}
@@ -116,6 +122,15 @@ TCP_CONFIG_SCHEMA = {
     vol.Required("host", default=""): str,
     vol.Required("port", default=502): int,
     vol.Required("connection", default=list(CONNECTION_METHOD.keys())[0]): vol.In(CONNECTION_METHOD),
+    vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
+}
+
+# RTU over TCP uses a transparent serial-to-Ethernet gateway; serial line settings
+# are configured on the gateway, not on the TCP client.
+RTU_TCP_CONFIG_SCHEMA = {
+    **BASE_CONFIG_SCHEMA,
+    vol.Required("host", default=""): str,
+    vol.Required("port", default=502): int,
     vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
 }
 
@@ -252,13 +267,15 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Remove connection_type from schema since we already have it
         if self._connection_type == CONN_TYPE_TCP:
-            # Create TCP schema without connection_type field
-            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
-            schema = vol.Schema(schema_dict)
+            source_schema = TCP_CONFIG_SCHEMA
+        elif self._connection_type == CONN_TYPE_RTU_TCP:
+            source_schema = RTU_TCP_CONFIG_SCHEMA
+        elif self._connection_type == CONN_TYPE_SERIAL:
+            source_schema = SERIAL_CONFIG_SCHEMA
         else:
-            # Create Serial schema without connection_type field
-            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
-            schema = vol.Schema(schema_dict)
+            return self.async_abort(reason="invalid_connection_type")
+        schema_dict = {k: v for k, v in source_schema.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
+        schema = vol.Schema(schema_dict)
 
         return self.async_show_form(step_id="config", data_schema=schema, errors=errors)
 
@@ -305,8 +322,12 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         conn_type = entry.data.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP)
         if conn_type == CONN_TYPE_TCP:
             source_schema = TCP_CONFIG_SCHEMA
-        else:
+        elif conn_type == CONN_TYPE_RTU_TCP:
+            source_schema = RTU_TCP_CONFIG_SCHEMA
+        elif conn_type == CONN_TYPE_SERIAL:
             source_schema = SERIAL_CONFIG_SCHEMA
+        else:
+            return self.async_abort(reason="invalid_connection_type")
 
         # 2. Pre-fill form with current entry data/options (serial, model, host, etc.)
         current_config = {**entry.data, **entry.options}
@@ -331,6 +352,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Determine which schema to show again based on connection type
             if data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_TCP:
                 schema_dict = TCP_CONFIG_SCHEMA
+            elif data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_RTU_TCP:
+                schema_dict = RTU_TCP_CONFIG_SCHEMA
             else:
                 schema_dict = SERIAL_CONFIG_SCHEMA
 
@@ -369,14 +392,14 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return False, "invalid_model"
 
         conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
-        if conn_type != CONN_TYPE_TCP and not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
+        if conn_type == CONN_TYPE_SERIAL and not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
             _LOGGER.error("Serial port %s cannot be opened", user_input[CONF_SERIAL_PORT])
             return False, "serial_port_unsupported"
 
         if user_input.get(CONF_SKIP_CONN_CHECK, False):
             if not str(user_input.get(CONF_INVERTER_SERIAL) or "").strip():
                 return False, "serial_required"
-            if conn_type == CONN_TYPE_TCP and not str(user_input.get("host") or "").strip():
+            if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP) and not str(user_input.get("host") or "").strip():
                 return False, "cannot_connect"
             _LOGGER.info("Skipping initial connectivity check by user request (%s)", conn_type)
             return True, None
@@ -387,9 +410,21 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         device_id = user_input.get("slave", 1)
         probe_register = inverter_config.probe_register
 
-        if conn_type == CONN_TYPE_TCP:
+        if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
             host, port = user_input["host"], user_input.get("port", 502)
-            client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
+
+            client_kwargs = {
+                "host": host,
+                "port": port,
+                "timeout": 5,
+                "retries": 1,
+            }
+
+            if conn_type == CONN_TYPE_RTU_TCP:
+                client_kwargs["framer"] = FramerType.RTU
+
+            client = AsyncModbusTcpClient(**client_kwargs)
+
         else:  # Serial
             serial_params = {
                 "baudrate": user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
@@ -412,7 +447,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # "check your configuration" and sends people hunting the wrong problem
                     # (issue #432). Later attempts don't qualify: the port just accepted a
                     # connection, so a refusal there is the logger, not a closed port.
-                    if conn_type == CONN_TYPE_TCP and attempt == 0:
+                    if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP) and attempt == 0:
                         _LOGGER.error("Could not open a TCP connection to %s:%s", host, port)
                         return False, "tcp_port_closed"
                     raise ConnectionError("Failed to connect")

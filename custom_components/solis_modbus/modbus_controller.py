@@ -11,6 +11,8 @@ from pymodbus.exceptions import ModbusIOException
 
 from custom_components.solis_modbus.client_manager import ModbusClientManager
 from custom_components.solis_modbus.const import (
+    CONN_TYPE_RTU_TCP,
+    CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
     DEFAULT_BYTESIZE,
@@ -94,7 +96,7 @@ class ModbusController:
         Args:
             hass: Home Assistant instance
             inverter_config: Inverter configuration object
-            connection_type: Either CONN_TYPE_TCP or CONN_TYPE_SERIAL
+            connection_type: CONN_TYPE_TCP, CONN_TYPE_RTU_TCP or CONN_TYPE_SERIAL
 
             TCP parameters:
                 host: IP address or hostname for TCP connection
@@ -119,15 +121,20 @@ class ModbusController:
         manager = self._client_manager
 
         # Connection-specific setup
-        if connection_type == CONN_TYPE_TCP:
+        if connection_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
             if not host:
                 raise ValueError("host is required for TCP connection")
+
             self.host = host
             self.port = port
-            self.connection_id = f"{host}:{port}"
-            self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port)
-            self.poll_lock = manager.get_client_lock(self.connection_id)
-        else:  # CONN_TYPE_SERIAL
+
+            self.connection_id = f"rtu_tcp:{host}:{port}" if connection_type == CONN_TYPE_RTU_TCP else f"{host}:{port}"
+
+            if connection_type == CONN_TYPE_RTU_TCP:
+                self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port, rtu=True)
+            else:
+                self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port)
+        elif connection_type == CONN_TYPE_SERIAL:
             if not serial_port:
                 raise ValueError("serial_port is required for Serial connection")
             self.serial_port = serial_port
@@ -139,7 +146,8 @@ class ModbusController:
             # For serial, set host to serial_port for backwards compatibility with logging
             self.host = serial_port
             self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_serial_client(serial_port, baudrate, bytesize, parity, stopbits)
-            self.poll_lock = manager.get_client_lock(self.connection_id)
+        else:
+            raise ValueError(f"Unsupported connection type: {connection_type}")
 
         self.connect_failures = 0
         # Successful connects so far: tells callers the link was re-established.
@@ -156,7 +164,7 @@ class ModbusController:
         self._last_attempt = 0  # Track last connection attempt time
         self._sensor_groups = sensor_groups
         self._derived_sensors = derived_sensors
-        # self.poll_lock = asyncio.Lock() # Replaced by shared lock from manager
+        self.poll_lock = manager.get_client_lock(self.connection_id)
 
         # Modbus Write Queue
         # Items are (writes, queued_at): writes is a tuple of (register, value,
