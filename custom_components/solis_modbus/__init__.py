@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ConfigEntryError, HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceEntry
 
+from .compat import OPTIONS_FLOW_RELOADS
 from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
@@ -576,7 +577,7 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def _async_reload_on_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload the entry when its options change.
+    """Reload the entry when its options change (Home Assistant < 2025.8 only).
 
     Without this, edits made in the options flow (poll intervals, model,
     feature toggles, essential-only) are saved to the entry but never applied
@@ -806,8 +807,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         entry.runtime_data = None
         raise
 
-    # Apply option changes automatically (see _async_reload_on_update).
-    entry.async_on_unload(entry.add_update_listener(_async_reload_on_update))
+    # On Home Assistant 2025.8+ the options flow reloads the entry itself
+    # (OptionsFlowWithReload), and reconfigure uses async_update_reload_and_abort.
+    # An update listener on top of those makes HA warn and reload twice (#565),
+    # so it is only kept for older versions that lack OptionsFlowWithReload.
+    if not OPTIONS_FLOW_RELOADS:
+        entry.async_on_unload(entry.add_update_listener(_async_reload_on_update))
 
     return True
 
