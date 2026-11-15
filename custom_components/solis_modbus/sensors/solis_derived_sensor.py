@@ -19,6 +19,9 @@ FLEXIBLE_EXPORT_OFF = "Off"
 FLEXIBLE_EXPORT_ACTIVE = "Active"
 FLEXIBLE_EXPORT_BLOCKED = "Export Blocked"
 
+# Wire addresses of MPPT Voltage 1-10 (doc 3500-3509) on multi-MPPT string inverters.
+MULTI_MPPT_VOLTAGE_REGISTERS = frozenset(range(3499, 3509))
+
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
@@ -134,6 +137,15 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 r1_value = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = round(r1_value * r2_value)
+
+            # Multi-MPPT string inverter: MPPT Voltage [n] (3499–3508) × MPPT Current [n]
+            # (3529–3538, signed). Doc regs 3500/3530, 80-110K-5G class.
+            if self._register[0] in MULTI_MPPT_VOLTAGE_REGISTERS:
+                voltage_raw = self._received_values[self._register[0]]
+                current_raw = self._received_values[self._register[1]]
+                if current_raw >= 0x8000:
+                    current_raw -= 0x10000
+                new_value = round(voltage_raw * self.base_sensor.multiplier * current_raw * self.base_sensor.multiplier)
 
             if 33079 in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
                 active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])

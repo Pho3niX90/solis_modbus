@@ -34,6 +34,9 @@ class InverterFeature(Enum):
     PARALLEL_READINGS = "parallel_readings"
     DUAL_METER = "dual_meter"
     EPM = "epm"
+    # 80-110K-5G class string inverters: up to 20 strings on 10 MPPTs, read from
+    # 3287-3320 (string currents) and 3500/3530 (per-MPPT voltage/current).
+    MULTI_MPPT = "multi_mppt"
 
 
 class Category(Enum):

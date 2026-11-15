@@ -198,6 +198,15 @@ SOLIS_INVERTERS = [
         type=InverterType.GRID,
         features=[],
     ),
+    InverterConfig(
+        # Solis-(80-110)K-5G: 10 MPPTs, 2 strings per MPPT (20 string currents).
+        # Field-verified on a Solis-100K-5G (DC input type 3004 = 19 -> 20 inputs).
+        model="3P(80-110)K-5G",
+        wattage=[80000, 90000, 100000, 110000],
+        phases=3,
+        type=InverterType.GRID,
+        features=[InverterFeature.MULTI_MPPT],
+    ),
     InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RHI-3P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
