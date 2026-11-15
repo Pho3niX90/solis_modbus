@@ -322,6 +322,7 @@ Solis and equivalent Axitec and Zonneplan inverters that users have confirmed wo
 | S5-GR1P8K | `S5-GR1P` | Reading works; power-limit control not confirmed | [#321](https://github.com/Pho3niX90/solis_modbus/issues/321) |
 | S5-GR3P | `S5-GR3P` | Has no EPM; grid totals come from the attached meter | [#410](https://github.com/Pho3niX90/solis_modbus/issues/410), [#466](https://github.com/Pho3niX90/solis_modbus/issues/466) |
 | S5-GC30K, S5-GC60K | `S5-GC` | | [#173](https://github.com/Pho3niX90/solis_modbus/issues/173), [#180](https://github.com/Pho3niX90/solis_modbus/issues/180#issuecomment-2887414843) |
+| Solis-100K-5G | `3P(80-110)K-5G` | Adds 20 PV string currents, 10 MPPT voltages/currents/powers and total PV voltage/current | |
 | 3P6K-4G | `3P(3-20)K-4G` | Some energy totals and clock entities unavailable | [#210](https://github.com/Pho3niX90/solis_modbus/issues/210) |
 | 1P3.6K-4G | `1P(2.5-6)K-4G` | | [#230](https://github.com/Pho3niX90/solis_modbus/issues/230) |
 
