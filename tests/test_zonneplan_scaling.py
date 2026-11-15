@@ -1,7 +1,7 @@
 """The Zonneplan battery scaling follows the option, and new ZP entries pick it from the firmware (#563).
 
 Some S6-EH3P10K-H-ZP firmware sends the battery energy registers 10x/100x too high
-(#191; still on DSP 0x0266 / HMI 0x0260 in 2026). Firmware DSP 0x15 / HMI 0x22 sends
+(#191 and #563, all on DSP 2 / HMI 2). Firmware DSP 0x15 / HMI 0x22 sends
 the standard values, so the scaling made its readings 10x/100x too low.
 """
 
@@ -101,12 +101,12 @@ class TestFirmware:
     @pytest.mark.parametrize(
         ("dsp", "hmi", "scaling"),
         [
-            (2, 2, True),  # #191
+            (2, 2, True),  # #191, and Pluimvee and Dominic-070 on #563
             (0x15, 0x22, False),  # #563 reporter: confirmed standard values
-            (0x0266, 0x0260, True),  # #563 Dominic-070: higher versions, still 10x/100x too high
-            (0x16, 0x23, True),  # unconfirmed: keep the scaling
-            (0x15, 0x21, True),
+            (0x16, 0x23, False),  # newer than the fix
+            (0x15, 0x21, True),  # in between: unconfirmed, keep the scaling
             (0x14, 0x22, True),
+            (0x10, 0x10, True),
         ],
     )
     def test_zonneplan_scaling_for_firmware(self, dsp, hmi, scaling):
