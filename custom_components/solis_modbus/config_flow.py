@@ -456,6 +456,11 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return
         if self._zonneplan_firmware is None:
             data.pop(CONF_ZONNEPLAN_SCALING, None)
+            if _has_zonneplan_scaling(data.get("model")):
+                _LOGGER.info(
+                    "S6-EH3P10K-H-ZP firmware not read: Zonneplan battery scaling left on; "
+                    "turn it off under Configure if battery energy reads 10x too low"
+                )
             return
         dsp, hmi = self._zonneplan_firmware
         data[CONF_ZONNEPLAN_SCALING] = zonneplan_scaling_for_firmware(dsp, hmi)
@@ -481,10 +486,13 @@ class ModbusOptionsFlowHandler(OptionsFlow):
 
         if user_input is not None:
             merged = {**self.config_entry.options, **user_input}
-            # The form always submits the Zonneplan toggle. Keep it only for a ZP model,
-            # so saving the options of another model doesn't pin it and stop a later
-            # switch to the ZP from picking it from the firmware.
-            if not _has_zonneplan_scaling(merged.get("model")):
+            # The form always submits the Zonneplan toggle. Keep it only for a ZP model, and
+            # only once the user has changed it, so saving other options doesn't pin it and
+            # stop a later switch to the ZP from picking it from the firmware.
+            if not _has_zonneplan_scaling(merged.get("model")) or (
+                CONF_ZONNEPLAN_SCALING not in self.config_entry.options
+                and merged.get(CONF_ZONNEPLAN_SCALING) == self.config_entry.data.get(CONF_ZONNEPLAN_SCALING, True)
+            ):
                 merged.pop(CONF_ZONNEPLAN_SCALING, None)
             interval_error = _validate_poll_interval(merged)
             if interval_error is None:

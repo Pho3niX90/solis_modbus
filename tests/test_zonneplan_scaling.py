@@ -289,6 +289,23 @@ class TestConfigFlow:
         entry = self._entry(hass, ZP, options=POLL)
         hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_ZONNEPLAN_SCALING: False})
         options = await self._save_options(hass, entry)
+        assert CONF_ZONNEPLAN_SCALING not in options
+        assert {**entry.data, **entry.options}[CONF_ZONNEPLAN_SCALING] is False
+
+    @pytest.mark.asyncio
+    async def test_options_save_on_a_zp_does_not_pin_an_unchanged_toggle(self, hass: HomeAssistant):
+        """A later switch away from the ZP and back can still pick the scaling from the firmware."""
+        entry = self._entry(hass, ZP, options=POLL)
+        options = await self._save_options(hass, entry)
+        assert CONF_ZONNEPLAN_SCALING not in options
+        await self._reconfigure(hass, entry, "S6-EH3P", _client((0x15, 0x22)))
+        await self._reconfigure(hass, entry, ZP, _client((0x15, 0x22)))
+        assert {**entry.data, **entry.options}[CONF_ZONNEPLAN_SCALING] is False
+
+    @pytest.mark.asyncio
+    async def test_options_save_keeps_an_earlier_choice(self, hass: HomeAssistant):
+        entry = self._entry(hass, ZP, options={**POLL, CONF_ZONNEPLAN_SCALING: False})
+        options = await self._save_options(hass, entry)
         assert options[CONF_ZONNEPLAN_SCALING] is False
 
     @pytest.mark.asyncio
