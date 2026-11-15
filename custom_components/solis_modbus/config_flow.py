@@ -262,7 +262,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             # Merge connection type with configuration
-            full_config = {CONF_CONNECTION_TYPE: self._connection_type, **user_input}
+            full_config = {**user_input, CONF_CONNECTION_TYPE: self._connection_type}
             return await self._create_entry_from_input(full_config)
 
         # Remove connection_type from schema since we already have it
@@ -351,13 +351,20 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Determine which schema to show again based on connection type
             if data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_TCP:
-                schema_dict = TCP_CONFIG_SCHEMA
+                source_schema = TCP_CONFIG_SCHEMA
             elif data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_RTU_TCP:
-                schema_dict = RTU_TCP_CONFIG_SCHEMA
+                source_schema = RTU_TCP_CONFIG_SCHEMA
             else:
-                schema_dict = SERIAL_CONFIG_SCHEMA
+                source_schema = SERIAL_CONFIG_SCHEMA
 
-            return self.async_show_form(step_id="config", data_schema=vol.Schema(schema_dict), errors=errors)
+            # Connection type was already selected in the initial step
+            schema_dict = {k: v for k, v in source_schema.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
+
+            return self.async_show_form(
+                step_id="config",
+                data_schema=vol.Schema(schema_dict),
+                errors=errors,
+            )
 
         # 3. Check for Duplicates
         if CONF_INVERTER_SERIAL in data:
