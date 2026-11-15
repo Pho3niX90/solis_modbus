@@ -4,10 +4,10 @@ import re
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import OptionsFlow
 from pymodbus.client import AsyncModbusTcpClient
 
 from .client_manager import create_serial_client
+from .compat import OptionsFlowBase
 from .const import (
     CONF_BAUDRATE,
     CONF_BYTESIZE,
@@ -408,7 +408,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return ModbusOptionsFlowHandler()
 
 
-class ModbusOptionsFlowHandler(OptionsFlow):
+class ModbusOptionsFlowHandler(OptionsFlowBase):
     """Handle options flow for Modbus."""
 
     async def async_step_init(self, user_input=None):
