@@ -458,8 +458,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data.pop(CONF_ZONNEPLAN_SCALING, None)
             if _has_zonneplan_scaling(data.get("model")):
                 _LOGGER.info(
-                    "S6-EH3P10K-H-ZP firmware not read: Zonneplan battery scaling left on; "
-                    "turn it off under Configure if battery energy reads 10x too low"
+                    "S6-EH3P10K-H-ZP firmware not read: Zonneplan battery scaling left on; turn it off under Configure if battery energy reads 10x too low"
                 )
             return
         dsp, hmi = self._zonneplan_firmware
