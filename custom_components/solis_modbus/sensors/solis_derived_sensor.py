@@ -82,6 +82,10 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
             return  # meant for a different sensor/inverter combo
 
+        if updated_register in self._register and self._register[0] in MULTI_MPPT_VOLTAGE_REGISTERS:
+            self._handle_mppt_power_update(updated_register, data.get(VALUE))
+            return
+
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
             self._received_values[updated_register] = data.get(VALUE)
@@ -137,15 +141,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 r1_value = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 r2_value = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = round(r1_value * r2_value)
-
-            # Multi-MPPT string inverter: MPPT Voltage [n] (3499–3508) × MPPT Current [n]
-            # (3529–3538, signed). Doc regs 3500/3530, 80-110K-5G class.
-            if self._register[0] in MULTI_MPPT_VOLTAGE_REGISTERS:
-                voltage_raw = self._received_values[self._register[0]]
-                current_raw = self._received_values[self._register[1]]
-                if current_raw >= 0x8000:
-                    current_raw -= 0x10000
-                new_value = round(voltage_raw * self.base_sensor.multiplier * current_raw * self.base_sensor.multiplier)
 
             if 33079 in self._register or 33080 in self._register or 33081 in self._register or 33082 in self._register:
                 active_power = self.base_sensor.convert_value([self._received_values[self._register[0]], self._received_values[self._register[1]]])
@@ -229,6 +224,33 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
             # Clear received values after update
             self._received_values.clear()
+
+    def _handle_mppt_power_update(self, updated_register: int, value) -> None:
+        """MPPT Power [n] = MPPT Voltage [n] × MPPT Current [n] (signed), multi-MPPT string inverters.
+
+        Both registers come from one block, voltage (3499–3508) before current
+        (3529–3538). Only a voltage followed by a current of the same read is
+        multiplied: a voltage starts a new pair and drops any older current, and a
+        current with no voltage before it is dropped. So a read that misses one of
+        the two values never multiplies a fresh value by a stale one.
+        """
+        voltage_register, current_register = self._register[0], self._register[1]
+
+        if updated_register == voltage_register:
+            self._received_values = {voltage_register: value}
+            return
+
+        voltage_raw = self._received_values.get(voltage_register)
+        self._received_values.clear()
+        if updated_register != current_register or voltage_raw is None or value is None:
+            return
+
+        current_raw = value - 0x10000 if value >= 0x8000 else value
+        new_value = round(voltage_raw * self.base_sensor.multiplier * current_raw * self.base_sensor.multiplier)
+        self._attr_available = True
+        self._attr_native_value = new_value
+        self._state = new_value
+        self.schedule_update_ha_state()
 
     def _update_device_sw_version(self, protocol_version) -> None:
         """Push the decoded protocol version into the device registry.

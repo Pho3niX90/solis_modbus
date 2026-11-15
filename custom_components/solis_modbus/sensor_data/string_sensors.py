@@ -780,8 +780,13 @@ string_sensors = [
         ],
     },
     {
-        # Per-MPPT voltage, doc regs 3500-3509 (MPPT 1-10) → wire 3499-3508. The
-        # protocol defines MPPT 1-15 (3500-3514); the 80-110K class uses 10.
+        # Per-MPPT voltage and current in ONE block, so that MPPT Power [n] always
+        # multiplies a voltage and a current from the same read (a failed read of
+        # one of two separate blocks would pair values from different polls).
+        # Doc regs 3500-3509 = MPPT voltage 1-10 → wire 3499-3508; doc 3530-3539 =
+        # MPPT current 1-10 → wire 3529-3538. The protocol defines MPPT 1-15; the
+        # 80-110K class uses 10. The Solis datalogger reads 3500-3529 and 3530-3559,
+        # so the whole span 3500-3539 is readable.
         "register_start": 3499,
         "feature_requirement": [InverterFeature.MULTI_MPPT],
         "poll_speed": PollSpeed.NORMAL,
@@ -876,14 +881,26 @@ string_sensors = [
                 "register": ["3508"],
                 "multiplier": 0.1,
             },
-        ],
-    },
-    {
-        # Per-MPPT current, doc regs 3530-3539 (MPPT 1-10) → wire 3529-3538.
-        "register_start": 3529,
-        "feature_requirement": [InverterFeature.MULTI_MPPT],
-        "poll_speed": PollSpeed.NORMAL,
-        "entities": [
+            {"type": "reserve", "register": ["3509"]},
+            {"type": "reserve", "register": ["3510"]},
+            {"type": "reserve", "register": ["3511"]},
+            {"type": "reserve", "register": ["3512"]},
+            {"type": "reserve", "register": ["3513"]},
+            {"type": "reserve", "register": ["3514"]},
+            {"type": "reserve", "register": ["3515"]},
+            {"type": "reserve", "register": ["3516"]},
+            {"type": "reserve", "register": ["3517"]},
+            {"type": "reserve", "register": ["3518"]},
+            {"type": "reserve", "register": ["3519"]},
+            {"type": "reserve", "register": ["3520"]},
+            {"type": "reserve", "register": ["3521"]},
+            {"type": "reserve", "register": ["3522"]},
+            {"type": "reserve", "register": ["3523"]},
+            {"type": "reserve", "register": ["3524"]},
+            {"type": "reserve", "register": ["3525"]},
+            {"type": "reserve", "register": ["3526"]},
+            {"type": "reserve", "register": ["3527"]},
+            {"type": "reserve", "register": ["3528"]},
             {
                 "name": "MPPT Current 1",
                 "unique": "solis_modbus_mppt_current_1",
