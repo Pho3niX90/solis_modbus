@@ -34,6 +34,8 @@ class InverterFeature(Enum):
     PARALLEL_READINGS = "parallel_readings"
     DUAL_METER = "dual_meter"
     EPM = "epm"
+    # Export limit held by the inverter itself (string map 3110-3113 / 3150-3151), issue #569.
+    INTERNAL_EPM = "internal_epm"
 
 
 class Category(Enum):

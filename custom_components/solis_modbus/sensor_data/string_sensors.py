@@ -661,6 +661,53 @@ string_sensors = [
             },
         ],
     },
+    {
+        # The inverter's own export limit (Internal EPM soft limit), issue #569.
+        # Read back on input 3110-3113, written to holding 3151. Confirmed on an
+        # S5-GC30K: 3111 = 189 matched the 18900 W limit SolisCloud shows.
+        # Kept last: a unit that times out here ends the poll batch, and nothing
+        # after it should go unread because of that.
+        "register_start": 3110,
+        "poll_speed": PollSpeed.SLOW,
+        "feature_requirement": [InverterFeature.INTERNAL_EPM],
+        "entities": [
+            {
+                # Read-only: the codes mean different things per power class
+                # (0.7-8K 1P, 5-25K, 25-110K), so one select would mislabel some.
+                # For 25-110K: 1 meter in grid, 2 meter in load, 3 off, 4 24H consumption.
+                "name": "Export Control Mode",
+                "unique": "solis_modbus_inverter_export_control_mode",
+                "register": ["3110"],
+                "multiplier": 1,
+            },
+            {
+                # S16, 1 = 100 W, positive = to grid. Ignored while the mode is off.
+                # No declared max: a grid-side limit, so never the inverter rating (#438).
+                "name": "Export Power Limit",
+                "unique": "solis_modbus_inverter_export_power_limit",
+                "unit_of_measurement": UnitOfPower.WATT,
+                "device_class": SensorDeviceClass.POWER,
+                "register": ["3111"],
+                "write_register": 3151,
+                "multiplier": 100,
+                "data_type": DataType.S16,
+                "editable": True,
+                "min": 0,
+                "step": 100,
+            },
+            # Failsafe bits; the matching setting is holding 3152.
+            {"type": "reserve", "register": ["3112"]},
+            {
+                "name": "Export Control Live Export Power",
+                "unique": "solis_modbus_inverter_export_control_live_power",
+                "unit_of_measurement": UnitOfPower.WATT,
+                "device_class": SensorDeviceClass.POWER,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "register": ["3113"],
+                "multiplier": 10,
+            },
+        ],
+    },
 ]
 
 string_sensors_derived = [
