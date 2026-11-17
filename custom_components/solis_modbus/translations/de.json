@@ -124,13 +124,15 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Parallel-Wechselrichter-Messwerte ohne Parallelbetrieb beibehalten (bestehende Installationen)",
           "zonneplan_scaling": "Zonneplan-Batterieenergie-Korrektur (nur S6-EH3P10K-H-ZP; ausschalten, wenn die Batterieenergie 10x zu niedrig ist)",
+          "mppt_count": "Anzahl der MPPTs (DC-Spannungs-/Strom-/Leistungssensoren pro MPPT; bis zu 4 bei den meisten Modellen, bis zu 15 bei Multi-MPPT-Strangwechselrichtern)",
           "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
           "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
         }
       }
     },
     "error": {
-      "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s)."
+      "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s).",
+      "mppt_count_above_model_max": "So viele MPPTs kann dieses Wechselrichtermodell nicht melden. Die meisten Modelle melden bis zu 4, Multi-MPPT-Strangwechselrichter bis zu 15."
     }
   },
   "services": {

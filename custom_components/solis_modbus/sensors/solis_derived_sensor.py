@@ -19,8 +19,9 @@ FLEXIBLE_EXPORT_OFF = "Off"
 FLEXIBLE_EXPORT_ACTIVE = "Active"
 FLEXIBLE_EXPORT_BLOCKED = "Export Blocked"
 
-# Wire addresses of MPPT Voltage 1-10 (doc 3500-3509) on multi-MPPT string inverters.
-MULTI_MPPT_VOLTAGE_REGISTERS = frozenset(range(3499, 3509))
+# Wire addresses of DC Voltage 5-15 (doc 3504-3514) on multi-MPPT string inverters;
+# MPPT 1-4 use the classic 3021-3028 path.
+MULTI_MPPT_VOLTAGE_REGISTERS = frozenset(range(3503, 3514))
 
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
@@ -226,10 +227,10 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             self._received_values.clear()
 
     def _handle_mppt_power_update(self, updated_register: int, value) -> None:
-        """MPPT Power [n] = MPPT Voltage [n] × MPPT Current [n] (signed), multi-MPPT string inverters.
+        """DC Power [n] = DC Voltage [n] × DC Current [n] (signed) for MPPT 5-15 on multi-MPPT string inverters.
 
-        Both registers come from one block, voltage (3499–3508) before current
-        (3529–3538). Only a voltage followed by a current of the same read is
+        Both registers come from one block, voltage (3503–3513) before current
+        (3533–3543). Only a voltage followed by a current of the same read is
         multiplied: a voltage starts a new pair and drops any older current, and a
         current with no voltage before it is dropped. So a read that misses one of
         the two values never multiplies a fresh value by a stale one.

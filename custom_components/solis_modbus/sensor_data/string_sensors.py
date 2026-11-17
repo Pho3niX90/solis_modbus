@@ -11,7 +11,145 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
-from custom_components.solis_modbus.data.enums import DataType, InverterFeature, PollSpeed
+from custom_components.solis_modbus.data.enums import Category, DataType, InverterFeature, PollSpeed
+
+# --- Multi-MPPT string inverters (80-110K-5G class) --------------------------------
+# MPPT 1-4 always come from DC Voltage/Current 1-4 below (3021-3028), so their
+# entities, unique IDs and history are the same on every string model. MPPT 5-15 come
+# from the protocol's per-MPPT block: voltage at doc 3500+n-1, current at doc 3530+n-1
+# (wire = doc - 1). Voltage and current are read in ONE block, so DC Power [n] always
+# multiplies a voltage and a current from the same read. Entities carry "mppt" (or
+# "string") so setup can drop the ones above the entry's MPPT count
+# (helpers.apply_mppt_count); the groups here describe the most the protocol allows.
+FIRST_EXTENDED_MPPT = 5
+MULTI_MPPT_MAX = 15
+MULTI_MPPT_STRINGS = 20
+MPPT_VOLTAGE_WIRE_BASE = 3498  # MPPT n voltage = 3498 + n (doc 3500 = MPPT 1)
+MPPT_CURRENT_WIRE_BASE = 3528  # MPPT n current = 3528 + n (doc 3530 = MPPT 1)
+STRING_CURRENT_WIRE_BASE = 3299  # string k current = 3299 + k (doc 3301 = PV1)
+
+
+def _reserve(register: int) -> dict:
+    return {"type": "reserve", "register": [str(register)]}
+
+
+def _string_group() -> dict:
+    """Doc 3287-3320: string combination, total PV voltage/current, PV string currents 1-20.
+
+    Field-verified on a Solis-100K-5G: the string currents sum to Total PV Current and
+    each MPPT current is the sum of its two strings. The Solis datalogger reads this
+    range too (3287-3300 and 3301-3338).
+    """
+    entities = [
+        {
+            # 0 = one voltage for two string currents, 3 = one voltage for three.
+            "name": "PV String Voltage Current Combination",
+            "unique": "solis_modbus_pv_string_combination",
+            "category": Category.BASIC_INFORMATION,
+            "register": ["3286"],
+            "multiplier": 1,
+        },
+        *(_reserve(r) for r in range(3287, 3298)),
+        {
+            "name": "Total PV Voltage",
+            "unique": "solis_modbus_total_pv_voltage",
+            "unit_of_measurement": UnitOfElectricPotential.VOLT,
+            "device_class": SensorDeviceClass.VOLTAGE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": ["3298"],
+            "multiplier": 0.1,
+        },
+        {
+            "name": "Total PV Current",
+            "unique": "solis_modbus_total_pv_current",
+            "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+            "device_class": SensorDeviceClass.CURRENT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": ["3299"],
+            "multiplier": 0.1,
+            "data_type": DataType.S16,
+        },
+    ]
+    for k in range(1, MULTI_MPPT_STRINGS + 1):
+        entities.append(
+            {
+                "name": f"PV String Current {k}",
+                "unique": f"solis_modbus_pv_string_current_{k}",
+                "string": k,
+                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                "device_class": SensorDeviceClass.CURRENT,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "register": [str(STRING_CURRENT_WIRE_BASE + k)],
+                "multiplier": 0.1,
+            }
+        )
+    return {
+        "register_start": 3286,
+        "feature_requirement": [InverterFeature.MULTI_MPPT],
+        "poll_speed": PollSpeed.NORMAL,
+        "entities": entities,
+    }
+
+
+def _extended_mppt_group() -> dict:
+    """DC Voltage/Current 5-15 (doc 3504-3514 and 3534-3544), with the registers between as reserves."""
+    mppts = range(FIRST_EXTENDED_MPPT, MULTI_MPPT_MAX + 1)
+    voltages = [
+        {
+            "name": f"DC Voltage {n}",
+            "unique": f"solis_modbus_dc_voltage_{n}",
+            "mppt": n,
+            "unit_of_measurement": UnitOfElectricPotential.VOLT,
+            "device_class": SensorDeviceClass.VOLTAGE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": [str(MPPT_VOLTAGE_WIRE_BASE + n)],
+            "multiplier": 0.1,
+        }
+        for n in mppts
+    ]
+    gap = [_reserve(r) for r in range(MPPT_VOLTAGE_WIRE_BASE + MULTI_MPPT_MAX + 1, MPPT_CURRENT_WIRE_BASE + FIRST_EXTENDED_MPPT)]
+    currents = [
+        {
+            "name": f"DC Current {n}",
+            "unique": f"solis_modbus_dc_current_{n}",
+            "mppt": n,
+            "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+            "device_class": SensorDeviceClass.CURRENT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": [str(MPPT_CURRENT_WIRE_BASE + n)],
+            "multiplier": 0.1,
+            "data_type": DataType.S16,
+        }
+        for n in mppts
+    ]
+    return {
+        "register_start": MPPT_VOLTAGE_WIRE_BASE + FIRST_EXTENDED_MPPT,
+        "feature_requirement": [InverterFeature.MULTI_MPPT],
+        "poll_speed": PollSpeed.NORMAL,
+        "entities": voltages + gap + currents,
+    }
+
+
+def multi_mppt_groups() -> list[dict]:
+    return [_string_group(), _extended_mppt_group()]
+
+
+def multi_mppt_derived() -> list[dict]:
+    """DC Power 5-15 = DC Voltage [n] x DC Current [n] (signed); see SolisDerivedSensor."""
+    return [
+        {
+            "name": f"DC Power {n}",
+            "unique": f"solis_modbus_dc_power_{n}",
+            "mppt": n,
+            "device_class": SensorDeviceClass.POWER,
+            "multiplier": 0.1,
+            "unit_of_measurement": UnitOfPower.WATT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": [str(MPPT_VOLTAGE_WIRE_BASE + n), str(MPPT_CURRENT_WIRE_BASE + n)],
+        }
+        for n in range(FIRST_EXTENDED_MPPT, MULTI_MPPT_MAX + 1)
+    ]
+
 
 # base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [
@@ -146,6 +284,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 1",
                 "unique": "solis_modbus_dc_voltage_1",
+                "mppt": 1,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -155,6 +294,7 @@ string_sensors = [
             {
                 "name": "DC Current 1",
                 "unique": "solis_modbus_dc_current_1",
+                "mppt": 1,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -164,6 +304,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 2",
                 "unique": "solis_modbus_dc_voltage_2",
+                "mppt": 2,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -173,6 +314,7 @@ string_sensors = [
             {
                 "name": "DC Current 2",
                 "unique": "solis_modbus_dc_current_2",
+                "mppt": 2,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -182,6 +324,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 3",
                 "unique": "solis_modbus_dc_voltage_3",
+                "mppt": 3,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -191,6 +334,7 @@ string_sensors = [
             {
                 "name": "DC Current 3",
                 "unique": "solis_modbus_dc_current_3",
+                "mppt": 3,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -200,6 +344,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 4",
                 "unique": "solis_modbus_dc_voltage_4",
+                "mppt": 4,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -209,6 +354,7 @@ string_sensors = [
             {
                 "name": "DC Current 4",
                 "unique": "solis_modbus_dc_current_4",
+                "mppt": 4,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -549,460 +695,7 @@ string_sensors = [
             },
         ],
     },
-    {
-        # Multi-MPPT string inverters (80-110K-5G class). Protocol doc regs 3287-3320 →
-        # wire 3286-3319, read in one block like the Solis datalogger does (it reads
-        # 3287-3300 and 3301-3338). Field-verified on a Solis-100K-5G: the 20 string
-        # currents sum exactly to Total PV Current (3300), and each MPPT current
-        # (3530+) is the exact sum of its 2 strings.
-        "register_start": 3286,
-        "feature_requirement": [InverterFeature.MULTI_MPPT],
-        "poll_speed": PollSpeed.NORMAL,
-        "entities": [
-            {
-                # 0 = 1 voltage for 2 currents, 3 = 1 voltage for 3 currents (protocol).
-                "name": "PV String Voltage Current Combination",
-                "unique": "solis_modbus_pv_string_combination",
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3286"],
-                "multiplier": 1,
-            },
-            {"type": "reserve", "register": ["3287"]},
-            {"type": "reserve", "register": ["3288"]},
-            {"type": "reserve", "register": ["3289"]},
-            {"type": "reserve", "register": ["3290"]},
-            {"type": "reserve", "register": ["3291"]},
-            {"type": "reserve", "register": ["3292"]},
-            {"type": "reserve", "register": ["3293"]},
-            {"type": "reserve", "register": ["3294"]},
-            {"type": "reserve", "register": ["3295"]},
-            {"type": "reserve", "register": ["3296"]},
-            {"type": "reserve", "register": ["3297"]},
-            {
-                "name": "Total PV Voltage",
-                "unique": "solis_modbus_total_pv_voltage",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3298"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "Total PV Current",
-                "unique": "solis_modbus_total_pv_current",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3299"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "PV String Current 1",
-                "unique": "solis_modbus_pv_string_current_1",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3300"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 2",
-                "unique": "solis_modbus_pv_string_current_2",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3301"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 3",
-                "unique": "solis_modbus_pv_string_current_3",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3302"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 4",
-                "unique": "solis_modbus_pv_string_current_4",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3303"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 5",
-                "unique": "solis_modbus_pv_string_current_5",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3304"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 6",
-                "unique": "solis_modbus_pv_string_current_6",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3305"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 7",
-                "unique": "solis_modbus_pv_string_current_7",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3306"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 8",
-                "unique": "solis_modbus_pv_string_current_8",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3307"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 9",
-                "unique": "solis_modbus_pv_string_current_9",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3308"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 10",
-                "unique": "solis_modbus_pv_string_current_10",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3309"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 11",
-                "unique": "solis_modbus_pv_string_current_11",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3310"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 12",
-                "unique": "solis_modbus_pv_string_current_12",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3311"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 13",
-                "unique": "solis_modbus_pv_string_current_13",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3312"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 14",
-                "unique": "solis_modbus_pv_string_current_14",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3313"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 15",
-                "unique": "solis_modbus_pv_string_current_15",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3314"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 16",
-                "unique": "solis_modbus_pv_string_current_16",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3315"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 17",
-                "unique": "solis_modbus_pv_string_current_17",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3316"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 18",
-                "unique": "solis_modbus_pv_string_current_18",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3317"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 19",
-                "unique": "solis_modbus_pv_string_current_19",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3318"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "PV String Current 20",
-                "unique": "solis_modbus_pv_string_current_20",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3319"],
-                "multiplier": 0.1,
-            },
-        ],
-    },
-    {
-        # Per-MPPT voltage and current in ONE block, so that MPPT Power [n] always
-        # multiplies a voltage and a current from the same read (a failed read of
-        # one of two separate blocks would pair values from different polls).
-        # Doc regs 3500-3509 = MPPT voltage 1-10 → wire 3499-3508; doc 3530-3539 =
-        # MPPT current 1-10 → wire 3529-3538. The protocol defines MPPT 1-15; the
-        # 80-110K class uses 10. The Solis datalogger reads 3500-3529 and 3530-3559,
-        # so the whole span 3500-3539 is readable.
-        "register_start": 3499,
-        "feature_requirement": [InverterFeature.MULTI_MPPT],
-        "poll_speed": PollSpeed.NORMAL,
-        "entities": [
-            {
-                "name": "MPPT Voltage 1",
-                "unique": "solis_modbus_mppt_voltage_1",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3499"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 2",
-                "unique": "solis_modbus_mppt_voltage_2",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3500"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 3",
-                "unique": "solis_modbus_mppt_voltage_3",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3501"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 4",
-                "unique": "solis_modbus_mppt_voltage_4",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3502"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 5",
-                "unique": "solis_modbus_mppt_voltage_5",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3503"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 6",
-                "unique": "solis_modbus_mppt_voltage_6",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3504"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 7",
-                "unique": "solis_modbus_mppt_voltage_7",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3505"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 8",
-                "unique": "solis_modbus_mppt_voltage_8",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3506"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 9",
-                "unique": "solis_modbus_mppt_voltage_9",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3507"],
-                "multiplier": 0.1,
-            },
-            {
-                "name": "MPPT Voltage 10",
-                "unique": "solis_modbus_mppt_voltage_10",
-                "unit_of_measurement": UnitOfElectricPotential.VOLT,
-                "device_class": SensorDeviceClass.VOLTAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3508"],
-                "multiplier": 0.1,
-            },
-            {"type": "reserve", "register": ["3509"]},
-            {"type": "reserve", "register": ["3510"]},
-            {"type": "reserve", "register": ["3511"]},
-            {"type": "reserve", "register": ["3512"]},
-            {"type": "reserve", "register": ["3513"]},
-            {"type": "reserve", "register": ["3514"]},
-            {"type": "reserve", "register": ["3515"]},
-            {"type": "reserve", "register": ["3516"]},
-            {"type": "reserve", "register": ["3517"]},
-            {"type": "reserve", "register": ["3518"]},
-            {"type": "reserve", "register": ["3519"]},
-            {"type": "reserve", "register": ["3520"]},
-            {"type": "reserve", "register": ["3521"]},
-            {"type": "reserve", "register": ["3522"]},
-            {"type": "reserve", "register": ["3523"]},
-            {"type": "reserve", "register": ["3524"]},
-            {"type": "reserve", "register": ["3525"]},
-            {"type": "reserve", "register": ["3526"]},
-            {"type": "reserve", "register": ["3527"]},
-            {"type": "reserve", "register": ["3528"]},
-            {
-                "name": "MPPT Current 1",
-                "unique": "solis_modbus_mppt_current_1",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3529"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 2",
-                "unique": "solis_modbus_mppt_current_2",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3530"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 3",
-                "unique": "solis_modbus_mppt_current_3",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3531"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 4",
-                "unique": "solis_modbus_mppt_current_4",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3532"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 5",
-                "unique": "solis_modbus_mppt_current_5",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3533"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 6",
-                "unique": "solis_modbus_mppt_current_6",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3534"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 7",
-                "unique": "solis_modbus_mppt_current_7",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3535"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 8",
-                "unique": "solis_modbus_mppt_current_8",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3536"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 9",
-                "unique": "solis_modbus_mppt_current_9",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3537"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-            {
-                "name": "MPPT Current 10",
-                "unique": "solis_modbus_mppt_current_10",
-                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
-                "device_class": SensorDeviceClass.CURRENT,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "register": ["3538"],
-                "multiplier": 0.1,
-                "data_type": DataType.S16,
-            },
-        ],
-    },
+    *multi_mppt_groups(),
     {
         "register_start": 36013,
         "feature_requirement": [InverterFeature.EPM],
@@ -1121,6 +814,7 @@ string_sensors_derived = [
     {
         "name": "DC Power 1",
         "unique": "solis_modbus_dc_power_1",
+        "mppt": 1,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
@@ -1130,6 +824,7 @@ string_sensors_derived = [
     {
         "name": "DC Power 2",
         "unique": "solis_modbus_dc_power_2",
+        "mppt": 2,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
@@ -1139,6 +834,7 @@ string_sensors_derived = [
     {
         "name": "DC Power 3",
         "unique": "solis_modbus_dc_power_3",
+        "mppt": 3,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
@@ -1148,100 +844,12 @@ string_sensors_derived = [
     {
         "name": "DC Power 4",
         "unique": "solis_modbus_dc_power_4",
+        "mppt": 4,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
         "state_class": SensorStateClass.MEASUREMENT,
         "register": ["3027", "3028"],
     },
-    {
-        "name": "MPPT Power 1",
-        "unique": "solis_modbus_mppt_power_1",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3499", "3529"],
-    },
-    {
-        "name": "MPPT Power 2",
-        "unique": "solis_modbus_mppt_power_2",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3500", "3530"],
-    },
-    {
-        "name": "MPPT Power 3",
-        "unique": "solis_modbus_mppt_power_3",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3501", "3531"],
-    },
-    {
-        "name": "MPPT Power 4",
-        "unique": "solis_modbus_mppt_power_4",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3502", "3532"],
-    },
-    {
-        "name": "MPPT Power 5",
-        "unique": "solis_modbus_mppt_power_5",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3503", "3533"],
-    },
-    {
-        "name": "MPPT Power 6",
-        "unique": "solis_modbus_mppt_power_6",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3504", "3534"],
-    },
-    {
-        "name": "MPPT Power 7",
-        "unique": "solis_modbus_mppt_power_7",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3505", "3535"],
-    },
-    {
-        "name": "MPPT Power 8",
-        "unique": "solis_modbus_mppt_power_8",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3506", "3536"],
-    },
-    {
-        "name": "MPPT Power 9",
-        "unique": "solis_modbus_mppt_power_9",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3507", "3537"],
-    },
-    {
-        "name": "MPPT Power 10",
-        "unique": "solis_modbus_mppt_power_10",
-        "device_class": SensorDeviceClass.POWER,
-        "multiplier": 0.1,
-        "unit_of_measurement": UnitOfPower.WATT,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["3508", "3538"],
-    },
+    *multi_mppt_derived(),
 ]

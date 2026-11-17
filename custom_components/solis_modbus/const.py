@@ -73,6 +73,9 @@ CONF_PARALLEL_READINGS = "parallel_readings"
 # standard values. Absent means on, so entries from before #563 keep their scaling;
 # a new ZP entry gets it set from the firmware version read in the config flow.
 CONF_ZONNEPLAN_SCALING = "zonneplan_scaling"
+# MPPTs wired on the inverter: DC voltage/current/power entities 1..N. Not stored on
+# entries made before it existed, which keep the model default (4 = the classic set).
+CONF_MPPT_COUNT = "mppt_count"
 
 # Skip the "datalogger unreachable" repair issue while the sun is below the
 # horizon (issue #465): solar inverters normally power off overnight, so a

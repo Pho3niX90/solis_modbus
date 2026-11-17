@@ -41,6 +41,7 @@ from .data.enums import InverterFeature
 from .data.solis_config import SOLIS_INVERTERS, InverterConfig, InverterType, inverter_options_from_config
 from .data_retrieval import DataRetrieval
 from .helpers import (
+    apply_mppt_count,
     clock_sync_enabled,
     combine_u32,
     combine_u32_le,
@@ -684,6 +685,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         from .sensor_data.hybrid_sensors import hybrid_sensors as sensors
         from .sensor_data.hybrid_sensors import hybrid_sensors_derived as sensors_derived
 
+    # Every register any definition declares, before the MPPT count trims them, so a
+    # derived sensor whose source was trimmed still counts as unpolled below.
+    known_registers = registers_declared_by(sensors)
+    # Only the MPPTs (and PV strings) the inverter has. Entries made before the MPPT
+    # count existed store none and get the model default, the classic 4 on every
+    # model they could have been set up with, so their entities and reads don't change.
+    sensors, sensors_derived = apply_mppt_count(sensors, sensors_derived, inverter_config.mppt_count, inverter_config.string_count)
+    _LOGGER.debug("MPPT count %s, PV string count %s", inverter_config.mppt_count, inverter_config.string_count)
+
     # Create the Modbus controller and assign sensor groups
     controller_params = {
         "hass": hass,
@@ -760,7 +770,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # reduced profile has to filter them too — otherwise e.g. Power Factor
         # (33079-33082) survives into extreme mode and never receives a value.
         polled_registers = registers_declared_by(selected_groups)
-        known_registers = registers_declared_by(sensors)
         supported_derived = [entity for entity in sensors_derived if derived_sensor_is_supported(entity, polled_registers, known_registers)]
 
         if poll_profile != POLL_PROFILE_FULL and len(supported_derived) != len(sensors_derived):
