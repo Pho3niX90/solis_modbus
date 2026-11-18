@@ -3,6 +3,8 @@
 Registers verified live on an S6-EH3P50K-H: SOC 34278 matches the app's battery-2
 value, direction 34291 is 0 while charging and 1 while discharging, and power
 34368/34369 is S32 (positive charging, negative discharging), like battery 1.
+Battery Combined Power follows Battery Power Net instead: negative charging,
+positive discharging, signed from the direction registers 33135 / 34291.
 """
 
 from custom_components.solis_modbus.data.enums import DataType, InverterFeature
@@ -96,11 +98,81 @@ def test_combined_soc_matches_app(hass):
     assert sensor.native_value == 51
 
 
-def test_combined_power_sums_signed_values(hass):
+COMBINED_POWER = [33149, 33150, 33135, 34368, 34369, 34291]
+
+
+def test_combined_power_discharging_is_positive_like_battery_power_net(hass):
     """Measured while discharging: BAT1 -2300 W (0xFFFF F704), BAT2 -2500 W (0xFFFF F63C)."""
-    sensor = _derived(hass, [33149, 33150, 34368, 34369])
-    _feed(sensor, {33149: 0xFFFF, 33150: 0xF704, 34368: 0xFFFF, 34369: 0xF63C})
-    assert sensor.native_value == -4800
+    sensor = _derived(hass, COMBINED_POWER)
+    _feed(sensor, {33149: 0xFFFF, 33150: 0xF704, 33135: 1, 34368: 0xFFFF, 34369: 0xF63C, 34291: 1})
+    assert sensor.native_value == 4800
+
+
+def test_combined_power_charging_is_negative_like_battery_power_net(hass):
+    """Charging: BAT1 +1500 W, BAT2 +1000 W, direction 0 on both."""
+    sensor = _derived(hass, COMBINED_POWER)
+    _feed(sensor, {33149: 0, 33150: 1500, 33135: 0, 34368: 0, 34369: 1000, 34291: 0})
+    assert sensor.native_value == -2500
+
+
+def test_combined_power_takes_the_sign_from_the_direction_registers(hass):
+    """Firmware reporting 33149/50 as an unsigned magnitude: the direction sets the sign.
+    One battery charging while the other discharges nets out."""
+    sensor = _derived(hass, COMBINED_POWER)
+    _feed(sensor, {33149: 0, 33150: 2300, 33135: 1, 34368: 0, 34369: 1000, 34291: 0})
+    assert sensor.native_value == 1300
+
+
+def test_derived_update_handler_is_an_event_loop_callback():
+    """Without @callback the dispatcher runs the handler in the executor, unordered."""
+    from homeassistant.core import HassJob, HassJobType, is_callback
+
+    from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
+
+    assert is_callback(SolisDerivedSensor.handle_modbus_update)
+    assert HassJob(SolisDerivedSensor.handle_modbus_update).job_type is HassJobType.Callback
+
+
+async def test_combined_power_through_the_real_dispatcher(hass):
+    """Two overlapping polls sent through async_dispatcher_send publish only same-poll
+    sums, and every update is handled on the event loop, never on executor threads."""
+    import threading
+    from unittest.mock import patch
+
+    from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
+
+    from custom_components.solis_modbus.const import CONTROLLER, POLL_ID, REGISTER, SLAVE, VALUE
+
+    loop_thread = threading.get_ident()
+    sensor = _derived(hass, COMBINED_POWER)
+    for reg in set(COMBINED_POWER):
+        async_dispatcher_connect(hass, f"test_{reg}", sensor.handle_modbus_update)
+
+    def send(reg, value, poll_id):
+        payload = {REGISTER: reg, VALUE: value, CONTROLLER: "1.2.3.4", SLAVE: 1, POLL_ID: poll_id}
+        async_dispatcher_send(hass, f"test_{reg}", payload)
+
+    published = []
+    threads = set()
+    same_poll = sensor._sources_from_same_poll
+
+    def on_loop_check(poll_id):
+        threads.add(threading.get_ident())
+        return same_poll(poll_id)
+
+    with (
+        patch.object(sensor, "schedule_update_ha_state", side_effect=lambda: published.append(sensor.native_value)),
+        patch.object(sensor, "_sources_from_same_poll", side_effect=on_loop_check),
+    ):
+        # Poll 1 BAT2 discharging 1000 W, then poll 2 overtakes it completely.
+        for reg, value in ((34368, 0), (34369, 1000), (34291, 1)):
+            send(reg, value, 1)
+        for reg, value in ((33149, 0), (33150, 2300), (33135, 1), (34368, 0), (34369, 2500), (34291, 1)):
+            send(reg, value, 2)
+        await hass.async_block_till_done()
+
+    assert threads == {loop_thread}
+    assert published == [4800]
 
 
 def test_combined_sensors_only_with_battery2():
@@ -143,19 +215,19 @@ def test_battery2_is_polled_in_essential_but_not_extreme():
 
 def test_combined_power_pairs_readings_by_poll(hass):
     """A missed BAT1 read must not pair the next BAT1 value with BAT2 from the previous poll."""
-    sensor = _derived(hass, [33149, 33150, 34368, 34369])
-    # Poll 1: BAT1 read failed, only BAT2 arrives (-1000 W).
-    _feed(sensor, {34368: 0xFFFF, 34369: 0xFC18}, poll_id=1)
+    sensor = _derived(hass, COMBINED_POWER)
+    # Poll 1: BAT1 read failed, only BAT2 arrives (discharging 1000 W).
+    _feed(sensor, {34368: 0xFFFF, 34369: 0xFC18, 34291: 1}, poll_id=1)
     assert sensor.native_value is None
-    # Poll 2: BAT1 -2300 W arrives first; BAT2 from poll 1 is dropped, not combined.
-    _feed(sensor, {33149: 0xFFFF, 33150: 0xF704}, poll_id=2)
+    # Poll 2: BAT1 2300 W arrives first; BAT2 from poll 1 is dropped, not combined.
+    _feed(sensor, {33149: 0xFFFF, 33150: 0xF704, 33135: 1}, poll_id=2)
     assert sensor.native_value is None
-    # Poll 2: BAT2 -2500 W completes the pair.
-    _feed(sensor, {34368: 0xFFFF, 34369: 0xF63C}, poll_id=2)
-    assert sensor.native_value == -4800
+    # Poll 2: BAT2 2500 W completes the pair.
+    _feed(sensor, {34368: 0xFFFF, 34369: 0xF63C, 34291: 1}, poll_id=2)
+    assert sensor.native_value == 4800
     # Poll 3: both succeed and publish together.
-    _feed(sensor, {33149: 0xFFFF, 33150: 0xF768, 34368: 0xFFFF, 34369: 0xF6A0}, poll_id=3)
-    assert sensor.native_value == -4600
+    _feed(sensor, {33149: 0xFFFF, 33150: 0xF768, 33135: 1, 34368: 0xFFFF, 34369: 0xF6A0, 34291: 1}, poll_id=3)
+    assert sensor.native_value == 4600
 
 
 def test_combined_soc_pairs_readings_by_poll(hass):
@@ -236,8 +308,9 @@ def test_battery2_soc_gets_the_same_spike_filter_as_battery1():
 async def _run_polls(hass, polls):
     """Drive real DataRetrieval batches into a real Combined Power sensor.
 
-    ``polls`` is a list of {group_start: values-or-None}; None makes that group's
-    read fail in that poll. Returns every value the combined sensor published.
+    ``polls`` is a list of {battery_start: (power_words, direction) or None}; None
+    makes that battery's reads fail in that poll. Each battery is read as two
+    groups, power and direction. Returns every value the combined sensor published.
     """
     import asyncio
     from unittest.mock import AsyncMock, MagicMock, patch
@@ -247,7 +320,7 @@ async def _run_polls(hass, polls):
     from custom_components.solis_modbus.data_retrieval import DataRetrieval
     from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
 
-    sensor = _derived(hass, [33149, 33150, 34368, 34369])
+    sensor = _derived(hass, COMBINED_POWER)
     controller = sensor.base_sensor.controller
     controller.enabled = True
     controller.connected = MagicMock(return_value=True)
@@ -255,21 +328,25 @@ async def _run_polls(hass, polls):
     controller.poll_speed = {PollSpeed.FAST: 10, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
 
     groups = []
-    for start in (33149, 34368):
+    for start, count in ((33135, 1), (33149, 2), (34291, 1), (34368, 2)):
         group = MagicMock(spec=SolisSensorGroup)
         group.poll_speed = PollSpeed.FAST
         group.start_register = start
-        group.registrar_count = 2
+        group.registrar_count = count
         groups.append(group)
     controller.sensor_groups = groups
 
     current = {}
+    battery_of = {33135: 33149, 33149: 33149, 34291: 34368, 34368: 34368}
 
     async def read(start, count):
-        if start == 34368:
+        if start >= 34291:
             await asyncio.sleep(0.05)  # BAT2 answers late within its poll
-        values = current[start]
-        return (values, None) if values is not None else (None, None)
+        reading = current[battery_of[start]]
+        if reading is None:
+            return None, None
+        power, direction = reading
+        return (power if count == 2 else [direction]), None
 
     controller.async_read_input_registers_with_exception = AsyncMock(side_effect=read)
 
@@ -298,19 +375,19 @@ async def _run_polls(hass, polls):
 
 async def test_poller_publishes_a_poll_whose_bat2_read_is_delayed(hass):
     """Readings from one poll are combined however late the second group answers."""
-    published = await _run_polls(hass, [{33149: [0xFFFF, 0xF704], 34368: [0xFFFF, 0xF63C]}])
-    assert published == [-4800]
+    published = await _run_polls(hass, [{33149: ([0xFFFF, 0xF704], 1), 34368: ([0xFFFF, 0xF63C], 1)}])
+    assert published == [4800]
 
 
 async def test_poller_never_mixes_polls_after_a_failed_bat1_block(hass):
-    """Poll 1: BAT1 fails, BAT2 -1000 W. Poll 2 and 3 succeed. Only same-poll sums are published."""
+    """Poll 1: BAT1 fails, BAT2 discharges 1000 W. Poll 2 and 3 succeed. Only same-poll sums are published."""
     published = await _run_polls(
         hass,
         [
-            {33149: None, 34368: [0xFFFF, 0xFC18]},
-            {33149: [0xFFFF, 0xF704], 34368: [0xFFFF, 0xF63C]},
-            {33149: [0xFFFF, 0xF768], 34368: [0xFFFF, 0xF6A0]},
+            {33149: None, 34368: ([0xFFFF, 0xFC18], 1)},
+            {33149: ([0xFFFF, 0xF704], 1), 34368: ([0xFFFF, 0xF63C], 1)},
+            {33149: ([0xFFFF, 0xF768], 1), 34368: ([0xFFFF, 0xF6A0], 1)},
         ],
     )
-    # -2300 + -1000 (poll 2 BAT1 with poll 1 BAT2) must never appear.
-    assert published == [-4800, -4600]
+    # 2300 + 1000 (poll 2 BAT1 with poll 1 BAT2) must never appear.
+    assert published == [4800, 4600]

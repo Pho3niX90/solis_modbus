@@ -5020,7 +5020,7 @@ hybrid_sensors_derived = [
         "multiplier": 0,
         "unit_of_measurement": UnitOfPower.WATT,
         "state_class": SensorStateClass.MEASUREMENT,
-        "register": ["33149", "33150", "34368", "34369"],
+        "register": ["33149", "33150", "33135", "34368", "34369", "34291"],
     },
     {
         "name": "Grid Power Net",

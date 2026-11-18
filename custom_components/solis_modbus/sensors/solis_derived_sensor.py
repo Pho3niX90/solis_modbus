@@ -74,7 +74,6 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 )
             )
 
-    @callback
     def _is_dual_battery_sum(self) -> bool:
         """Combined BAT1 + BAT2 sensors, whose sources come from two register groups."""
         return (33139 in self._register and 34278 in self._register) or (33149 in self._register and 34368 in self._register)
@@ -91,6 +90,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             del self._received_values[reg]
         return not stale
 
+    @callback
     def handle_modbus_update(self, data):
         """Callback when register data is available (per-register dispatcher)."""
         updated_register = int(data.get(REGISTER))
@@ -226,11 +226,16 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 new_value = round((self._received_values[33139] + self._received_values[34278]) / 2, 1)
 
             if 33149 in self._register and 34368 in self._register:
-                # Total battery power: BAT1 (33149/50) + BAT2 (34368/69), both S32,
-                # positive charging and negative discharging.
-                bat1 = split_s32([self._received_values[33149], self._received_values[33150]])
-                bat2 = split_s32([self._received_values[34368], self._received_values[34369]])
-                new_value = bat1 + bat2
+                # Total battery power, signed like Battery Power Net: negative charging,
+                # positive discharging. The sign comes from each battery's direction
+                # register (33135 / 34291: 0 = charging, 1 = discharging), read in the
+                # same poll. The power words are taken as a magnitude, so this holds
+                # whether the firmware reports 33149/50 and 34368/69 signed or unsigned.
+                total = 0
+                for high, low, direction in ((33149, 33150, 33135), (34368, 34369, 34291)):
+                    power = abs(split_s32([self._received_values[high], self._received_values[low]]))
+                    total += -power if int(self._received_values[direction]) == 0 else power
+                new_value = total
 
             if 43292 in self._register:
                 # 0x00AA = Flexible Export on: export follows the 43291 limit instead of 43074.
