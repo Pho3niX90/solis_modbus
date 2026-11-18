@@ -52,3 +52,62 @@ def test_battery2_core_registers():
 def test_battery2_unique_ids_do_not_clash_with_other_sensors():
     others = {e["unique"] for g in hybrid_sensors if g.get("register_start") not in BATTERY2_GROUP_STARTS for e in g["entities"] if "unique" in e}
     assert not others & set(_battery2_entities())
+
+
+def _derived(hass, registrars):
+    from unittest.mock import MagicMock
+
+    from custom_components.solis_modbus.sensors.solis_derived_sensor import SolisDerivedSensor
+
+    controller = MagicMock()
+    controller.host = "1.2.3.4"
+    controller.slave = 1
+    controller.device_id = 1
+    base = MagicMock()
+    base.controller = controller
+    base.name = "Test"
+    base.unique_id = "test"
+    base.registrars = registrars
+    base.multiplier = 0
+    base.device_class = None
+    base.unit_of_measurement = None
+    base.hidden = False
+    base.state_class = "measurement"
+    return SolisDerivedSensor(hass, base)
+
+
+def _feed(sensor, values):
+    from unittest.mock import patch
+
+    from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+
+    with patch.object(sensor, "schedule_update_ha_state"):
+        for reg, val in values.items():
+            sensor.handle_modbus_update({REGISTER: reg, VALUE: val, CONTROLLER: "1.2.3.4", SLAVE: 1})
+
+
+def test_combined_soc_matches_app(hass):
+    """The app showed 51 % with BAT1 at 60 % and BAT2 at 42 %."""
+    sensor = _derived(hass, [33139, 34278])
+    _feed(sensor, {33139: 60, 34278: 42})
+    assert sensor.native_value == 51
+
+
+def test_combined_power_sums_signed_values(hass):
+    """Measured while discharging: BAT1 -2300 W (0xFFFF F704), BAT2 -2500 W (0xFFFF F63C)."""
+    sensor = _derived(hass, [33149, 33150, 34368, 34369])
+    _feed(sensor, {33149: 0xFFFF, 33150: 0xF704, 34368: 0xFFFF, 34369: 0xF63C})
+    assert sensor.native_value == -4800
+
+
+def test_combined_sensors_only_with_battery2():
+    from custom_components.solis_modbus.helpers import derived_sensor_is_supported
+    from custom_components.solis_modbus.sensor_data.hybrid_sensors import hybrid_sensors_derived
+
+    known = {int(r) for g in hybrid_sensors for e in g["entities"] for r in e.get("register", [])}
+    without_b2 = {int(r) for g in hybrid_sensors if g.get("register_start") not in BATTERY2_GROUP_STARTS for e in g["entities"] for r in e.get("register", [])}
+    combined = [e for e in hybrid_sensors_derived if "combined_soc" in e["unique"] or "combined_power" in e["unique"]]
+    assert len(combined) == 2
+    for entity in combined:
+        assert not derived_sensor_is_supported(entity, without_b2, known)
+        assert derived_sensor_is_supported(entity, known, known)

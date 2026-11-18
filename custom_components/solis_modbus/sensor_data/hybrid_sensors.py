@@ -4936,6 +4936,28 @@ hybrid_sensors_derived = [
         "register": ["33149", "33150", "33135"],
     },
     {
+        # Only created with the second battery enabled: 34278/34368 are polled
+        # by the BATTERY2 groups alone (see derived_sensor_is_supported).
+        "name": "Battery Combined SOC",
+        "category": Category.BATTERY_INFORMATION,
+        "unique": "solis_modbus_inverter_battery_combined_soc",
+        "device_class": SensorDeviceClass.BATTERY,
+        "multiplier": 0,
+        "unit_of_measurement": PERCENTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "register": ["33139", "34278"],
+    },
+    {
+        "name": "Battery Combined Power",
+        "category": Category.BATTERY_INFORMATION,
+        "unique": "solis_modbus_inverter_battery_combined_power",
+        "device_class": SensorDeviceClass.POWER,
+        "multiplier": 0,
+        "unit_of_measurement": UnitOfPower.WATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "register": ["33149", "33150", "34368", "34369"],
+    },
+    {
         "name": "Grid Power Net",
         "category": Category.METER_INFORMATION,
         "unique": "solis_modbus_inverter_grid_power_net",

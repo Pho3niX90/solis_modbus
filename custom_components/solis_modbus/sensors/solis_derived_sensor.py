@@ -10,7 +10,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
-from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller, register_update_signal
+from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller, register_update_signal, split_s32
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -189,6 +189,19 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 to_grid = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 from_grid = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = from_grid - to_grid
+
+            if 33139 in self._register and 34278 in self._register:
+                # Dual-battery SOC as the Solis app shows it: the plain average of
+                # BAT1 (33139) and BAT2 (34278), e.g. 60 % and 42 % -> 51 %. The BMS
+                # report no capacity, so this assumes two packs of equal size.
+                new_value = round((self._received_values[33139] + self._received_values[34278]) / 2, 1)
+
+            if 33149 in self._register and 34368 in self._register:
+                # Total battery power: BAT1 (33149/50) + BAT2 (34368/69), both S32,
+                # positive charging and negative discharging.
+                bat1 = split_s32([self._received_values[33149], self._received_values[33150]])
+                bat2 = split_s32([self._received_values[34368], self._received_values[34369]])
+                new_value = bat1 + bat2
 
             if 43292 in self._register:
                 # 0x00AA = Flexible Export on: export follows the 43291 limit instead of 43074.
