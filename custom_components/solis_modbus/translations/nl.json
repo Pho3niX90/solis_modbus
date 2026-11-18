@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
-          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
+          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)",
+          "has_battery2": "Tweede batterij geïnstalleerd (BAT2 met eigen BMS)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
-          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
+          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)",
+          "has_battery2": "Tweede batterij geïnstalleerd (BAT2 met eigen BMS)"
         }
       }
     },
@@ -125,7 +127,8 @@
           "parallel_readings": "Parallelle omvormer-metingen behouden zonder parallelle werking (bestaande installaties)",
           "zonneplan_scaling": "Zonneplan-correctie batterij-energie (alleen S6-EH3P10K-H-ZP; zet uit als de batterij-energie 10x te laag is)",
           "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
-          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)"
+          "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)",
+          "has_battery2": "Tweede batterij geïnstalleerd (BAT2 met eigen BMS)"
         }
       }
     },

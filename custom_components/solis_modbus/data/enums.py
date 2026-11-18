@@ -34,6 +34,7 @@ class InverterFeature(Enum):
     PARALLEL_READINGS = "parallel_readings"
     DUAL_METER = "dual_meter"
     EPM = "epm"
+    BATTERY2 = "battery2"
 
 
 class Category(Enum):

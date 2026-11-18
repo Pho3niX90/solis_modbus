@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
-          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
+          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)",
+          "has_battery2": "Seconde batterie installée (BAT2 avec son propre BMS)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
-          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
+          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)",
+          "has_battery2": "Seconde batterie installée (BAT2 avec son propre BMS)"
         }
       }
     },
@@ -125,7 +127,8 @@
           "parallel_readings": "Conserver les mesures d'onduleur en parallèle sans fonctionnement en parallèle (installations existantes)",
           "zonneplan_scaling": "Correction de l'énergie batterie Zonneplan (S6-EH3P10K-H-ZP uniquement ; désactivez-la si l'énergie batterie est 10x trop basse)",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
-          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)"
+          "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)",
+          "has_battery2": "Seconde batterie installée (BAT2 avec son propre BMS)"
         }
       }
     },

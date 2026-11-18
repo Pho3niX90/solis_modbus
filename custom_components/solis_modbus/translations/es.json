@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)",
-          "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)"
+          "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)",
+          "has_battery2": "Segunda batería instalada (BAT2 con su propio BMS)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)",
-          "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)"
+          "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)",
+          "has_battery2": "Segunda batería instalada (BAT2 con su propio BMS)"
         }
       }
     },
@@ -125,7 +127,8 @@
           "parallel_readings": "Mantener lecturas de inversor en paralelo sin operación en paralelo (instalaciones existentes)",
           "zonneplan_scaling": "Corrección de energía de batería Zonneplan (solo S6-EH3P10K-H-ZP; desactívala si la energía de batería es 10x demasiado baja)",
           "has_dual_meter": "Segundo medidor inteligente instalado (configuración de doble medidor Red + inversor FV)",
-          "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)"
+          "has_epm": "EPM / gestor de potencia de exportación instalado (registros de medidor 36xxx)",
+          "has_battery2": "Segunda batería instalada (BAT2 con su propio BMS)"
         }
       }
     },

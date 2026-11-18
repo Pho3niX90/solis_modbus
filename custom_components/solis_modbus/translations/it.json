@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
-          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)",
+          "has_battery2": "Seconda batteria installata (BAT2 con BMS proprio)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
-          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)",
+          "has_battery2": "Seconda batteria installata (BAT2 con BMS proprio)"
         }
       }
     },
@@ -125,7 +127,8 @@
           "parallel_readings": "Mantieni le letture dell'inverter in parallelo senza funzionamento in parallelo (installazioni esistenti)",
           "zonneplan_scaling": "Correzione energia batteria Zonneplan (solo S6-EH3P10K-H-ZP; disattivala se l'energia della batteria è 10x troppo bassa)",
           "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
-          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
+          "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)",
+          "has_battery2": "Seconda batteria installata (BAT2 con BMS proprio)"
         }
       }
     },
