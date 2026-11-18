@@ -111,3 +111,50 @@ def test_combined_sensors_only_with_battery2():
     for entity in combined:
         assert not derived_sensor_is_supported(entity, without_b2, known)
         assert derived_sensor_is_supported(entity, known, known)
+
+
+def test_battery1_cell_extremes_mirror_battery2():
+    """#573: battery-1 cell extremes 34348-34351 sit 25 registers before battery 2's."""
+    group = next(g for g in hybrid_sensors if g.get("register_start") == 34348)
+    assert group.get("feature_requirement") == [InverterFeature.BATTERY]
+    b1 = {e["unique"].replace("solis_modbus_inverter_battery_", ""): e for e in group["entities"]}
+    b2 = {k.replace("solis_modbus_inverter_battery2_", ""): e for k, e in _battery2_entities().items()}
+    assert set(b1) == {"min_cell_voltage_bms", "max_cell_voltage_bms", "min_cell_temperature_bms", "max_cell_temperature_bms"}
+    for key, entity in b1.items():
+        assert int(entity["register"][0]) + 25 == int(b2[key]["register"][0])
+        assert entity["multiplier"] == b2[key]["multiplier"]
+        assert entity.get("data_type") == b2[key].get("data_type")
+
+
+def test_battery2_is_polled_in_essential_but_not_extreme():
+    """BAT2 SOC and power join the essential profile like BAT1's 33132 block. Extreme
+    stays within its frame budget (#457), so it keeps polling BAT1 only."""
+    from custom_components.solis_modbus.const import POLL_PROFILE_ESSENTIAL, POLL_PROFILE_EXTREME
+    from custom_components.solis_modbus.helpers import group_in_poll_profile
+
+    for start in (34275, 34368):
+        group = next(g for g in hybrid_sensors if g.get("register_start") == start)
+        assert group_in_poll_profile(group, POLL_PROFILE_ESSENTIAL)
+        assert not group_in_poll_profile(group, POLL_PROFILE_EXTREME, include_battery=True)
+
+
+def test_combined_power_ignores_partner_from_previous_poll(hass):
+    """A failed BAT1 read must not pair the next BAT1 value with the previous poll's BAT2 value."""
+    from unittest.mock import patch
+
+    from custom_components.solis_modbus.data.enums import PollSpeed
+
+    sensor = _derived(hass, [33149, 33150, 34368, 34369])
+    sensor.base_sensor.controller.poll_speed = {PollSpeed.FAST: 10}
+    clock = [1000.0]
+    with patch("custom_components.solis_modbus.sensors.solis_derived_sensor.time.monotonic", side_effect=lambda: clock[0]):
+        # Poll N: BAT1 read failed, only BAT2 arrives (-1000 W).
+        _feed(sensor, {34368: 0xFFFF, 34369: 0xFC18})
+        assert sensor.native_value is None
+        # Poll N+1, 10 s later: BAT1 -2300 W, then BAT2 -2500 W.
+        clock[0] += 10
+        _feed(sensor, {33149: 0xFFFF, 33150: 0xF704})
+        assert sensor.native_value is None  # stale BAT2 dropped, not combined
+        clock[0] += 0.3
+        _feed(sensor, {34368: 0xFFFF, 34369: 0xF63C})
+    assert sensor.native_value == -4800

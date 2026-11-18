@@ -2,6 +2,7 @@ import decimal
 import fractions
 import logging
 import numbers
+import time
 from datetime import UTC, datetime
 
 from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass, SensorEntity
@@ -9,6 +10,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
 from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller, register_update_signal, split_s32
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
@@ -47,6 +49,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         self.is_added_to_hass = False
         self._state = None
         self._received_values = {}
+        self._received_at: dict[int, float] = {}
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -70,6 +73,26 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
             )
 
     @callback
+    def _is_dual_battery_sum(self) -> bool:
+        """Combined BAT1 + BAT2 sensors, whose sources come from two register groups."""
+        return (33139 in self._register and 34278 in self._register) or (33149 in self._register and 34368 in self._register)
+
+    def _sources_from_same_poll(self) -> bool:
+        """True when every buffered source arrived in the same poll.
+
+        BAT1 and BAT2 sit in separate groups, so a failed read of one leaves the
+        other's value from the previous poll in the buffer. Values older than half
+        a fast-poll interval before the newest one are from an earlier poll: drop
+        them and wait for this poll's reading instead of mixing the two.
+        """
+        interval = self.base_sensor.controller.poll_speed.get(PollSpeed.FAST, 5)
+        window = interval / 2 if isinstance(interval, (int, float)) and interval > 0 else 2.5
+        newest = max(self._received_at[reg] for reg in self._received_values)
+        stale = [reg for reg in self._received_values if newest - self._received_at[reg] > window]
+        for reg in stale:
+            del self._received_values[reg]
+        return not stale
+
     def handle_modbus_update(self, data):
         """Callback when register data is available (per-register dispatcher)."""
         updated_register = int(data.get(REGISTER))
@@ -82,6 +105,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
             self._received_values[updated_register] = data.get(VALUE)
+            self._received_at[updated_register] = time.monotonic()
 
             # If we haven't received all registers yet, wait
             filtered_registers = {reg for reg in self._register if reg not in (0, 1, 90007)}
@@ -189,6 +213,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 to_grid = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 from_grid = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = from_grid - to_grid
+
+            if self._is_dual_battery_sum() and not self._sources_from_same_poll():
+                return  # wait for the partner reading from the current poll
 
             if 33139 in self._register and 34278 in self._register:
                 # Dual-battery SOC as the Solis app shows it: the plain average of

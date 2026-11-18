@@ -1191,6 +1191,7 @@ hybrid_sensors = [
         # Second battery (BAT2, own BMS) on dual-battery models such as the S6-EH3P50K-H.
         # Mirrors battery 1 (33133-33150, 33041-33048); direction 34291: 0 = charging, 1 = discharging.
         "register_start": 34275,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.BATTERY2],
         "entities": [
@@ -1357,6 +1358,7 @@ hybrid_sensors = [
     {
         # Battery 2 power, S32 high word first: positive charging, negative discharging.
         "register_start": 34368,
+        "essential": True,
         "poll_speed": PollSpeed.FAST,
         "feature_requirement": [InverterFeature.BATTERY2],
         "entities": [
@@ -1369,6 +1371,57 @@ hybrid_sensors = [
                 "multiplier": 0,
                 "unit_of_measurement": UnitOfPower.WATT,
                 "state_class": SensorStateClass.MEASUREMENT,
+            },
+        ],
+    },
+    {
+        # Battery 1 cell extremes reported by its BMS (#573). Same layout as the
+        # battery-2 block 34373-34376 (+25).
+        "register_start": 34348,
+        "poll_speed": PollSpeed.NORMAL,
+        "feature_requirement": [InverterFeature.BATTERY],
+        "entities": [
+            {
+                "name": "Battery Min Cell Voltage (BMS)",
+                "category": Category.BATTERY_INFORMATION,
+                "unique": "solis_modbus_inverter_battery_min_cell_voltage_bms",
+                "register": ["34348"],
+                "device_class": SensorDeviceClass.VOLTAGE,
+                "multiplier": 0.001,
+                "unit_of_measurement": UnitOfElectricPotential.VOLT,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
+            {
+                "name": "Battery Max Cell Voltage (BMS)",
+                "category": Category.BATTERY_INFORMATION,
+                "unique": "solis_modbus_inverter_battery_max_cell_voltage_bms",
+                "register": ["34349"],
+                "device_class": SensorDeviceClass.VOLTAGE,
+                "multiplier": 0.001,
+                "unit_of_measurement": UnitOfElectricPotential.VOLT,
+                "state_class": SensorStateClass.MEASUREMENT,
+            },
+            {
+                "name": "Battery Min Cell Temperature (BMS)",
+                "category": Category.BATTERY_INFORMATION,
+                "unique": "solis_modbus_inverter_battery_min_cell_temperature_bms",
+                "register": ["34350"],
+                "device_class": SensorDeviceClass.TEMPERATURE,
+                "multiplier": 0.1,
+                "unit_of_measurement": UnitOfTemperature.CELSIUS,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S16,
+            },
+            {
+                "name": "Battery Max Cell Temperature (BMS)",
+                "category": Category.BATTERY_INFORMATION,
+                "unique": "solis_modbus_inverter_battery_max_cell_temperature_bms",
+                "register": ["34351"],
+                "device_class": SensorDeviceClass.TEMPERATURE,
+                "multiplier": 0.1,
+                "unit_of_measurement": UnitOfTemperature.CELSIUS,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "data_type": DataType.S16,
             },
         ],
     },
