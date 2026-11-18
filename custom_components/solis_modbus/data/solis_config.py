@@ -250,11 +250,17 @@ SOLIS_INVERTERS = [
     InverterConfig(model="S5-GR1P", wattage=[7000, 10000, 10000], phases=1, type=InverterType.GRID, features=[]),
     InverterConfig(model="S5-GR3P", wattage=[5000, 10000], phases=3, type=InverterType.GRID, features=[]),
     InverterConfig(
+        # S5-GC(25-60)K: 2 strings per MPPT (datasheets: 25-33K 3, 36-40K 4, 50K 5, 60K 6).
+        # Setup reads the count from the inverter; entries without one keep the 4 DC
+        # sensors they always had.
         model="S5-GC",
         wattage=[25000, 30000, 33000, 36000, 40000, 50000, 60000],
         phases=3,
         type=InverterType.GRID,
-        features=[],
+        features=[InverterFeature.MULTI_MPPT],
+        max_mppts=6,
+        default_mppts=LEGACY_MPPT_COUNT,
+        strings_per_mppt=2,
     ),
     InverterConfig(
         # Solis-(80-110)K-5G and -5G-PRO: 2 strings per MPPT, but the MPPT count varies

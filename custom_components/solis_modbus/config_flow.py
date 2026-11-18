@@ -41,7 +41,6 @@ from .const import (
 from .data.enums import InverterFeature
 from .data.solis_config import (
     CONNECTION_METHOD,
-    LEGACY_MPPT_COUNT,
     MAX_MPPT_COUNT,
     SOLIS_INVERTERS,
     InverterConfig,
@@ -259,7 +258,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._config_data = {}
         # (DSP, HMI) firmware versions read by the last _validate_config on a ZP model.
         self._zonneplan_firmware: tuple[int, int] | None = None
-        # MPPT count read by the last _validate_config on a multi-MPPT model.
+        # MPPT count read by the last _validate_config on a MULTI_MPPT model.
         self._detected_mppts: int | None = None
 
     async def async_step_user(self, user_input=None):
@@ -475,7 +474,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
                 if InverterFeature.ZONNEPLAN in inverter_template.features:
                     self._zonneplan_firmware = await _read_firmware_versions(client, device_id)
-                if inverter_template.max_mppts > LEGACY_MPPT_COUNT:
+                if InverterFeature.MULTI_MPPT in inverter_template.features:
                     self._detected_mppts = await _read_mppt_count(client, device_id, inverter_template)
                 return True, None
             except Exception as e:
