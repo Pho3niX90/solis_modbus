@@ -257,7 +257,9 @@ SOLIS_INVERTERS = [
         wattage=[25000, 30000, 33000, 36000, 40000, 50000, 60000],
         phases=3,
         type=InverterType.GRID,
-        features=[InverterFeature.MULTI_MPPT],
+        # Confirmed answering 3110-3115 on an S5-GC30K (issue #569); other string
+        # models stay off until one is confirmed, as a timeout drops the link.
+        features=[InverterFeature.MULTI_MPPT, InverterFeature.INTERNAL_EPM],
         max_mppts=6,
         default_mppts=LEGACY_MPPT_COUNT,
         strings_per_mppt=2,

@@ -17,7 +17,7 @@ from homeassistant import data_entry_flow
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solis_modbus.const import CONF_MPPT_COUNT, CONN_TYPE_TCP, CONTROLLER, DOMAIN, REGISTER, SLAVE, VALUE
-from custom_components.solis_modbus.data.enums import InverterFeature, InverterType
+from custom_components.solis_modbus.data.enums import InverterFeature, InverterType, PollSpeed
 from custom_components.solis_modbus.data.solis_config import (
     LEGACY_MPPT_COUNT,
     SOLIS_INVERTERS,
@@ -188,11 +188,16 @@ def test_gc_model():
     assert (template.max_mppts, template.default_mppts, template.strings_per_mppt) == (6, 4, 2)
 
 
-def test_existing_gc_entries_keep_dc_1_to_4_and_gain_the_string_currents():
+def test_existing_gc_entries_keep_dc_1_to_4_and_gain_the_string_currents(monkeypatch):
     """No count stored: the same DC 1-4 entities and reads as before, plus 8 string currents."""
-    # S5-GR3P is a 3-phase grid model without MULTI_MPPT: what S5-GC selected before.
-    before_shape, before_derived = _select("S5-GR3P")
     shape, derived = _select(GC_MODEL)
+    # The S5-GC as it was before MULTI_MPPT: same template, no multi-MPPT fields.
+    template = _template(GC_MODEL)
+    monkeypatch.setattr(template, "_intrinsic_features", [f for f in template._intrinsic_features if f != InverterFeature.MULTI_MPPT])
+    monkeypatch.setattr(template, "max_mppts", LEGACY_MPPT_COUNT)
+    monkeypatch.setattr(template, "strings_per_mppt", 0)
+    before_shape, before_derived = _select(GC_MODEL)
+    monkeypatch.undo()
     assert _config(GC_MODEL).mppt_count == LEGACY_MPPT_COUNT
     uniques = _uniques(GC_MODEL)
     for n in range(1, 5):
@@ -227,6 +232,12 @@ def test_gc_count_sets_entities_and_reads(count, strings, mppt_block):
     assert (string_block[0], string_block[-1]) == (3286, 3299 + strings)
     block = _group(GC_MODEL, 3503, entry)
     assert (block[0], block[-1]) == mppt_block if mppt_block else block is None
+
+
+def test_multi_mppt_groups_are_the_last_normal_groups():
+    """A timeout ends the batch, so no other normal-speed group may come after these."""
+    normal = [g["register_start"] for g in string_sensors if g.get("poll_speed", PollSpeed.NORMAL) == PollSpeed.NORMAL]
+    assert normal[-2:] == [3286, 3503]
 
 
 def test_gc_with_three_mppts_stops_reading_dc_4():

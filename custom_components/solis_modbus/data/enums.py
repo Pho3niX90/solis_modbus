@@ -38,6 +38,8 @@ class InverterFeature(Enum):
     # 3286-3319) and MPPT 5-15 from the per-MPPT voltage/current block (wire
     # 3503-3543). How many are created follows the entry's MPPT count.
     MULTI_MPPT = "multi_mppt"
+    # Export limit held by the inverter itself (string map 3110-3113 / 3150-3151), issue #569.
+    INTERNAL_EPM = "internal_epm"
 
 
 class Category(Enum):

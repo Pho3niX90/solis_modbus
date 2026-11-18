@@ -45,8 +45,9 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 
 ### Configuration
 **Connection Type**:
-- **TCP (WiFi Dongle)**: Use for Data Logging Sticks (DLS) or WiFi dongles. Requires IP and Port (Default 502).
-- **Serial (RS485)**: Use for direct USB-RS485 connection. Requires Serial Port path. On Home Assistant 2026.5+ you pick the port from a list (choose *Enter manually* for `socket://` or `rfc2217://` gateways). ESPHome serial proxies such as **Home Assistant Connect AUX-2** are supported too; see the [Connect AUX-2 guide](https://solis-modbus.readthedocs.io/en/latest/connect-aux-2.html). On Home Assistant 2026.9+ the port also shows up under **Settings → Connectivity → Serial** as used by Solis Modbus.
+- **TCP (WiFi Dongle)**: Native Modbus TCP connection, typically used with Solis Data Logging Sticks (DLS), WiFi dongles, or Ethernet gateways that convert Modbus RTU to Modbus TCP. Requires an IP address and port (default: 502)
+- **Serial (RS485)**: Modbus RTU connection using a directly connected USB-RS485 adapter or supported serial proxy. Requires a serial port or device path, which can be selected from a list or entered manually on Home Assistant 2026.5+. Also supports `socket://` and `rfc2217://` serial gateways, although `socket://` connections may not reliably recover following network interruptions.  ESPHome serial proxies such as **Home Assistant Connect AUX-2** are supported too; see the [Connect AUX-2 guide](https://solis-modbus.readthedocs.io/en/latest/connect-aux-2.html). On Home Assistant 2026.9+ the port also shows up under **Settings → Connectivity → Serial** as used by Solis Modbus.
+- **RTU over TCP (RS485 Ethernet Gateway)**: Modbus RTU communication over a TCP connection, intended for transparent RS485-to-Ethernet gateways that forward raw Modbus RTU frames without converting them to Modbus TCP. Requires an IP address and port (default: 502).
 
 **Inverter Serial**: (Required)
 - Enter your inverter's serial number. This is now **mandatory** for generating unique entity IDs and ensuring configuration stability.
@@ -336,7 +337,7 @@ Have a model that works but isn't listed? Open an issue or discussion so it can 
 | Connection | Works | Notes |
 |-|-|-|
 | Solis S2-WL-ST WiFi stick | ✅ | Some newer firmware closes local port 502; see [Troubleshooting](#troubleshooting) |
-| Waveshare RS485-to-Ethernet | ✅ | |
+| Waveshare RS485-to-Ethernet | ✅ | Original metal-cased version uses RTU-over-TCP. Later RS485 TO ETH (B)/(C) models, including PoE variants, support Modbus TCP-to-RTU protocol conversion and can be configured to use native Modbus TCP |
 | Elfin EW11 RS485-to-WiFi | ✅ | [#179](https://github.com/Pho3niX90/solis_modbus/issues/179), [#432](https://github.com/Pho3niX90/solis_modbus/issues/432) |
 | USB-RS485 adapter | ✅ | [#410](https://github.com/Pho3niX90/solis_modbus/issues/410) |
 | ESPHome serial proxy, e.g. Home Assistant Connect AUX-2 | ✅ | [Connect AUX-2 guide](https://solis-modbus.readthedocs.io/en/latest/connect-aux-2.html) |

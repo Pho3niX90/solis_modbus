@@ -17,6 +17,7 @@ ENTITIES = "entities"
 # Connection types
 CONN_TYPE_TCP = "tcp"
 CONN_TYPE_SERIAL = "serial"
+CONN_TYPE_RTU_TCP = "rtu_tcp"
 
 # Serial connection parameters
 CONF_SERIAL_PORT = "serial_port"

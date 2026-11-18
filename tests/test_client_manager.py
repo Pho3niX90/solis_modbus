@@ -7,6 +7,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pymodbus import FramerType
 from pymodbus.framer import FramerRTU
 from pymodbus.pdu.register_message import ReadInputRegistersRequest
 
@@ -58,6 +59,65 @@ class TestModbusClientManager(unittest.TestCase):
 
         # Non-existent
         self.assertIsNone(self.manager.get_client_lock("9.9.9.9:502"))
+
+    @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+    def test_rtu_tcp_client_uses_rtu_framer(self, mock_client_cls):
+        """RTU-over-TCP must use RTU framing rather than Modbus TCP framing."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        client = self.manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+
+        mock_client_cls.assert_called_once_with(
+            host="1.2.3.4",
+            port=502,
+            timeout=5,
+            retries=1,
+            framer=FramerType.RTU,
+        )
+        self.assertIs(client, mock_client)
+        self.assertEqual(
+            self.manager._clients["rtu_tcp:1.2.3.4:502"]["ref_count"],
+            1,
+        )
+
+    @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+    def test_tcp_and_rtu_tcp_clients_are_separate(self, mock_client_cls):
+        """Different protocols on the same endpoint must not share a client."""
+        tcp_client = MagicMock()
+        rtu_client = MagicMock()
+        mock_client_cls.side_effect = [tcp_client, rtu_client]
+
+        tcp = self.manager.get_tcp_client("1.2.3.4", 502)
+        rtu = self.manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+
+        self.assertIs(tcp, tcp_client)
+        self.assertIs(rtu, rtu_client)
+        self.assertIsNot(tcp, rtu)
+        self.assertEqual(mock_client_cls.call_count, 2)
+
+        self.assertIn("1.2.3.4:502", self.manager._clients)
+        self.assertIn("rtu_tcp:1.2.3.4:502", self.manager._clients)
+
+        self.assertIsNot(
+            self.manager.get_client_lock("1.2.3.4:502"),
+            self.manager.get_client_lock("rtu_tcp:1.2.3.4:502"),
+        )
+
+    @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+    def test_rtu_tcp_client_is_reused(self, mock_client_cls):
+        """Multiple RTU-over-TCP users share one client and reference count."""
+        mock_client_cls.return_value = MagicMock()
+
+        client1 = self.manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+        client2 = self.manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+
+        self.assertIs(client1, client2)
+        mock_client_cls.assert_called_once()
+        self.assertEqual(
+            self.manager._clients["rtu_tcp:1.2.3.4:502"]["ref_count"],
+            2,
+        )
 
     @patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
     def test_release_client(self, mock_client_cls):

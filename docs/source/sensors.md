@@ -710,6 +710,9 @@ This is only required if your values are higher than expected, if you aren't exp
 | Actual Adjusted Power Factor                             |                | %                    | MEASUREMENT      | 3050         |
 | Actual Power Factor Adjustment                           |                |                      | MEASUREMENT      | 3051         |
 | Power Limitation Switch (89)                             |                |                      | MEASUREMENT      | 3089         |
+| Export Control Mode                                      |                |                      |                  | 3110         |
+| Export Power Limit                                       | POWER          | WATT                 |                  | 3111         |
+| Export Control Live Export Power                         | POWER          | WATT                 | MEASUREMENT      | 3113         |
 | Shading MPPT Scan Enable                                 | VOLTAGE        | VOLT                 | MEASUREMENT      | 3179         |
 | Shading MPPT Scan Time Interval                          |                | MINUTES              | MEASUREMENT      | 3180         |
 | Meter AC Voltage A                                       | VOLTAGE        | VOLT                 | MEASUREMENT      | 3250         |
