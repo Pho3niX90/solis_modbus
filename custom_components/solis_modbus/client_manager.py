@@ -3,10 +3,10 @@ import logging
 import time
 
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
-from pymodbus.framer import FramerRTU
+from pymodbus.framer import FramerRTU, FramerType
 from pymodbus.pdu import DecodePDU
 
-from custom_components.solis_modbus.const import CONN_TYPE_SERIAL, CONN_TYPE_TCP
+from custom_components.solis_modbus.const import CONN_TYPE_RTU_TCP, CONN_TYPE_SERIAL, CONN_TYPE_TCP
 from custom_components.solis_modbus.rtu_framer import EarlyEnd, ResyncFramerRTU
 from custom_components.solis_modbus.serial_proxy import SerialProxyClient, is_serial_proxy
 
@@ -82,21 +82,31 @@ class ModbusClientManager:
             cls._instance = cls()
         return cls._instance
 
-    def get_tcp_client(self, host: str, port: int) -> AsyncModbusTcpClient:
-        """Get or create a TCP Modbus client."""
-        key = f"{host}:{port}"
+    def get_tcp_client(self, host: str, port: int, *, rtu: bool = False) -> AsyncModbusTcpClient:
+        """Get or create a TCP socket client with Modbus TCP or RTU framing."""
+        key = f"rtu_tcp:{host}:{port}" if rtu else f"{host}:{port}"
         if key not in self._clients:
-            _LOGGER.debug(f"Creating new Modbus TCP client for {host}:{port}")
+            _LOGGER.debug("Creating new %s client for %s:%s", "RTU-over-TCP" if rtu else "Modbus TCP", host, port)
             # retries=1: the integration has its own reconnect watchdog and per-group
             # recovery. pymodbus-level retry storms (5 × 5 s per dead group) flood the
             # S2-WL datalogger, desync transaction IDs, and starve its cloud uplink
             # (issues #395/#406).
-            client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
+            client_kwargs = {
+                "host": host,
+                "port": port,
+                "timeout": 5,
+                "retries": 1,
+            }
+
+            if rtu:
+                client_kwargs["framer"] = FramerType.RTU
+
+            client = AsyncModbusTcpClient(**client_kwargs)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,
                 "lock": asyncio.Lock(),
-                "type": CONN_TYPE_TCP,
+                "type": CONN_TYPE_RTU_TCP if rtu else CONN_TYPE_TCP,
                 "last_modbus_request": 0.0,
             }
 
