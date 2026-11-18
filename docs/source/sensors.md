@@ -729,6 +729,62 @@ This is only required if your values are higher than expected, if you aren't exp
 | Meter Grid Frequency                                     | FREQUENCY      | HERTZ                | MEASUREMENT      | 3281         |
 | Meter Grid Import Total Energy                           | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 3282, 3283   |
 | Meter Grid Export Total Energy                           | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 3284, 3285   |
+| PV String Voltage Current Combination                    |                |                      |                  | 3286         |
+| Total PV Voltage                                         | VOLTAGE        | VOLT                 | MEASUREMENT      | 3298         |
+| Total PV Current                                         | CURRENT        | AMPERE               | MEASUREMENT      | 3299         |
+| PV String Current 1                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3300         |
+| PV String Current 2                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3301         |
+| PV String Current 3                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3302         |
+| PV String Current 4                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3303         |
+| PV String Current 5                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3304         |
+| PV String Current 6                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3305         |
+| PV String Current 7                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3306         |
+| PV String Current 8                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3307         |
+| PV String Current 9                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3308         |
+| PV String Current 10                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3309         |
+| PV String Current 11                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3310         |
+| PV String Current 12                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3311         |
+| PV String Current 13                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3312         |
+| PV String Current 14                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3313         |
+| PV String Current 15                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3314         |
+| PV String Current 16                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3315         |
+| PV String Current 17                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3316         |
+| PV String Current 18                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3317         |
+| PV String Current 19                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3318         |
+| PV String Current 20                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3319         |
+| DC Power 5                                               | POWER          | WATT                 | MEASUREMENT      | 3503, 3533   |
+| DC Voltage 5                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3503         |
+| DC Power 6                                               | POWER          | WATT                 | MEASUREMENT      | 3504, 3534   |
+| DC Voltage 6                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3504         |
+| DC Power 7                                               | POWER          | WATT                 | MEASUREMENT      | 3505, 3535   |
+| DC Voltage 7                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3505         |
+| DC Power 8                                               | POWER          | WATT                 | MEASUREMENT      | 3506, 3536   |
+| DC Voltage 8                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3506         |
+| DC Power 9                                               | POWER          | WATT                 | MEASUREMENT      | 3507, 3537   |
+| DC Voltage 9                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3507         |
+| DC Power 10                                              | POWER          | WATT                 | MEASUREMENT      | 3508, 3538   |
+| DC Voltage 10                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3508         |
+| DC Power 11                                              | POWER          | WATT                 | MEASUREMENT      | 3509, 3539   |
+| DC Voltage 11                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3509         |
+| DC Power 12                                              | POWER          | WATT                 | MEASUREMENT      | 3510, 3540   |
+| DC Voltage 12                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3510         |
+| DC Power 13                                              | POWER          | WATT                 | MEASUREMENT      | 3511, 3541   |
+| DC Voltage 13                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3511         |
+| DC Power 14                                              | POWER          | WATT                 | MEASUREMENT      | 3512, 3542   |
+| DC Voltage 14                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3512         |
+| DC Power 15                                              | POWER          | WATT                 | MEASUREMENT      | 3513, 3543   |
+| DC Voltage 15                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3513         |
+| DC Current 5                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3533         |
+| DC Current 6                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3534         |
+| DC Current 7                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3535         |
+| DC Current 8                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3536         |
+| DC Current 9                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3537         |
+| DC Current 10                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3538         |
+| DC Current 11                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3539         |
+| DC Current 12                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3540         |
+| DC Current 13                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3541         |
+| DC Current 14                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3542         |
+| DC Current 15                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3543         |
 | EPM Model No                                             |                |                      |                  | 36013        |
 | Inverter EPM Firmware Version                            |                |                      |                  | 36014        |
 | Clock (Hours)                                            |                | HOURS                | MEASUREMENT      | 36022        |
