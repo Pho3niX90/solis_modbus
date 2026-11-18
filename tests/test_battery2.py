@@ -231,3 +231,86 @@ def test_battery2_soc_gets_the_same_spike_filter_as_battery1():
             assert retrieval.spike_filtering(register, 0) == 42
             assert retrieval.spike_filtering(register, 0) == 0  # persistent: accepted
             assert retrieval.spike_filtering(register, 41) == 41
+
+
+async def _run_polls(hass, polls):
+    """Drive real DataRetrieval batches into a real Combined Power sensor.
+
+    ``polls`` is a list of {group_start: values-or-None}; None makes that group's
+    read fail in that poll. Returns every value the combined sensor published.
+    """
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.solis_modbus.const import DOMAIN, VALUES
+    from custom_components.solis_modbus.data.enums import PollSpeed
+    from custom_components.solis_modbus.data_retrieval import DataRetrieval
+    from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
+
+    sensor = _derived(hass, [33149, 33150, 34368, 34369])
+    controller = sensor.base_sensor.controller
+    controller.enabled = True
+    controller.connected = MagicMock(return_value=True)
+    controller.last_read_unanswered = False
+    controller.poll_speed = {PollSpeed.FAST: 10, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
+
+    groups = []
+    for start in (33149, 34368):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.FAST
+        group.start_register = start
+        group.registrar_count = 2
+        groups.append(group)
+    controller.sensor_groups = groups
+
+    current = {}
+
+    async def read(start, count):
+        if start == 34368:
+            await asyncio.sleep(0.05)  # BAT2 answers late within its poll
+        values = current[start]
+        return (values, None) if values is not None else (None, None)
+
+    controller.async_read_input_registers_with_exception = AsyncMock(side_effect=read)
+
+    published = []
+    poll_hass = MagicMock()
+    poll_hass.is_running = False
+    poll_hass.data = {DOMAIN: {VALUES: {}}}
+
+    def deliver(_hass, _signal, payload):
+        sensor.handle_modbus_update(payload)
+
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval"),
+        patch("custom_components.solis_modbus.helpers.async_dispatcher_send", side_effect=deliver),
+        patch.object(DataRetrieval, "_image_is_blank", AsyncMock(return_value=False)),
+        patch.object(sensor, "schedule_update_ha_state", side_effect=lambda: published.append(sensor.native_value)),
+    ):
+        retrieval = DataRetrieval(poll_hass, controller)
+        retrieval._can_poll = MagicMock(return_value=True)
+        for poll in polls:
+            current.clear()
+            current.update(poll)
+            await retrieval.get_modbus_updates(groups, PollSpeed.FAST)
+    return published
+
+
+async def test_poller_publishes_a_poll_whose_bat2_read_is_delayed(hass):
+    """Readings from one poll are combined however late the second group answers."""
+    published = await _run_polls(hass, [{33149: [0xFFFF, 0xF704], 34368: [0xFFFF, 0xF63C]}])
+    assert published == [-4800]
+
+
+async def test_poller_never_mixes_polls_after_a_failed_bat1_block(hass):
+    """Poll 1: BAT1 fails, BAT2 -1000 W. Poll 2 and 3 succeed. Only same-poll sums are published."""
+    published = await _run_polls(
+        hass,
+        [
+            {33149: None, 34368: [0xFFFF, 0xFC18]},
+            {33149: [0xFFFF, 0xF704], 34368: [0xFFFF, 0xF63C]},
+            {33149: [0xFFFF, 0xF768], 34368: [0xFFFF, 0xF6A0]},
+        ],
+    )
+    # -2300 + -1000 (poll 2 BAT1 with poll 1 BAT2) must never appear.
+    assert published == [-4800, -4600]
