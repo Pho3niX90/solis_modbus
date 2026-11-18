@@ -124,13 +124,15 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Mantieni le letture dell'inverter in parallelo senza funzionamento in parallelo (installazioni esistenti)",
           "zonneplan_scaling": "Correzione energia batteria Zonneplan (solo S6-EH3P10K-H-ZP; disattivala se l'energia della batteria è 10x troppo bassa)",
+          "mppt_count": "Numero di MPPT (sensori di tensione/corrente/potenza DC per MPPT; fino a 4 sulla maggior parte dei modelli, fino a 15 sugli inverter di stringa multi-MPPT)",
           "has_dual_meter": "Secondo contatore intelligente installato (configurazione doppio contatore Rete + inverter FV)",
           "has_epm": "EPM / gestore potenza di esportazione installato (registri contatore 36xxx)"
         }
       }
     },
     "error": {
-      "poll_interval_below_floor": "L'intervallo di polling veloce è inferiore al minimo per il profilo selezionato. Solo il profilo estremo consente intervalli inferiori a 10s (minimo 2s)."
+      "poll_interval_below_floor": "L'intervallo di polling veloce è inferiore al minimo per il profilo selezionato. Solo il profilo estremo consente intervalli inferiori a 10s (minimo 2s).",
+      "mppt_count_above_model_max": "Questo modello di inverter non può riportare così tanti MPPT. La maggior parte dei modelli ne riporta fino a 4; gli inverter di stringa multi-MPPT fino a 15."
     }
   },
   "services": {

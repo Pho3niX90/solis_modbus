@@ -19,6 +19,10 @@ FLEXIBLE_EXPORT_OFF = "Off"
 FLEXIBLE_EXPORT_ACTIVE = "Active"
 FLEXIBLE_EXPORT_BLOCKED = "Export Blocked"
 
+# Wire addresses of DC Voltage 5-15 (doc 3504-3514) on multi-MPPT string inverters;
+# MPPT 1-4 use the classic 3021-3028 path.
+MULTI_MPPT_VOLTAGE_REGISTERS = frozenset(range(3503, 3514))
+
 
 class SolisDerivedSensor(RestoreSensor, SensorEntity):
     """Representation of a Modbus derived/calculated sensor."""
@@ -78,6 +82,10 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
         if not is_correct_controller(self.base_sensor.controller, updated_controller, updated_controller_slave):
             return  # meant for a different sensor/inverter combo
+
+        if updated_register in self._register and self._register[0] in MULTI_MPPT_VOLTAGE_REGISTERS:
+            self._handle_mppt_power_update(updated_register, data.get(VALUE))
+            return
 
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
@@ -217,6 +225,33 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
 
             # Clear received values after update
             self._received_values.clear()
+
+    def _handle_mppt_power_update(self, updated_register: int, value) -> None:
+        """DC Power [n] = DC Voltage [n] × DC Current [n] (signed) for MPPT 5-15 on multi-MPPT string inverters.
+
+        Both registers come from one block, voltage (3503–3513) before current
+        (3533–3543). Only a voltage followed by a current of the same read is
+        multiplied: a voltage starts a new pair and drops any older current, and a
+        current with no voltage before it is dropped. So a read that misses one of
+        the two values never multiplies a fresh value by a stale one.
+        """
+        voltage_register, current_register = self._register[0], self._register[1]
+
+        if updated_register == voltage_register:
+            self._received_values = {voltage_register: value}
+            return
+
+        voltage_raw = self._received_values.get(voltage_register)
+        self._received_values.clear()
+        if updated_register != current_register or voltage_raw is None or value is None:
+            return
+
+        current_raw = value - 0x10000 if value >= 0x8000 else value
+        new_value = round(voltage_raw * self.base_sensor.multiplier * current_raw * self.base_sensor.multiplier)
+        self._attr_available = True
+        self._attr_native_value = new_value
+        self._state = new_value
+        self.schedule_update_ha_state()
 
     def _update_device_sw_version(self, protocol_version) -> None:
         """Push the decoded protocol version into the device registry.

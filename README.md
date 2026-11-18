@@ -55,6 +55,10 @@ Whilst the solis inverters do provide total sensors for today, yesterday, month 
 **Poll Interval**:
 - Customize how frequently sensors update. Faster polling provides more real-time data but increases Modbus load.
 
+**Number of MPPTs** (under *Configure*):
+- How many DC voltage, current and power sensors to create, one set per MPPT. Most models report up to 4, and existing setups keep all 4 until you lower it.
+- Multi-MPPT string inverters (`3P(80-110)K-5G` up to 15, `S5-GC` up to 6) also get a current sensor for each PV string, two per MPPT. Setup reads the count from the inverter (DC input type and string layout); if the read fails it uses the model default (10 for `3P(80-110)K-5G`, 4 for `S5-GC`), which you can correct here. Existing `S5-GC` setups keep DC 1-4: set the count here, for example 3 on a 25-33K.
+
 ### What's new in 4.2.3
 
 **Fix for [#452](https://github.com/Pho3niX90/solis_modbus/issues/452)** — v4.2.0 could create duplicate entities (original `Unavailable`, new live copy often with a location prefix in the `entity_id`) when sensor definition dicts changed.
@@ -322,7 +326,8 @@ Solis and equivalent Axitec and Zonneplan inverters that users have confirmed wo
 | S6-GR1P4K | `S6-GR1P` | | [#84](https://github.com/Pho3niX90/solis_modbus/issues/84) |
 | S5-GR1P8K | `S5-GR1P` | Reading works; power-limit control not confirmed | [#321](https://github.com/Pho3niX90/solis_modbus/issues/321) |
 | S5-GR3P | `S5-GR3P` | Has no EPM; grid totals come from the attached meter | [#410](https://github.com/Pho3niX90/solis_modbus/issues/410), [#466](https://github.com/Pho3niX90/solis_modbus/issues/466) |
-| S5-GC30K, S5-GC60K | `S5-GC` | | [#173](https://github.com/Pho3niX90/solis_modbus/issues/173), [#180](https://github.com/Pho3niX90/solis_modbus/issues/180#issuecomment-2887414843) |
+| S5-GC30K, S5-GC60K | `S5-GC` | 3-6 MPPTs (25-33K 3, 36-40K 4, 50K 5, 60K 6) and a current sensor per PV string. The string and MPPT 5-6 registers are untested on this model | [#173](https://github.com/Pho3niX90/solis_modbus/issues/173), [#180](https://github.com/Pho3niX90/solis_modbus/issues/180#issuecomment-2887414843) |
+| Solis-100K-5G | `3P(80-110)K-5G` | 10 MPPTs and 20 PV string currents, plus total PV voltage/current. Other 80-110K-5G and -5G-PRO sizes have 6-10 MPPTs and should work with the count read at setup, but are untested | [#570](https://github.com/Pho3niX90/solis_modbus/issues/570), [#571](https://github.com/Pho3niX90/solis_modbus/pull/571) |
 | 3P6K-4G | `3P(3-20)K-4G` | Some energy totals and clock entities unavailable | [#210](https://github.com/Pho3niX90/solis_modbus/issues/210) |
 | 1P3.6K-4G | `1P(2.5-6)K-4G` | | [#230](https://github.com/Pho3niX90/solis_modbus/issues/230) |
 

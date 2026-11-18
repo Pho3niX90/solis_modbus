@@ -118,6 +118,7 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Keep parallel inverter readings without parallel operation (existing installs)",
           "zonneplan_scaling": "Zonneplan battery energy correction (S6-EH3P10K-H-ZP only; turn off if battery energy reads 10x too low)",
+          "mppt_count": "Number of MPPTs (DC voltage/current/power sensors per MPPT; up to 4 on most models, up to 15 on multi-MPPT string inverters)",
           "has_battery": "Has Battery Storage",
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
@@ -130,7 +131,8 @@
       }
     },
     "error": {
-      "poll_interval_below_floor": "Fast poll interval is below the minimum for the selected poll profile. Only the extreme profile allows intervals below 10s (minimum 2s)."
+      "poll_interval_below_floor": "Fast poll interval is below the minimum for the selected poll profile. Only the extreme profile allows intervals below 10s (minimum 2s).",
+      "mppt_count_above_model_max": "That many MPPTs is more than this inverter model can report. Most models report up to 4; multi-MPPT string inverters up to 15."
     }
   },
   "services": {
