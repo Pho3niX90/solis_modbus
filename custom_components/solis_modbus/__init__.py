@@ -25,6 +25,7 @@ from .const import (
     CONF_SLAVE,
     CONF_STOPBITS,
     CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
+    CONN_TYPE_RTU_TCP,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -619,8 +620,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     port = config.get("port", 502)
 
     # ... (Rest of your function remains the same) ...
-    if connection_type == CONN_TYPE_TCP:
-        connection_id = f"{host}:{port}"
+    if connection_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
+        connection_id = f"rtu_tcp:{host}:{port}" if connection_type == CONN_TYPE_RTU_TCP else f"{host}:{port}"
     else:  # Serial
         serial_port = config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0")
         connection_id = serial_port
@@ -697,7 +698,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "serial_number": inverter_serial,
     }
 
-    if connection_type == CONN_TYPE_TCP:
+    if connection_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
         controller_params["host"] = host
         controller_params["port"] = port
     else:  # Serial
