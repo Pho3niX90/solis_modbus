@@ -196,7 +196,9 @@ SOLIS_INVERTERS = [
         wattage=[25000, 30000, 33000, 36000, 40000, 50000, 60000],
         phases=3,
         type=InverterType.GRID,
-        features=[],
+        # Confirmed answering 3110-3115 on an S5-GC30K (issue #569); other string
+        # models stay off until one is confirmed, as a timeout drops the link.
+        features=[InverterFeature.INTERNAL_EPM],
     ),
     InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID, features=[]),
