@@ -19,6 +19,7 @@ class InverterOptions:
         parallel_readings: bool = False,
         zonneplan_scaling: bool = True,
         battery2: bool = False,
+        mppt_count: int | None = None,
     ):
         self.pv = pv
         self.battery = battery
@@ -38,6 +39,18 @@ class InverterOptions:
         self.zonneplan_scaling = zonneplan_scaling
         # Second battery on BAT2 with its own BMS (S6-EH3P dual-battery models).
         self.battery2 = battery2
+        # MPPTs wired on this unit (see CONF_MPPT_COUNT); None keeps the model's default.
+        self.mppt_count = mppt_count
+
+
+# Every model reads MPPT 1-4 from its classic DC voltage/current registers (3021-3028
+# on string inverters, 33049-33056 on hybrids). Entries set up before the MPPT count
+# existed have no count stored and keep exactly these four.
+LEGACY_MPPT_COUNT = 4
+# The multi-MPPT block (3500/3530 in the protocol) defines MPPT 1-15.
+MAX_MPPT_COUNT = 15
+# PV string currents the protocol lists (3301-3320, wire 3300-3319).
+MAX_STRING_COUNT = 20
 
 
 class InverterConfig:
@@ -50,6 +63,9 @@ class InverterConfig:
         options: InverterOptions | None = None,
         connection="S2_WL_ST",
         features=None,
+        max_mppts: int = LEGACY_MPPT_COUNT,
+        default_mppts: int | None = None,
+        strings_per_mppt: int = 0,
     ):
         if features is None:
             features = []
@@ -63,6 +79,12 @@ class InverterConfig:
         self.options = options
         self.connection = connection
         self.wattage_chosen = max(wattage)
+        # Most MPPTs this model can report; more than 4 needs the multi-MPPT registers.
+        self.max_mppts = max_mppts
+        # Count used when the entry stores none and detection found nothing.
+        self.default_mppts = default_mppts if default_mppts is not None else min(max_mppts, LEGACY_MPPT_COUNT)
+        # PV strings per MPPT on models that report per-string currents (0 = none).
+        self.strings_per_mppt = strings_per_mppt
         self._rebuild_features()
 
     def _rebuild_features(self) -> None:
@@ -100,6 +122,17 @@ class InverterConfig:
         self.features: list[InverterFeature] = feats
 
     @property
+    def mppt_count(self) -> int:
+        """MPPTs to create entities for: the user's or detected count, else the model default, within 1..max_mppts."""
+        count = self.options.mppt_count if self.options.mppt_count is not None else self.default_mppts
+        return max(1, min(int(count), self.max_mppts))
+
+    @property
+    def string_count(self) -> int:
+        """PV string currents to create entities for (0 on models without per-string readings)."""
+        return min(self.mppt_count * self.strings_per_mppt, MAX_STRING_COUNT)
+
+    @property
     def probe_register(self) -> int:
         """An input register every inverter of this type answers, for checking a unit responds."""
         return 3041 if self.type in [InverterType.GRID, InverterType.STRING] else 35000
@@ -119,6 +152,9 @@ class InverterConfig:
             options=options,
             connection=connection,
             features=list(self._intrinsic_features),
+            max_mppts=self.max_mppts,
+            default_mppts=self.default_mppts,
+            strings_per_mppt=self.strings_per_mppt,
         )
 
 
@@ -138,7 +174,29 @@ def inverter_options_from_config(config: dict, template: InverterConfig) -> Inve
         parallel_readings=config.get("parallel_readings", False),
         zonneplan_scaling=config.get("zonneplan_scaling", True),
         battery2=config.get("has_battery2", False),
+        mppt_count=config.get("mppt_count"),
     )
+
+
+# DC input type (wire 3003) holds the number of PV inputs minus one; the string
+# combination register (wire 3286) says how many string currents share one MPPT
+# voltage: 0 = two, 3 = three. Field-verified on a Solis-100K-5G: 19 and 0, 10 MPPTs.
+STRINGS_PER_MPPT_BY_COMBINATION = {0: 2, 3: 3}
+
+
+def mppt_count_from_registers(dc_input_type: int, combination: int, template: InverterConfig) -> int | None:
+    """MPPT count read from the inverter, or None when the registers don't fit this model.
+
+    The string combination has to match the model's strings per MPPT, since the
+    string current entities are laid out from that.
+    """
+    if STRINGS_PER_MPPT_BY_COMBINATION.get(combination) != template.strings_per_mppt or template.strings_per_mppt == 0:
+        return None
+    inputs = dc_input_type + 1
+    if inputs % template.strings_per_mppt:
+        return None
+    count = inputs // template.strings_per_mppt
+    return count if 1 <= count <= template.max_mppts else None
 
 
 # Firmware (registers 33001/33002) from which an S6-EH3P10K-H-ZP sends the standard
@@ -198,11 +256,32 @@ SOLIS_INVERTERS = [
     InverterConfig(model="S5-GR1P", wattage=[7000, 10000, 10000], phases=1, type=InverterType.GRID, features=[]),
     InverterConfig(model="S5-GR3P", wattage=[5000, 10000], phases=3, type=InverterType.GRID, features=[]),
     InverterConfig(
+        # S5-GC(25-60)K: 2 strings per MPPT (datasheets: 25-33K 3, 36-40K 4, 50K 5, 60K 6).
+        # Setup reads the count from the inverter; entries without one keep the 4 DC
+        # sensors they always had.
         model="S5-GC",
         wattage=[25000, 30000, 33000, 36000, 40000, 50000, 60000],
         phases=3,
         type=InverterType.GRID,
-        features=[],
+        # Confirmed answering 3110-3115 on an S5-GC30K (issue #569); other string
+        # models stay off until one is confirmed, as a timeout drops the link.
+        features=[InverterFeature.MULTI_MPPT, InverterFeature.INTERNAL_EPM],
+        max_mppts=6,
+        default_mppts=LEGACY_MPPT_COUNT,
+        strings_per_mppt=2,
+    ),
+    InverterConfig(
+        # Solis-(80-110)K-5G and -5G-PRO: 2 strings per MPPT, but the MPPT count varies
+        # (datasheets: 80K-5G 9, 100K-5G 10, 80K-5G-PRO 6, 100/110K-5G-PRO 8). Setup
+        # reads it from the inverter; 10 is the field-verified Solis-100K-5G.
+        model="3P(80-110)K-5G",
+        wattage=[80000, 90000, 100000, 110000],
+        phases=3,
+        type=InverterType.GRID,
+        features=[InverterFeature.MULTI_MPPT],
+        max_mppts=MAX_MPPT_COUNT,
+        default_mppts=10,
+        strings_per_mppt=2,
     ),
     InverterConfig(model="RHI-*", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=3, type=InverterType.HYBRID, features=[]),
     InverterConfig(model="RHI-1P", wattage=[3000, 4000, 5000, 6000, 8000, 10000], phases=1, type=InverterType.HYBRID, features=[]),

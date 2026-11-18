@@ -296,6 +296,36 @@ def group_in_poll_profile(group: dict, profile: str, include_battery: bool = Fal
     return True
 
 
+def _above_mppt_count(entity: dict, mppt_count: int, string_count: int) -> bool:
+    return entity.get("mppt", 0) > mppt_count or entity.get("string", 0) > string_count
+
+
+def apply_mppt_count(groups: list[dict], derived: list[dict], mppt_count: int, string_count: int) -> tuple[list[dict], list[dict]]:
+    """Keep only the per-MPPT and per-string entities the inverter has.
+
+    Entities tagged "mppt" n (DC voltage/current/power n) or "string" k (PV string
+    current k) above the counts become reserves, so the rest of their block still
+    reads in one request; reserves left at the end of a block are not read, and a
+    block left with nothing but reserves is dropped. Groups and entities without the
+    tags pass through untouched, as do all of them at the legacy count of 4 with no
+    strings, which is what every entry made before the MPPT count gets. The sensor
+    definitions themselves are not modified.
+    """
+    trimmed_groups = []
+    for group in groups:
+        entities = group.get("entities", [])
+        if not any(_above_mppt_count(e, mppt_count, string_count) for e in entities):
+            trimmed_groups.append(group)
+            continue
+        kept = [{"type": "reserve", "register": e["register"]} if _above_mppt_count(e, mppt_count, string_count) else e for e in entities]
+        while kept and kept[-1].get("type") == "reserve":
+            kept.pop()
+        if any(e.get("type") != "reserve" for e in kept):
+            trimmed_groups.append({**group, "entities": kept})
+    trimmed_derived = [e for e in derived if not _above_mppt_count(e, mppt_count, string_count)]
+    return trimmed_groups, trimmed_derived
+
+
 def registers_declared_by(groups) -> set[int]:
     """Every register the given sensor groups actually poll."""
     registers: set[int] = set()

@@ -126,6 +126,7 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Parallelle omvormer-metingen behouden zonder parallelle werking (bestaande installaties)",
           "zonneplan_scaling": "Zonneplan-correctie batterij-energie (alleen S6-EH3P10K-H-ZP; zet uit als de batterij-energie 10x te laag is)",
+          "mppt_count": "Aantal MPPT's (DC-spanning/-stroom/-vermogen-sensoren per MPPT; tot 4 op de meeste modellen, tot 15 op multi-MPPT-stringomvormers)",
           "has_dual_meter": "Tweede slimme meter geïnstalleerd (Net + PV-omvormer dubbele-meteropstelling)",
           "has_epm": "EPM / exportvermogensbeheerder geïnstalleerd (36xxx-meterregisters)",
           "has_battery2": "Tweede batterij geïnstalleerd (BAT2 met eigen BMS)"
@@ -133,7 +134,8 @@
       }
     },
     "error": {
-      "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s)."
+      "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s).",
+      "mppt_count_above_model_max": "Zoveel MPPT's kan dit omvormermodel niet rapporteren. De meeste modellen rapporteren er tot 4; multi-MPPT-stringomvormers tot 15."
     }
   },
   "services": {

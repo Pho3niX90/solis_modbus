@@ -11,7 +11,145 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
-from custom_components.solis_modbus.data.enums import DataType, InverterFeature, PollSpeed
+from custom_components.solis_modbus.data.enums import Category, DataType, InverterFeature, PollSpeed
+
+# --- Multi-MPPT string inverters (80-110K-5G class) --------------------------------
+# MPPT 1-4 always come from DC Voltage/Current 1-4 below (3021-3028), so their
+# entities, unique IDs and history are the same on every string model. MPPT 5-15 come
+# from the protocol's per-MPPT block: voltage at doc 3500+n-1, current at doc 3530+n-1
+# (wire = doc - 1). Voltage and current are read in ONE block, so DC Power [n] always
+# multiplies a voltage and a current from the same read. Entities carry "mppt" (or
+# "string") so setup can drop the ones above the entry's MPPT count
+# (helpers.apply_mppt_count); the groups here describe the most the protocol allows.
+FIRST_EXTENDED_MPPT = 5
+MULTI_MPPT_MAX = 15
+MULTI_MPPT_STRINGS = 20
+MPPT_VOLTAGE_WIRE_BASE = 3498  # MPPT n voltage = 3498 + n (doc 3500 = MPPT 1)
+MPPT_CURRENT_WIRE_BASE = 3528  # MPPT n current = 3528 + n (doc 3530 = MPPT 1)
+STRING_CURRENT_WIRE_BASE = 3299  # string k current = 3299 + k (doc 3301 = PV1)
+
+
+def _reserve(register: int) -> dict:
+    return {"type": "reserve", "register": [str(register)]}
+
+
+def _string_group() -> dict:
+    """Doc 3287-3320: string combination, total PV voltage/current, PV string currents 1-20.
+
+    Field-verified on a Solis-100K-5G: the string currents sum to Total PV Current and
+    each MPPT current is the sum of its two strings. The Solis datalogger reads this
+    range too (3287-3300 and 3301-3338).
+    """
+    entities = [
+        {
+            # 0 = one voltage for two string currents, 3 = one voltage for three.
+            "name": "PV String Voltage Current Combination",
+            "unique": "solis_modbus_pv_string_combination",
+            "category": Category.BASIC_INFORMATION,
+            "register": ["3286"],
+            "multiplier": 1,
+        },
+        *(_reserve(r) for r in range(3287, 3298)),
+        {
+            "name": "Total PV Voltage",
+            "unique": "solis_modbus_total_pv_voltage",
+            "unit_of_measurement": UnitOfElectricPotential.VOLT,
+            "device_class": SensorDeviceClass.VOLTAGE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": ["3298"],
+            "multiplier": 0.1,
+        },
+        {
+            "name": "Total PV Current",
+            "unique": "solis_modbus_total_pv_current",
+            "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+            "device_class": SensorDeviceClass.CURRENT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": ["3299"],
+            "multiplier": 0.1,
+            "data_type": DataType.S16,
+        },
+    ]
+    for k in range(1, MULTI_MPPT_STRINGS + 1):
+        entities.append(
+            {
+                "name": f"PV String Current {k}",
+                "unique": f"solis_modbus_pv_string_current_{k}",
+                "string": k,
+                "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                "device_class": SensorDeviceClass.CURRENT,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "register": [str(STRING_CURRENT_WIRE_BASE + k)],
+                "multiplier": 0.1,
+            }
+        )
+    return {
+        "register_start": 3286,
+        "feature_requirement": [InverterFeature.MULTI_MPPT],
+        "poll_speed": PollSpeed.NORMAL,
+        "entities": entities,
+    }
+
+
+def _extended_mppt_group() -> dict:
+    """DC Voltage/Current 5-15 (doc 3504-3514 and 3534-3544), with the registers between as reserves."""
+    mppts = range(FIRST_EXTENDED_MPPT, MULTI_MPPT_MAX + 1)
+    voltages = [
+        {
+            "name": f"DC Voltage {n}",
+            "unique": f"solis_modbus_dc_voltage_{n}",
+            "mppt": n,
+            "unit_of_measurement": UnitOfElectricPotential.VOLT,
+            "device_class": SensorDeviceClass.VOLTAGE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": [str(MPPT_VOLTAGE_WIRE_BASE + n)],
+            "multiplier": 0.1,
+        }
+        for n in mppts
+    ]
+    gap = [_reserve(r) for r in range(MPPT_VOLTAGE_WIRE_BASE + MULTI_MPPT_MAX + 1, MPPT_CURRENT_WIRE_BASE + FIRST_EXTENDED_MPPT)]
+    currents = [
+        {
+            "name": f"DC Current {n}",
+            "unique": f"solis_modbus_dc_current_{n}",
+            "mppt": n,
+            "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+            "device_class": SensorDeviceClass.CURRENT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": [str(MPPT_CURRENT_WIRE_BASE + n)],
+            "multiplier": 0.1,
+            "data_type": DataType.S16,
+        }
+        for n in mppts
+    ]
+    return {
+        "register_start": MPPT_VOLTAGE_WIRE_BASE + FIRST_EXTENDED_MPPT,
+        "feature_requirement": [InverterFeature.MULTI_MPPT],
+        "poll_speed": PollSpeed.NORMAL,
+        "entities": voltages + gap + currents,
+    }
+
+
+def multi_mppt_groups() -> list[dict]:
+    return [_string_group(), _extended_mppt_group()]
+
+
+def multi_mppt_derived() -> list[dict]:
+    """DC Power 5-15 = DC Voltage [n] x DC Current [n] (signed); see SolisDerivedSensor."""
+    return [
+        {
+            "name": f"DC Power {n}",
+            "unique": f"solis_modbus_dc_power_{n}",
+            "mppt": n,
+            "device_class": SensorDeviceClass.POWER,
+            "multiplier": 0.1,
+            "unit_of_measurement": UnitOfPower.WATT,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "register": [str(MPPT_VOLTAGE_WIRE_BASE + n), str(MPPT_CURRENT_WIRE_BASE + n)],
+        }
+        for n in range(FIRST_EXTENDED_MPPT, MULTI_MPPT_MAX + 1)
+    ]
+
 
 # base on RS485_MODBUS Communication Protocol Ver19
 string_sensors = [
@@ -146,6 +284,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 1",
                 "unique": "solis_modbus_dc_voltage_1",
+                "mppt": 1,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -155,6 +294,7 @@ string_sensors = [
             {
                 "name": "DC Current 1",
                 "unique": "solis_modbus_dc_current_1",
+                "mppt": 1,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -164,6 +304,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 2",
                 "unique": "solis_modbus_dc_voltage_2",
+                "mppt": 2,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -173,6 +314,7 @@ string_sensors = [
             {
                 "name": "DC Current 2",
                 "unique": "solis_modbus_dc_current_2",
+                "mppt": 2,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -182,6 +324,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 3",
                 "unique": "solis_modbus_dc_voltage_3",
+                "mppt": 3,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -191,6 +334,7 @@ string_sensors = [
             {
                 "name": "DC Current 3",
                 "unique": "solis_modbus_dc_current_3",
+                "mppt": 3,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -200,6 +344,7 @@ string_sensors = [
             {
                 "name": "DC Voltage 4",
                 "unique": "solis_modbus_dc_voltage_4",
+                "mppt": 4,
                 "unit_of_measurement": UnitOfElectricPotential.VOLT,
                 "device_class": SensorDeviceClass.VOLTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -209,6 +354,7 @@ string_sensors = [
             {
                 "name": "DC Current 4",
                 "unique": "solis_modbus_dc_current_4",
+                "mppt": 4,
                 "unit_of_measurement": UnitOfElectricCurrent.AMPERE,
                 "device_class": SensorDeviceClass.CURRENT,
                 "state_class": SensorStateClass.MEASUREMENT,
@@ -661,12 +807,63 @@ string_sensors = [
             },
         ],
     },
+    {
+        # The inverter's own export limit (Internal EPM soft limit), issue #569.
+        # Read back on input 3110-3113, written to holding 3151. Confirmed on an
+        # S5-GC30K: 3111 = 189 matched the 18900 W limit SolisCloud shows.
+        # Kept last: a unit that times out here ends the poll batch, and nothing
+        # after it should go unread because of that.
+        "register_start": 3110,
+        "poll_speed": PollSpeed.SLOW,
+        "feature_requirement": [InverterFeature.INTERNAL_EPM],
+        "entities": [
+            {
+                # Read-only: the codes mean different things per power class
+                # (0.7-8K 1P, 5-25K, 25-110K), so one select would mislabel some.
+                # For 25-110K: 1 meter in grid, 2 meter in load, 3 off, 4 24H consumption.
+                "name": "Export Control Mode",
+                "unique": "solis_modbus_inverter_export_control_mode",
+                "register": ["3110"],
+                "multiplier": 1,
+            },
+            {
+                # S16, 1 = 100 W, positive = to grid. Ignored while the mode is off.
+                # No declared max: a grid-side limit, so never the inverter rating (#438).
+                "name": "Export Power Limit",
+                "unique": "solis_modbus_inverter_export_power_limit",
+                "unit_of_measurement": UnitOfPower.WATT,
+                "device_class": SensorDeviceClass.POWER,
+                "register": ["3111"],
+                "write_register": 3151,
+                "multiplier": 100,
+                "data_type": DataType.S16,
+                "editable": True,
+                "min": 0,
+                "step": 100,
+            },
+            # Failsafe bits; the matching setting is holding 3152.
+            {"type": "reserve", "register": ["3112"]},
+            {
+                "name": "Export Control Live Export Power",
+                "unique": "solis_modbus_inverter_export_control_live_power",
+                "unit_of_measurement": UnitOfPower.WATT,
+                "device_class": SensorDeviceClass.POWER,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "register": ["3113"],
+                "multiplier": 10,
+            },
+        ],
+    },
+    # Last of the normal groups: these registers are unconfirmed on some MULTI_MPPT
+    # models, and a read that times out drops the link for the groups after it.
+    *multi_mppt_groups(),
 ]
 
 string_sensors_derived = [
     {
         "name": "DC Power 1",
         "unique": "solis_modbus_dc_power_1",
+        "mppt": 1,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
@@ -676,6 +873,7 @@ string_sensors_derived = [
     {
         "name": "DC Power 2",
         "unique": "solis_modbus_dc_power_2",
+        "mppt": 2,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
@@ -685,6 +883,7 @@ string_sensors_derived = [
     {
         "name": "DC Power 3",
         "unique": "solis_modbus_dc_power_3",
+        "mppt": 3,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
@@ -694,10 +893,12 @@ string_sensors_derived = [
     {
         "name": "DC Power 4",
         "unique": "solis_modbus_dc_power_4",
+        "mppt": 4,
         "device_class": SensorDeviceClass.POWER,
         "multiplier": 0.1,
         "unit_of_measurement": UnitOfPower.WATT,
         "state_class": SensorStateClass.MEASUREMENT,
         "register": ["3027", "3028"],
     },
+    *multi_mppt_derived(),
 ]

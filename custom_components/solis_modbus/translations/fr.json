@@ -126,6 +126,7 @@
           "has_parallel": "Parallel inverter operation (multiple units)",
           "parallel_readings": "Conserver les mesures d'onduleur en parallèle sans fonctionnement en parallèle (installations existantes)",
           "zonneplan_scaling": "Correction de l'énergie batterie Zonneplan (S6-EH3P10K-H-ZP uniquement ; désactivez-la si l'énergie batterie est 10x trop basse)",
+          "mppt_count": "Nombre de MPPT (capteurs de tension/courant/puissance DC par MPPT ; jusqu'à 4 sur la plupart des modèles, jusqu'à 15 sur les onduleurs string multi-MPPT)",
           "has_dual_meter": "Deuxième compteur intelligent installé (configuration double compteur Réseau + onduleur PV)",
           "has_epm": "EPM / gestionnaire de puissance d'export installé (registres compteur 36xxx)",
           "has_battery2": "Seconde batterie installée (BAT2 avec son propre BMS)"
@@ -133,7 +134,8 @@
       }
     },
     "error": {
-      "poll_interval_below_floor": "L'intervalle d'interrogation rapide est inférieur au minimum pour le profil sélectionné. Seul le profil extrême autorise des intervalles inférieurs à 10s (minimum 2s)."
+      "poll_interval_below_floor": "L'intervalle d'interrogation rapide est inférieur au minimum pour le profil sélectionné. Seul le profil extrême autorise des intervalles inférieurs à 10s (minimum 2s).",
+      "mppt_count_above_model_max": "Ce modèle d'onduleur ne peut pas remonter autant de MPPT. La plupart des modèles en remontent jusqu'à 4 ; les onduleurs string multi-MPPT jusqu'à 15."
     }
   },
   "services": {

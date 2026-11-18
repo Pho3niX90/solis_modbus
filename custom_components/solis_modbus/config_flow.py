@@ -5,6 +5,7 @@ import re
 import voluptuous as vol
 from homeassistant import config_entries
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.framer import FramerType
 
 from .client_manager import create_serial_client
 from .compat import OptionsFlowBase
@@ -16,6 +17,7 @@ from .const import (
     CONF_EXTREME_INCLUDE_BATTERY,
     CONF_EXTREME_INCLUDE_SMART_PORT,
     CONF_INVERTER_SERIAL,
+    CONF_MPPT_COUNT,
     CONF_PARALLEL_READINGS,
     CONF_PARITY,
     CONF_POLL_PROFILE,
@@ -24,6 +26,7 @@ from .const import (
     CONF_STOPBITS,
     CONF_SUPPRESS_NIGHT_OFFLINE_ISSUE,
     CONF_ZONNEPLAN_SCALING,
+    CONN_TYPE_RTU_TCP,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -40,9 +43,11 @@ from .const import (
 from .data.enums import InverterFeature
 from .data.solis_config import (
     CONNECTION_METHOD,
+    MAX_MPPT_COUNT,
     SOLIS_INVERTERS,
     InverterConfig,
     inverter_options_from_config,
+    mppt_count_from_registers,
     zonneplan_scaling_for_firmware,
 )
 from .serial_proxy import SerialProxyClient, is_serial_proxy
@@ -53,7 +58,11 @@ _LOGGER = logging.getLogger(__name__)
 SOLIS_MODELS = {inverter.model: inverter.model for inverter in SOLIS_INVERTERS}
 
 # Connection type options
-CONNECTION_TYPES = {CONN_TYPE_TCP: "TCP (WiFi Dongle)", CONN_TYPE_SERIAL: "Serial (RS485)"}
+CONNECTION_TYPES = {
+    CONN_TYPE_TCP: "TCP (WiFi Dongle)",
+    CONN_TYPE_SERIAL: "Serial (RS485)",
+    CONN_TYPE_RTU_TCP: "RTU over TCP (RS485 Ethernet Gateway)",
+}
 
 # Parity options
 PARITY_OPTIONS = {"N": "None", "E": "Even", "O": "Odd"}
@@ -120,6 +129,15 @@ TCP_CONFIG_SCHEMA = {
     vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
 }
 
+# RTU over TCP uses a transparent serial-to-Ethernet gateway; serial line settings
+# are configured on the gateway, not on the TCP client.
+RTU_TCP_CONFIG_SCHEMA = {
+    **BASE_CONFIG_SCHEMA,
+    vol.Required("host", default=""): str,
+    vol.Required("port", default=502): int,
+    vol.Required(CONF_SKIP_CONN_CHECK, default=False): bool,
+}
+
 # Serial-specific fields (no WiFi dongle type needed)
 SERIAL_CONFIG_SCHEMA = {
     **BASE_CONFIG_SCHEMA,
@@ -151,6 +169,8 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required("has_parallel", default=False): bool,
         vol.Required(CONF_PARALLEL_READINGS, default=False): bool,
         vol.Required(CONF_ZONNEPLAN_SCALING, default=True): bool,
+        # Optional so a submit without it keeps the stored or default count.
+        vol.Optional(CONF_MPPT_COUNT): vol.All(int, vol.Range(min=1, max=MAX_MPPT_COUNT)),
         vol.Required("has_battery", default=True): bool,
         vol.Required("has_hv_battery", default=False): bool,
         vol.Required("has_generator", default=True): bool,
@@ -191,6 +211,43 @@ def _has_zonneplan_scaling(model: str | None) -> bool:
     return template is not None and InverterFeature.ZONNEPLAN in template.features
 
 
+def _template_for(model: str | None) -> InverterConfig | None:
+    return next((inv for inv in SOLIS_INVERTERS if inv.model == model), None)
+
+
+def _effective_mppt_count(config: dict, model: str | None) -> int | None:
+    """The MPPT count setup would use for this entry config on this model."""
+    template = _template_for(model)
+    if template is None:
+        return None
+    return template.clone_with_options(inverter_options_from_config(config, template), config.get("connection", "S2_WL_ST")).mppt_count
+
+
+async def _read_mppt_count(client, device_id: int, template: InverterConfig) -> int | None:
+    """Read the MPPT count from DC input type (3003) and string combination (3286); None if unknown.
+
+    Best effort, like the firmware read: the model default applies when it fails.
+    """
+    try:
+        dc_input = await client.read_input_registers(address=3003, count=1, device_id=device_id)
+        combination = await client.read_input_registers(address=3286, count=1, device_id=device_id)
+        if dc_input.isError() or combination.isError() or not dc_input.registers or not combination.registers:
+            raise ConnectionError(f"MPPT count read failed: {dc_input} / {combination}")
+        count = mppt_count_from_registers(dc_input.registers[0], combination.registers[0], template)
+    except Exception as e:  # noqa: BLE001 - the model default then applies
+        _LOGGER.warning("Could not read the MPPT count; using %s for %s: %s", template.default_mppts, template.model, e)
+        return None
+    if count is None:
+        _LOGGER.warning(
+            "DC input type %s / string combination %s give no MPPT count for %s; using %s",
+            dc_input.registers[0],
+            combination.registers[0],
+            template.model,
+            template.default_mppts,
+        )
+    return count
+
+
 async def _read_firmware_versions(client, device_id: int) -> tuple[int, int] | None:
     """Read the DSP and HMI versions (33001/33002); None if the read fails.
 
@@ -218,6 +275,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._config_data = {}
         # (DSP, HMI) firmware versions read by the last _validate_config on a ZP model.
         self._zonneplan_firmware: tuple[int, int] | None = None
+        # MPPT count read by the last _validate_config on a MULTI_MPPT model.
+        self._detected_mppts: int | None = None
 
     async def async_step_user(self, user_input=None):
         """Handle initial step - ask for connection type."""
@@ -249,18 +308,20 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             # Merge connection type with configuration
-            full_config = {CONF_CONNECTION_TYPE: self._connection_type, **user_input}
+            full_config = {**user_input, CONF_CONNECTION_TYPE: self._connection_type}
             return await self._create_entry_from_input(full_config)
 
         # Remove connection_type from schema since we already have it
         if self._connection_type == CONN_TYPE_TCP:
-            # Create TCP schema without connection_type field
-            schema_dict = {k: v for k, v in TCP_CONFIG_SCHEMA.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
-            schema = vol.Schema(schema_dict)
+            source_schema = TCP_CONFIG_SCHEMA
+        elif self._connection_type == CONN_TYPE_RTU_TCP:
+            source_schema = RTU_TCP_CONFIG_SCHEMA
+        elif self._connection_type == CONN_TYPE_SERIAL:
+            source_schema = SERIAL_CONFIG_SCHEMA
         else:
-            # Create Serial schema without connection_type field
-            schema_dict = {k: v for k, v in SERIAL_CONFIG_SCHEMA.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
-            schema = vol.Schema(schema_dict)
+            return self.async_abort(reason="invalid_connection_type")
+        schema_dict = {k: v for k, v in source_schema.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
+        schema = vol.Schema(schema_dict)
 
         return self.async_show_form(step_id="config", data_schema=schema, errors=errors)
 
@@ -294,12 +355,15 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # Only a switch to the ZP model picks the scaling from the firmware;
                     # an existing ZP entry keeps what it has (or the legacy default). The
                     # model can live in options too (options flow), and setup lets that win.
-                    if {**entry.data, **entry.options}.get("model") != data.get("model"):
-                        self._apply_zonneplan_firmware(data, {**entry.options, **user_input})
                     # Strip reconfigured keys from options: setup merges
                     # {**data, **options}, so stale option values would silently
                     # shadow the freshly reconfigured data otherwise.
                     new_options = {k: v for k, v in entry.options.items() if k not in user_input}
+                    if {**entry.data, **entry.options}.get("model") != data.get("model"):
+                        self._apply_zonneplan_firmware(data, {**entry.options, **user_input})
+                        # A count chosen for the old model does not carry over to the new one.
+                        new_options.pop(CONF_MPPT_COUNT, None)
+                        self._apply_mppt_count(data)
                     return self.async_update_reload_and_abort(entry, data=data, options=new_options, unique_id=serial)
                 errors["base"] = err_key or "cannot_connect"
 
@@ -307,8 +371,12 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         conn_type = entry.data.get(CONF_CONNECTION_TYPE, CONN_TYPE_TCP)
         if conn_type == CONN_TYPE_TCP:
             source_schema = TCP_CONFIG_SCHEMA
-        else:
+        elif conn_type == CONN_TYPE_RTU_TCP:
+            source_schema = RTU_TCP_CONFIG_SCHEMA
+        elif conn_type == CONN_TYPE_SERIAL:
             source_schema = SERIAL_CONFIG_SCHEMA
+        else:
+            return self.async_abort(reason="invalid_connection_type")
 
         # 2. Pre-fill form with current entry data/options (serial, model, host, etc.)
         current_config = {**entry.data, **entry.options}
@@ -332,11 +400,20 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Determine which schema to show again based on connection type
             if data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_TCP:
-                schema_dict = TCP_CONFIG_SCHEMA
+                source_schema = TCP_CONFIG_SCHEMA
+            elif data.get(CONF_CONNECTION_TYPE) == CONN_TYPE_RTU_TCP:
+                source_schema = RTU_TCP_CONFIG_SCHEMA
             else:
-                schema_dict = SERIAL_CONFIG_SCHEMA
+                source_schema = SERIAL_CONFIG_SCHEMA
 
-            return self.async_show_form(step_id="config", data_schema=vol.Schema(schema_dict), errors=errors)
+            # Connection type was already selected in the initial step
+            schema_dict = {k: v for k, v in source_schema.items() if not (hasattr(k, "schema") and k.schema == CONF_CONNECTION_TYPE)}
+
+            return self.async_show_form(
+                step_id="config",
+                data_schema=vol.Schema(schema_dict),
+                errors=errors,
+            )
 
         # 3. Check for Duplicates
         if CONF_INVERTER_SERIAL in data:
@@ -346,6 +423,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # 4. Create the Config Entry
         entry_data = {k: v for k, v in data.items() if k != CONF_SKIP_CONN_CHECK}
         self._apply_zonneplan_firmware(entry_data, entry_data)
+        self._apply_mppt_count(entry_data)
         return self.async_create_entry(title=f"Solis: {data[CONF_INVERTER_SERIAL]}", data=entry_data)
 
     async def _validate_config(self, user_input):
@@ -363,6 +441,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         Returns (True, None) on success, (False, error_key) on failure.
         """
         self._zonneplan_firmware = None
+        self._detected_mppts = None
         inverter_model = user_input.get("model")
         inverter_template: InverterConfig | None = next((inv for inv in SOLIS_INVERTERS if inv.model == inverter_model), None)
 
@@ -371,14 +450,14 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return False, "invalid_model"
 
         conn_type = user_input.get(CONF_CONNECTION_TYPE, CONN_TYPE_SERIAL)
-        if conn_type != CONN_TYPE_TCP and not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
+        if conn_type == CONN_TYPE_SERIAL and not _is_supported_serial_port(user_input[CONF_SERIAL_PORT]):
             _LOGGER.error("Serial port %s cannot be opened", user_input[CONF_SERIAL_PORT])
             return False, "serial_port_unsupported"
 
         if user_input.get(CONF_SKIP_CONN_CHECK, False):
             if not str(user_input.get(CONF_INVERTER_SERIAL) or "").strip():
                 return False, "serial_required"
-            if conn_type == CONN_TYPE_TCP and not str(user_input.get("host") or "").strip():
+            if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP) and not str(user_input.get("host") or "").strip():
                 return False, "cannot_connect"
             _LOGGER.info("Skipping initial connectivity check by user request (%s)", conn_type)
             return True, None
@@ -389,9 +468,21 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         device_id = user_input.get("slave", 1)
         probe_register = inverter_config.probe_register
 
-        if conn_type == CONN_TYPE_TCP:
+        if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
             host, port = user_input["host"], user_input.get("port", 502)
-            client = AsyncModbusTcpClient(host=host, port=port, timeout=5, retries=1)
+
+            client_kwargs = {
+                "host": host,
+                "port": port,
+                "timeout": 5,
+                "retries": 1,
+            }
+
+            if conn_type == CONN_TYPE_RTU_TCP:
+                client_kwargs["framer"] = FramerType.RTU
+
+            client = AsyncModbusTcpClient(**client_kwargs)
+
         else:  # Serial
             serial_params = {
                 "baudrate": user_input.get(CONF_BAUDRATE, DEFAULT_BAUDRATE),
@@ -414,7 +505,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # "check your configuration" and sends people hunting the wrong problem
                     # (issue #432). Later attempts don't qualify: the port just accepted a
                     # connection, so a refusal there is the logger, not a closed port.
-                    if conn_type == CONN_TYPE_TCP and attempt == 0:
+                    if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP) and attempt == 0:
                         _LOGGER.error("Could not open a TCP connection to %s:%s", host, port)
                         return False, "tcp_port_closed"
                     raise ConnectionError("Failed to connect")
@@ -427,6 +518,8 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     raise ConnectionError(f"Probe read of {probe_register} failed: {result}")
                 if InverterFeature.ZONNEPLAN in inverter_template.features:
                     self._zonneplan_firmware = await _read_firmware_versions(client, device_id)
+                if InverterFeature.MULTI_MPPT in inverter_template.features:
+                    self._detected_mppts = await _read_mppt_count(client, device_id, inverter_template)
                 return True, None
             except Exception as e:
                 _LOGGER.warning("Connection validation attempt %s/3 failed: %s", attempt + 1, e)
@@ -472,6 +565,14 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "on" if data[CONF_ZONNEPLAN_SCALING] else "off",
         )
 
+    def _apply_mppt_count(self, data: dict) -> None:
+        """Store the MPPT count read during validation, or drop an earlier one so the model default applies."""
+        if self._detected_mppts is None:
+            data.pop(CONF_MPPT_COUNT, None)
+            return
+        data[CONF_MPPT_COUNT] = self._detected_mppts
+        _LOGGER.info("%s reports %s MPPTs", data.get("model"), self._detected_mppts)
+
     @staticmethod
     def async_get_options_flow(config_entry):
         """Return the options flow handler."""
@@ -495,14 +596,43 @@ class ModbusOptionsFlowHandler(OptionsFlowBase):
                 and merged.get(CONF_ZONNEPLAN_SCALING) == self.config_entry.data.get(CONF_ZONNEPLAN_SCALING, True)
             ):
                 merged.pop(CONF_ZONNEPLAN_SCALING, None)
+            mppt_error = self._settle_mppt_count(merged, user_input)
             interval_error = _validate_poll_interval(merged)
-            if interval_error is None:
+            if mppt_error is None and interval_error is None:
                 return self.async_create_entry(title="", data=merged)
-            errors["base"] = interval_error
+            errors["base"] = mppt_error or interval_error
 
         current = {**self.config_entry.data, **self.config_entry.options}
+        effective = _effective_mppt_count(current, current.get("model"))
+        if effective is not None:
+            current[CONF_MPPT_COUNT] = effective
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, current),
             errors=errors,
         )
+
+    def _settle_mppt_count(self, merged: dict, user_input: dict) -> str | None:
+        """Keep the submitted MPPT count only when the user changed it; returns an error key.
+
+        The form always shows a count (the stored one, or the model default), so a
+        submit that leaves it alone must not store it: that would carry the old
+        model's count across a model switch, or freeze today's default. A count is
+        kept only when it differs from what the entry gets without the option.
+        """
+        before = {**self.config_entry.data, **self.config_entry.options}
+        submitted = user_input.get(CONF_MPPT_COUNT)
+        model = merged.get("model")
+        if model != before.get("model") and (submitted is None or submitted == _effective_mppt_count(before, before.get("model"))):
+            merged.pop(CONF_MPPT_COUNT, None)
+            return None
+        if submitted is None:
+            return None
+        without_option = {**self.config_entry.data, **{k: v for k, v in merged.items() if k != CONF_MPPT_COUNT}}
+        if submitted == _effective_mppt_count(without_option, model):
+            merged.pop(CONF_MPPT_COUNT, None)
+            return None
+        template = _template_for(model)
+        if template is not None and submitted > template.max_mppts:
+            return "mppt_count_above_model_max"
+        return None
