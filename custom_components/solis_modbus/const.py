@@ -6,6 +6,8 @@ MANUFACTURER = "Solis"
 VALUES = "values"
 VALUE = "value"
 REGISTER = "register"
+# Id of the poll batch a register value was read in (absent for values not read by a poll).
+POLL_ID = "poll_id"
 SENSOR_ENTITIES = "sensor_entities"
 TIME_ENTITIES = "time_entities"
 SWITCH_ENTITIES = "switch_entities"

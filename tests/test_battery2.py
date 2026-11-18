@@ -76,14 +76,17 @@ def _derived(hass, registrars):
     return SolisDerivedSensor(hass, base)
 
 
-def _feed(sensor, values):
+def _feed(sensor, values, poll_id=None):
     from unittest.mock import patch
 
-    from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+    from custom_components.solis_modbus.const import CONTROLLER, POLL_ID, REGISTER, SLAVE, VALUE
 
     with patch.object(sensor, "schedule_update_ha_state"):
         for reg, val in values.items():
-            sensor.handle_modbus_update({REGISTER: reg, VALUE: val, CONTROLLER: "1.2.3.4", SLAVE: 1})
+            data = {REGISTER: reg, VALUE: val, CONTROLLER: "1.2.3.4", SLAVE: 1}
+            if poll_id is not None:
+                data[POLL_ID] = poll_id
+            sensor.handle_modbus_update(data)
 
 
 def test_combined_soc_matches_app(hass):
@@ -138,23 +141,93 @@ def test_battery2_is_polled_in_essential_but_not_extreme():
         assert not group_in_poll_profile(group, POLL_PROFILE_EXTREME, include_battery=True)
 
 
-def test_combined_power_ignores_partner_from_previous_poll(hass):
-    """A failed BAT1 read must not pair the next BAT1 value with the previous poll's BAT2 value."""
-    from unittest.mock import patch
-
-    from custom_components.solis_modbus.data.enums import PollSpeed
-
+def test_combined_power_pairs_readings_by_poll(hass):
+    """A missed BAT1 read must not pair the next BAT1 value with BAT2 from the previous poll."""
     sensor = _derived(hass, [33149, 33150, 34368, 34369])
-    sensor.base_sensor.controller.poll_speed = {PollSpeed.FAST: 10}
-    clock = [1000.0]
-    with patch("custom_components.solis_modbus.sensors.solis_derived_sensor.time.monotonic", side_effect=lambda: clock[0]):
-        # Poll N: BAT1 read failed, only BAT2 arrives (-1000 W).
-        _feed(sensor, {34368: 0xFFFF, 34369: 0xFC18})
-        assert sensor.native_value is None
-        # Poll N+1, 10 s later: BAT1 -2300 W, then BAT2 -2500 W.
-        clock[0] += 10
-        _feed(sensor, {33149: 0xFFFF, 33150: 0xF704})
-        assert sensor.native_value is None  # stale BAT2 dropped, not combined
-        clock[0] += 0.3
-        _feed(sensor, {34368: 0xFFFF, 34369: 0xF63C})
+    # Poll 1: BAT1 read failed, only BAT2 arrives (-1000 W).
+    _feed(sensor, {34368: 0xFFFF, 34369: 0xFC18}, poll_id=1)
+    assert sensor.native_value is None
+    # Poll 2: BAT1 -2300 W arrives first; BAT2 from poll 1 is dropped, not combined.
+    _feed(sensor, {33149: 0xFFFF, 33150: 0xF704}, poll_id=2)
+    assert sensor.native_value is None
+    # Poll 2: BAT2 -2500 W completes the pair.
+    _feed(sensor, {34368: 0xFFFF, 34369: 0xF63C}, poll_id=2)
     assert sensor.native_value == -4800
+    # Poll 3: both succeed and publish together.
+    _feed(sensor, {33149: 0xFFFF, 33150: 0xF768, 34368: 0xFFFF, 34369: 0xF6A0}, poll_id=3)
+    assert sensor.native_value == -4600
+
+
+def test_combined_soc_pairs_readings_by_poll(hass):
+    sensor = _derived(hass, [33139, 34278])
+    _feed(sensor, {34278: 40}, poll_id=7)
+    _feed(sensor, {33139: 60}, poll_id=8)
+    assert sensor.native_value is None
+    _feed(sensor, {34278: 42}, poll_id=8)
+    assert sensor.native_value == 51
+
+
+async def test_poller_tags_each_batch_with_its_own_poll_id():
+    """All groups read in one batch share a poll id; the next batch gets a new one."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.solis_modbus.const import DOMAIN, VALUES
+    from custom_components.solis_modbus.data.enums import PollSpeed
+    from custom_components.solis_modbus.data_retrieval import DataRetrieval
+    from custom_components.solis_modbus.sensors.solis_base_sensor import SolisSensorGroup
+
+    hass = MagicMock()
+    hass.is_running = False  # don't start the poll loop; batches are driven by hand
+    hass.data = {DOMAIN: {VALUES: {}}}
+    controller = MagicMock()
+    controller.host = "1.2.3.4"
+    controller.device_id = 1
+    controller.enabled = True
+    controller.connected = MagicMock(return_value=True)
+    controller.last_read_unanswered = False
+    controller.poll_speed = {PollSpeed.FAST: 10, PollSpeed.NORMAL: 15, PollSpeed.SLOW: 30}
+    controller.async_read_input_registers_with_exception = AsyncMock(side_effect=lambda start, count: ([1] * count, None))
+
+    groups = []
+    for start in (33149, 34368):
+        group = MagicMock(spec=SolisSensorGroup)
+        group.poll_speed = PollSpeed.FAST
+        group.start_register = start
+        group.registrar_count = 2
+        groups.append(group)
+    controller.sensor_groups = groups
+
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.async_track_time_interval"),
+        patch("custom_components.solis_modbus.data_retrieval.notify_register_update") as notify,
+        patch.object(DataRetrieval, "_image_is_blank", AsyncMock(return_value=False)),
+    ):
+        retrieval = DataRetrieval(hass, controller)
+        retrieval._can_poll = MagicMock(return_value=True)
+        await retrieval.get_modbus_updates(groups, PollSpeed.FAST)
+        first = {call.args[2]: call.args[4] for call in notify.call_args_list}
+        notify.reset_mock()
+        await retrieval.get_modbus_updates(groups, PollSpeed.FAST)
+        second = {call.args[2]: call.args[4] for call in notify.call_args_list}
+
+    assert set(first) == {33149, 33150, 34368, 34369}
+    assert len(set(first.values())) == 1
+    assert len(set(second.values())) == 1
+    assert set(first.values()) != set(second.values())
+
+
+def test_battery2_soc_gets_the_same_spike_filter_as_battery1():
+    """A one-off 0 % from BAT2 must not drag Combined SOC down, as for BAT1."""
+    from unittest.mock import MagicMock, patch
+
+    from custom_components.solis_modbus.data_retrieval import DataRetrieval
+
+    hass = MagicMock()
+    hass.is_running = False
+    with patch("custom_components.solis_modbus.data_retrieval.cache_get", return_value=42):
+        retrieval = DataRetrieval(hass, MagicMock())
+        for register in (33139, 34278):
+            assert retrieval.spike_filtering(register, 0) == 42
+            assert retrieval.spike_filtering(register, 0) == 42
+            assert retrieval.spike_filtering(register, 0) == 0  # persistent: accepted
+            assert retrieval.spike_filtering(register, 41) == 41

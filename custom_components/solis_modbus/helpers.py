@@ -16,6 +16,7 @@ from custom_components.solis_modbus.const import (
     CONN_TYPE_TCP,
     CONTROLLER,
     DRIFT_COUNTER,
+    POLL_ID,
     POLL_PROFILE_ESSENTIAL,
     POLL_PROFILE_EXTREME,
     POLL_PROFILE_FULL,
@@ -421,12 +422,18 @@ def register_update_signal(controller, register: int) -> str:
     return f"{DOMAIN}_{scope}_{int(register)}"
 
 
-def notify_register_update(hass: HomeAssistant, controller, register: int, value) -> None:
-    """Notify listeners for a single register; replaces bus.async_fire(DOMAIN, ...) for Modbus data."""
+def notify_register_update(hass: HomeAssistant, controller, register: int, value, poll_id: int | None = None) -> None:
+    """Notify listeners for a single register; replaces bus.async_fire(DOMAIN, ...) for Modbus data.
+
+    ``poll_id`` identifies the poll batch the value was read in, so listeners that
+    combine registers from different groups can pair readings from one poll.
+    """
     payload = {
         REGISTER: register,
         VALUE: value,
         CONTROLLER: controller.host,
         SLAVE: int(controller.device_id),
     }
+    if poll_id is not None:
+        payload[POLL_ID] = poll_id
     async_dispatcher_send(hass, register_update_signal(controller, register), payload)
