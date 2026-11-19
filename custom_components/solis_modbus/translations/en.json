@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)",
-          "has_epm": "EPM / export power manager installed (36xxx meter registers)"
+          "has_epm": "EPM / export power manager installed (36xxx meter registers)",
+          "has_battery2": "Second battery installed (BAT2 with its own BMS)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)",
-          "has_epm": "EPM / export power manager installed (36xxx meter registers)"
+          "has_epm": "EPM / export power manager installed (36xxx meter registers)",
+          "has_battery2": "Second battery installed (BAT2 with its own BMS)"
         }
       }
     },
@@ -126,7 +128,8 @@
           "connection": "Connection Type",
           "inverter_serial": "Inverter Serial",
           "has_dual_meter": "Second smart meter installed (Grid + PV inverter dual-meter setup)",
-          "has_epm": "EPM / export power manager installed (36xxx meter registers)"
+          "has_epm": "EPM / export power manager installed (36xxx meter registers)",
+          "has_battery2": "Second battery installed (BAT2 with its own BMS)"
         }
       }
     },

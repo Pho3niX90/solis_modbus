@@ -34,6 +34,7 @@ class InverterFeature(Enum):
     PARALLEL_READINGS = "parallel_readings"
     DUAL_METER = "dual_meter"
     EPM = "epm"
+    BATTERY2 = "battery2"
     # Multi-MPPT string inverters (80-110K-5G class): per-string currents (wire
     # 3286-3319) and MPPT 5-15 from the per-MPPT voltage/current block (wire
     # 3503-3543). How many are created follows the entry's MPPT count.

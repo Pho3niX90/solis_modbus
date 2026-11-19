@@ -18,6 +18,7 @@ class InverterOptions:
         smart_port: bool = True,
         parallel_readings: bool = False,
         zonneplan_scaling: bool = True,
+        battery2: bool = False,
         mppt_count: int | None = None,
     ):
         self.pv = pv
@@ -36,6 +37,8 @@ class InverterOptions:
         self.parallel_readings = parallel_readings
         # Only meaningful for models whose template lists ZONNEPLAN (see CONF_ZONNEPLAN_SCALING).
         self.zonneplan_scaling = zonneplan_scaling
+        # Second battery on BAT2 with its own BMS (S6-EH3P dual-battery models).
+        self.battery2 = battery2
         # MPPTs wired on this unit (see CONF_MPPT_COUNT); None keeps the model's default.
         self.mppt_count = mppt_count
 
@@ -112,6 +115,8 @@ class InverterConfig:
             feats.append(InverterFeature.DUAL_METER)
         if opts.epm:
             feats.append(InverterFeature.EPM)
+        if opts.battery2:
+            feats.append(InverterFeature.BATTERY2)
         if self.type == InverterType.WAVESHARE or self.connection == "WAVESHARE":
             feats.append(InverterFeature.TCP)
         self.features: list[InverterFeature] = feats
@@ -168,6 +173,7 @@ def inverter_options_from_config(config: dict, template: InverterConfig) -> Inve
         smart_port=config.get("has_smart_port", True),
         parallel_readings=config.get("parallel_readings", False),
         zonneplan_scaling=config.get("zonneplan_scaling", True),
+        battery2=config.get("has_battery2", False),
         mppt_count=config.get("mppt_count"),
     )
 

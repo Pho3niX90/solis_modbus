@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
-          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)",
+          "has_battery2": "Zweite Batterie installiert (BAT2 mit eigenem BMS)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
-          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)",
+          "has_battery2": "Zweite Batterie installiert (BAT2 mit eigenem BMS)"
         }
       }
     },
@@ -126,7 +128,8 @@
           "zonneplan_scaling": "Zonneplan-Batterieenergie-Korrektur (nur S6-EH3P10K-H-ZP; ausschalten, wenn die Batterieenergie 10x zu niedrig ist)",
           "mppt_count": "Anzahl der MPPTs (DC-Spannungs-/Strom-/Leistungssensoren pro MPPT; bis zu 4 bei den meisten Modellen, bis zu 15 bei Multi-MPPT-Strangwechselrichtern)",
           "has_dual_meter": "Zweiter Smart Meter installiert (Netz + PV-Wechselrichter Doppelzähler-Aufbau)",
-          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)"
+          "has_epm": "EPM / Export Power Manager installiert (36xxx-Zählerregister)",
+          "has_battery2": "Zweite Batterie installiert (BAT2 mit eigenem BMS)"
         }
       }
     },

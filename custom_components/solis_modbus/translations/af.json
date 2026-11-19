@@ -42,7 +42,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
-          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)",
+          "has_battery2": "Tweede battery geïnstalleer (BAT2 met eie BMS)"
         }
       },
       "reconfigure": {
@@ -78,7 +79,8 @@
           "has_hv_battery": "Has HV Battery Storage (100v+)",
           "has_generator": "Has Generator",
           "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
-          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)",
+          "has_battery2": "Tweede battery geïnstalleer (BAT2 met eie BMS)"
         }
       }
     },
@@ -126,7 +128,8 @@
           "zonneplan_scaling": "Zonneplan battery-energie-korreksie (slegs S6-EH3P10K-H-ZP; skakel af as battery-energie 10x te laag lees)",
           "mppt_count": "Aantal MPPT's (DC-spanning/-stroom/-drywing-sensors per MPPT; tot 4 op die meeste modelle, tot 15 op multi-MPPT-stringomsetters)",
           "has_dual_meter": "Tweede slimme meter geïnstalleer (Netwerk + PV-omsetter dubbelmeter-opstelling)",
-          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)"
+          "has_epm": "EPM / uitvoerkragbestuurder geïnstalleer (36xxx meterregisters)",
+          "has_battery2": "Tweede battery geïnstalleer (BAT2 met eie BMS)"
         }
       }
     },
