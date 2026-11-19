@@ -71,6 +71,9 @@ class DataRetrieval:
         self._blank_since: float | None = None
         self._inconclusive_image_probes = 0
         self.poll_lock = asyncio.Lock()
+        # Incremented per poll batch; sent with each value so derived sensors can pair
+        # registers from different groups that were read in the same batch.
+        self._poll_id = 0
         self.connection_check = False
         self.first_poll = True
         self.poll_updating = {
@@ -191,14 +194,14 @@ class DataRetrieval:
             self._blank_since = None
         return False
 
-    def _apply_register_read_to_cache(self, sensor_group: SolisSensorGroup, values: list[int], marked_for_removal: list) -> None:
+    def _apply_register_read_to_cache(self, sensor_group: SolisSensorGroup, values: list[int], marked_for_removal: list, poll_id: int | None = None) -> None:
         start_register = sensor_group.start_register
         for i, value in enumerate(values):
             reg = start_register + i
             _LOGGER.debug("block %s, register %s has value %s", start_register, reg, value)
             corrected_value = self.spike_filtering(reg, value)
             cache_save(self.hass, self.controller, reg, corrected_value)
-            notify_register_update(self.hass, self.controller, reg, corrected_value)
+            notify_register_update(self.hass, self.controller, reg, corrected_value, poll_id)
 
         if sensor_group.poll_speed == PollSpeed.ONCE:
             marked_for_removal.append(sensor_group)
@@ -618,6 +621,8 @@ class DataRetrieval:
             async with self.poll_lock:
                 total_start_time = time.perf_counter()
                 total_registrars, total_groups = 0, 0
+                self._poll_id += 1
+                poll_id = self._poll_id
                 marked_for_removal = []
 
                 # A fresh link may front a datalogger that has just rebooted.
@@ -656,7 +661,7 @@ class DataRetrieval:
                             )
                             if recovered:
                                 for rg, block_values in recovered:
-                                    self._apply_register_read_to_cache(rg, block_values, marked_for_removal)
+                                    self._apply_register_read_to_cache(rg, block_values, marked_for_removal, poll_id)
                             else:
                                 _LOGGER.debug(
                                     f"⚠️ Received None for register {start_register} - {end_register}, "
@@ -695,7 +700,7 @@ class DataRetrieval:
                             self._image_checked_on = None
                             break
 
-                    self._apply_register_read_to_cache(sensor_group, values, marked_for_removal)
+                    self._apply_register_read_to_cache(sensor_group, values, marked_for_removal, poll_id)
 
                 # Remove "ONCE" poll speed groups
                 self.controller._sensor_groups = [g for g in self.controller.sensor_groups if g not in marked_for_removal]
@@ -714,8 +719,8 @@ class DataRetrieval:
         if register not in self._spike_counter:
             self._spike_counter[register] = 0
 
-        # 33139 Battery SOC: readings stuck at hard edge can briefly spike.
-        if register == 33139:
+        # 33139 / 34278 Battery 1 / 2 SOC: readings stuck at hard edge can briefly spike.
+        if register in (33139, 34278):
             if value not in (0, 100):
                 self._spike_counter[register] = 0
                 return value

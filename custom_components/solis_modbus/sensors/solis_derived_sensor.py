@@ -8,9 +8,9 @@ from homeassistant.components.sensor import RestoreSensor, SensorDeviceClass, Se
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from custom_components.solis_modbus.const import CONTROLLER, REGISTER, SLAVE, VALUE
+from custom_components.solis_modbus.const import CONTROLLER, POLL_ID, REGISTER, SLAVE, VALUE
 from custom_components.solis_modbus.data.status_mapping import STATUS_MAPPING
-from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller, register_update_signal
+from custom_components.solis_modbus.helpers import clock_drift_test, decode_inverter_model, is_correct_controller, register_update_signal, split_s32
 from custom_components.solis_modbus.sensors.solis_base_sensor import SolisBaseSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         self.is_added_to_hass = False
         self._state = None
         self._received_values = {}
+        self._received_poll: dict[int, int | None] = {}
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -73,6 +74,22 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 )
             )
 
+    def _is_dual_battery_sum(self) -> bool:
+        """Combined BAT1 + BAT2 sensors, whose sources come from two register groups."""
+        return (33139 in self._register and 34278 in self._register) or (33149 in self._register and 34368 in self._register)
+
+    def _sources_from_same_poll(self, poll_id) -> bool:
+        """True when every buffered source was read in the poll ``poll_id``.
+
+        BAT1 and BAT2 sit in separate groups, so a failed read of one leaves the
+        other's value from an earlier poll in the buffer. Drop such values and wait
+        for this poll's reading instead of mixing two polls.
+        """
+        stale = [reg for reg in self._received_values if self._received_poll.get(reg) != poll_id]
+        for reg in stale:
+            del self._received_values[reg]
+        return not stale
+
     @callback
     def handle_modbus_update(self, data):
         """Callback when register data is available (per-register dispatcher)."""
@@ -90,6 +107,7 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
         # Only process if this register belongs to the sensor
         if updated_register in self._register:
             self._received_values[updated_register] = data.get(VALUE)
+            self._received_poll[updated_register] = data.get(POLL_ID)
 
             # If we haven't received all registers yet, wait
             filtered_registers = {reg for reg in self._register if reg not in (0, 1, 90007)}
@@ -197,6 +215,27 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 to_grid = self._received_values[self._register[0]] * self.base_sensor.multiplier
                 from_grid = self._received_values[self._register[1]] * self.base_sensor.multiplier
                 new_value = from_grid - to_grid
+
+            if self._is_dual_battery_sum() and not self._sources_from_same_poll(data.get(POLL_ID)):
+                return  # wait for the partner reading from the current poll
+
+            if 33139 in self._register and 34278 in self._register:
+                # Dual-battery SOC as the Solis app shows it: the plain average of
+                # BAT1 (33139) and BAT2 (34278), e.g. 60 % and 42 % -> 51 %. The BMS
+                # report no capacity, so this assumes two packs of equal size.
+                new_value = round((self._received_values[33139] + self._received_values[34278]) / 2, 1)
+
+            if 33149 in self._register and 34368 in self._register:
+                # Total battery power, signed like Battery Power Net: negative charging,
+                # positive discharging. The sign comes from each battery's direction
+                # register (33135 / 34291: 0 = charging, 1 = discharging), read in the
+                # same poll. The power words are taken as a magnitude, so this holds
+                # whether the firmware reports 33149/50 and 34368/69 signed or unsigned.
+                total = 0
+                for high, low, direction in ((33149, 33150, 33135), (34368, 34369, 34291)):
+                    power = abs(split_s32([self._received_values[high], self._received_values[low]]))
+                    total += -power if int(self._received_values[direction]) == 0 else power
+                new_value = total
 
             if 43292 in self._register:
                 # 0x00AA = Flexible Export on: export follows the 43291 limit instead of 43074.
