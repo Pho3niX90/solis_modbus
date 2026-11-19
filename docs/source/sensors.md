@@ -310,6 +310,7 @@ Editable number entities (hybrid).
 | Solis LLC Bus Voltage                                     | VOLTAGE        | VOLT                 | MEASUREMENT      | 33136                                           |
 | Solis Backup AC Voltage Phase A                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 33137                                           |
 | Solis Backup AC Current Phase A                           | CURRENT        | AMPERE               | MEASUREMENT      | 33138                                           |
+| Solis Battery Combined SOC                                | BATTERY        | %                    | MEASUREMENT      | 33139, 34278                                    |
 | Solis Battery SOC                                         | BATTERY        | %                    | MEASUREMENT      | 33139                                           |
 | Solis Battery SOH                                         |                | %                    | MEASUREMENT      | 33140                                           |
 | Solis Battery Voltage (BMS)                               | VOLTAGE        | VOLT                 | MEASUREMENT      | 33141                                           |
@@ -321,6 +322,7 @@ Editable number entities (hybrid).
 | Solis Household load power                                | POWER          | WATT                 | MEASUREMENT      | 33147                                           |
 | Solis Backup Load power                                   | POWER          | WATT                 | MEASUREMENT      | 33148                                           |
 | Solis Battery Charge Power                                | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135, 0                          |
+| Solis Battery Combined Power                              | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135, 34368, 34369, 34291        |
 | Solis Battery Discharge Power                             | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135, 1                          |
 | Solis Battery Power                                       | POWER          | WATT                 | MEASUREMENT      | 33149, 33150                                    |
 | Solis Battery Power Net                                   | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135                             |
@@ -435,12 +437,38 @@ Editable number entities (hybrid).
 | Solis Backup Load Month Energy                            | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33594, 33595                                    |
 | Solis Backup Load Today Energy                            | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33596                                           |
 | Solis Parallel Synchronization Setting Parameter Result   |                |                      |                  | 34243                                           |
+| Solis Battery 2 Voltage (BMS)                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 34275                                           |
+| Solis Battery 2 Current (BMS)                             | CURRENT        | AMPERE               | MEASUREMENT      | 34276                                           |
+| Solis Battery 2 Temperature (BMS)                         | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34277                                           |
+| Solis Battery 2 SOC                                       | BATTERY        | %                    | MEASUREMENT      | 34278                                           |
+| Solis Battery 2 SOH                                       |                | %                    | MEASUREMENT      | 34279                                           |
+| Solis Battery 2 Charge Voltage Limitation (BMS)           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34280                                           |
+| Solis Battery 2 Charge Current Limitation (BMS)           | CURRENT        | AMPERE               | MEASUREMENT      | 34281                                           |
+| Solis Battery 2 Discharge Current Limitation (BMS)        | CURRENT        | AMPERE               | MEASUREMENT      | 34282                                           |
+| Solis Battery 2 Warning Status 1 (BMS)                    |                |                      | MEASUREMENT      | 34283                                           |
+| Solis Battery 2 Warning Status 2 (BMS)                    |                |                      | MEASUREMENT      | 34284                                           |
+| Solis Battery 2 Fault Status 1 (BMS)                      |                |                      | MEASUREMENT      | 34285                                           |
+| Solis Battery 2 Fault Status 2 (BMS)                      |                |                      | MEASUREMENT      | 34286                                           |
+| Solis Battery 2 Fault Status 3 (BMS)                      |                |                      | MEASUREMENT      | 34287                                           |
+| Solis Battery 2 Status (BMS)                              |                |                      | MEASUREMENT      | 34288                                           |
+| Solis Battery 2 Voltage                                   | VOLTAGE        | VOLT                 | MEASUREMENT      | 34289                                           |
+| Solis Battery 2 Current                                   | CURRENT        | AMPERE               | MEASUREMENT      | 34290                                           |
+| Solis Battery 2 Current Direction                         |                |                      | MEASUREMENT      | 34291                                           |
 | Solis SmartPort A Phase Voltage                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34328                                           |
 | Solis SmartPort B Phase Voltage                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34329                                           |
 | Solis SmartPort C Phase Voltage                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34330                                           |
 | Solis SmartPort A Phase Current                           | CURRENT        | AMPERE               | MEASUREMENT      | 34331                                           |
 | Solis SmartPort B Phase Current                           | CURRENT        | AMPERE               | MEASUREMENT      | 34332                                           |
 | Solis SmartPort C Phase Current                           | CURRENT        | AMPERE               | MEASUREMENT      | 34333                                           |
+| Solis Battery Min Cell Voltage (BMS)                      | VOLTAGE        | VOLT                 | MEASUREMENT      | 34348                                           |
+| Solis Battery Max Cell Voltage (BMS)                      | VOLTAGE        | VOLT                 | MEASUREMENT      | 34349                                           |
+| Solis Battery Min Cell Temperature (BMS)                  | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34350                                           |
+| Solis Battery Max Cell Temperature (BMS)                  | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34351                                           |
+| Solis Battery 2 Power                                     | POWER          | WATT                 | MEASUREMENT      | 34368, 34369                                    |
+| Solis Battery 2 Min Cell Voltage (BMS)                    | VOLTAGE        | VOLT                 | MEASUREMENT      | 34373                                           |
+| Solis Battery 2 Max Cell Voltage (BMS)                    | VOLTAGE        | VOLT                 | MEASUREMENT      | 34374                                           |
+| Solis Battery 2 Min Cell Temperature (BMS)                | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34375                                           |
+| Solis Battery 2 Max Cell Temperature (BMS)                | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34376                                           |
 | Solis Smart Port Phase A Active Power                     | POWER          | WATT                 | MEASUREMENT      | 34391                                           |
 | Solis Smart Port Phase B Active Power                     | POWER          | WATT                 | MEASUREMENT      | 34392                                           |
 | Solis Smart Port Phase C Active Power                     | POWER          | WATT                 | MEASUREMENT      | 34393                                           |
