@@ -174,7 +174,10 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 registers = self._register.copy()
                 self._register = registers[:2]
 
-                p_value = self.base_sensor.convert_value([self._received_values[reg] for reg in filtered_registers])
+                # Magnitude only: the sign comes from the direction register 33135.
+                # Some firmware (e.g. S6-EH3P) already reports 33149/50 signed, so
+                # without abs() the discharge power would come out negative.
+                p_value = abs(self.base_sensor.convert_value([self._received_values[registers[0]], self._received_values[registers[1]]]))
                 d_w_value = registers[3]
                 d_value = self._received_values[registers[2]]
 
@@ -189,7 +192,9 @@ class SolisDerivedSensor(RestoreSensor, SensorEntity):
                 registers = self._register.copy()
                 self._register = registers[:2]
 
-                p_value = self.base_sensor.convert_value([self._received_values[reg] for reg in filtered_registers])
+                # Magnitude only, as above: signed firmware would otherwise apply the
+                # direction twice and read negative both charging and discharging.
+                p_value = abs(self.base_sensor.convert_value([self._received_values[registers[0]], self._received_values[registers[1]]]))
                 d_value = self._received_values[registers[2]]
 
                 self._register = registers
