@@ -14,6 +14,8 @@ jobs:
       - name: PR Agent action step
         id: pragent
         uses: qodo-ai/pr-agent@main
+        # The next step decides whether a failure here fails the job.
+        continue-on-error: true
         env:
           OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -23,3 +25,42 @@ jobs:
           PR_DESCRIPTION.GENERATE_AI_TITLE: "true"
           PR_DESCRIPTION.PUBLISH_LABELS: "true"
           PR_REVIEWER.ENABLE_AUTO_APPROVAL: "false"
+
+      # A Docker action's output can't be read from a later step, so the cause is
+      # checked against the provider instead. A missing key, or an OpenAI account
+      # with no credits or quota left, ends the job with a notice. Anything else
+      # (bad config, a bug, a GitHub API error, an invalid key) still fails it.
+      - name: Check why the PR Agent failed
+        if: steps.pragent.outcome == 'failure'
+        env:
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+        run: |
+          skip() {
+            echo "::notice title=PR description not generated::$1"
+            echo "PR description and labels were not generated: $1" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          }
+
+          if [ -z "$OPENAI_KEY" ]; then
+            skip "the OPENAI_KEY secret is not available to this run, so the AI PR Agent could not run."
+          fi
+
+          # A one-word embedding: it costs next to nothing when the account has
+          # credits, and comes back as 429 insufficient_quota when it has none.
+          body=$(mktemp)
+          status=$(printf 'header = "Authorization: Bearer %s"\n' "$OPENAI_KEY" |
+            curl --silent --show-error --max-time 30 --config - \
+              --output "$body" --write-out '%{http_code}' \
+              --header 'Content-Type: application/json' \
+              --data '{"model":"text-embedding-3-small","input":"ping"}' \
+              https://api.openai.com/v1/embeddings) || status=000
+
+          if [ "$status" = 429 ] && grep -qiE 'insufficient_quota|no credits remaining|exceeded your current quota' "$body"; then
+            skip "the OpenAI account has no credits or quota left. Add credits, then re-run this job."
+          fi
+
+          if [ "$status" != 200 ]; then
+            echo "Probe response: $(jq -r '.error.message // empty' "$body" 2>/dev/null)"
+          fi
+          echo "::error title=AI PR Agent failed::The PR Agent step failed and the OpenAI probe did not show an account out of credits (HTTP $status). See the PR Agent step log for the cause."
+          exit 1
