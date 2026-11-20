@@ -9,7 +9,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 
-from custom_components.solis_modbus.client_manager import ModbusClientManager
+from custom_components.solis_modbus.client_manager import ModbusClientManager, connection_key
 from custom_components.solis_modbus.const import (
     CONN_TYPE_RTU_TCP,
     CONN_TYPE_SERIAL,
@@ -128,12 +128,8 @@ class ModbusController:
             self.host = host
             self.port = port
 
-            self.connection_id = f"rtu_tcp:{host}:{port}" if connection_type == CONN_TYPE_RTU_TCP else f"{host}:{port}"
-
-            if connection_type == CONN_TYPE_RTU_TCP:
-                self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port, rtu=True)
-            else:
-                self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port)
+            self.connection_id = connection_key(connection_type, host, port)
+            self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_tcp_client(host, port, rtu=connection_type == CONN_TYPE_RTU_TCP)
         elif connection_type == CONN_TYPE_SERIAL:
             if not serial_port:
                 raise ValueError("serial_port is required for Serial connection")
@@ -142,7 +138,7 @@ class ModbusController:
             self.bytesize = bytesize
             self.parity = parity
             self.stopbits = stopbits
-            self.connection_id = serial_port
+            self.connection_id = connection_key(connection_type, serial_port=serial_port)
             # For serial, set host to serial_port for backwards compatibility with logging
             self.host = serial_port
             self.client: AsyncModbusTcpClient | AsyncModbusSerialClient = manager.get_serial_client(serial_port, baudrate, bytesize, parity, stopbits)
@@ -589,18 +585,26 @@ class ModbusController:
             pass
 
     def _close_after_failed_request(self, error: Exception) -> bool:
-        """Close the client after a failed read, write or probe, unless a pymodbus serial request went unanswered.
+        """Close the client after a failed read, write or probe, unless an RS485 request went unanswered.
 
-        The close cures half-open TCP and stale TCP responses. A lost frame on serial is routine:
-        pymodbus clears its receive buffer on every attempt and drops the port itself after
+        The close cures half-open TCP and stale Modbus TCP responses. A lost frame on serial is
+        routine: pymodbus clears its receive buffer on every attempt and drops the port itself after
         repeated unanswered requests, and closing here only parks the write queue and fails the
-        other inverters on the port. Any other failure on serial (the port erroring while sending,
-        say) skips pymodbus's own bookkeeping, so the port is closed and check_connection reopens it.
+        other inverters on the port. Any other failure (the port erroring while sending, say) skips
+        pymodbus's own bookkeeping, so the link is closed and check_connection reopens it.
 
-        Returns True when the port was left open after an unanswered request.
+        RTU over TCP stays open after a lost frame only when other inverters share the gateway. RTU
+        has no transaction id, so an answer the gateway delivers late can be taken as the answer to
+        the next request with the same shape; closing the socket throws it away. With one inverter
+        on the gateway nothing else depends on the socket, so it is closed (issue #577).
+
+        Returns True when the link was left open after an unanswered request.
         """
-        if isinstance(self.client, AsyncModbusSerialClient) and isinstance(error, ModbusIOException):
-            return True
+        if isinstance(error, ModbusIOException):
+            if isinstance(self.client, AsyncModbusSerialClient):
+                return True
+            if self.connection_type == CONN_TYPE_RTU_TCP and self._client_manager.is_shared(self.connection_id):
+                return True
         self._safe_close()
         return False
 

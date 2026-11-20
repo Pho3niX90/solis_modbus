@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "L'intervalle d'interrogation rapide est inférieur au minimum pour le profil sélectionné. Seul le profil extrême autorise des intervalles inférieurs à 10s (minimum 2s)."
     },
     "abort": {
-      "already_configured": "Cet appareil est déjà configuré."
+      "already_configured": "Cet appareil est déjà configuré.",
+      "invalid_connection_type": "Cette entrée a un type de connexion inconnu. Supprimez-la et ajoutez à nouveau l'onduleur."
     }
   },
   "options": {

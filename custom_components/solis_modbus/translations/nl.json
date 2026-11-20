@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "Het snelle pollinterval ligt onder het minimum voor het gekozen profiel. Alleen het extreme profiel staat intervallen onder 10s toe (minimaal 2s)."
     },
     "abort": {
-      "already_configured": "Dit apparaat is al geconfigureerd."
+      "already_configured": "Dit apparaat is al geconfigureerd.",
+      "invalid_connection_type": "Deze vermelding heeft een onbekend verbindingstype. Verwijder deze en voeg de omvormer opnieuw toe."
     }
   },
   "options": {

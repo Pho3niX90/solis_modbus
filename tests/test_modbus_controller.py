@@ -9,6 +9,7 @@ from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 
 from custom_components.solis_modbus.const import (
+    CONN_TYPE_RTU_TCP,
     CONN_TYPE_SERIAL,
     CONN_TYPE_TCP,
     DEFAULT_BAUDRATE,
@@ -679,7 +680,7 @@ class TestModbusControllerInitialization(unittest.TestCase):
         self.assertEqual("192.168.1.100", controller.host)
         self.assertEqual(502, controller.port)
         self.assertEqual("192.168.1.100:502", controller.connection_id)
-        self.mock_manager.get_tcp_client.assert_called_once_with("192.168.1.100", 502)
+        self.mock_manager.get_tcp_client.assert_called_once_with("192.168.1.100", 502, rtu=False)
 
     def test_serial_client_initialization(self):
         """Test that Serial client is initialized correctly."""
@@ -812,7 +813,7 @@ def _controller_failing_requests(client_spec, connection_type, error=None):
         controller = ModbusController(
             hass=MagicMock(),
             connection_type=connection_type,
-            host="1.2.3.4" if connection_type == CONN_TYPE_TCP else None,
+            host="1.2.3.4" if connection_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP) else None,
             serial_port="/dev/ttyUSB0" if connection_type == CONN_TYPE_SERIAL else None,
             inverter_config=MagicMock(),
             device_id=1,
@@ -867,6 +868,39 @@ async def test_failed_requests_close_a_tcp_client():
 
 async def test_failed_requests_close_an_esphome_serial_proxy_client():
     controller, client = _controller_failing_requests(SerialProxyClient, CONN_TYPE_SERIAL)
+
+    await _fail_every_kind_of_request(controller)
+
+    assert client.close.call_count == 4
+
+
+async def test_unanswered_requests_leave_a_shared_rtu_over_tcp_link_open():
+    """A lost RS485 frame behind a shared gateway is routine; closing would fail the other inverters on the bus."""
+    controller, client = _controller_failing_requests(AsyncModbusTcpClient, CONN_TYPE_RTU_TCP)
+    controller._client_manager.is_shared.return_value = True
+
+    await _fail_every_kind_of_request(controller)
+
+    client.close.assert_not_called()
+    controller._client_manager.is_shared.assert_called_with("rtu_tcp:1.2.3.4:502")
+    await controller.async_read_input_registers_with_exception(33000, 1)
+    assert controller.last_read_unanswered is True
+
+
+async def test_unanswered_requests_close_an_rtu_over_tcp_link_used_by_one_inverter():
+    """Closing throws away a late answer that RTU (no transaction id) could take for the next request's."""
+    controller, client = _controller_failing_requests(AsyncModbusTcpClient, CONN_TYPE_RTU_TCP)
+    controller._client_manager.is_shared.return_value = False
+
+    await _fail_every_kind_of_request(controller)
+
+    assert client.close.call_count == 4
+    assert controller.last_read_unanswered is False
+
+
+async def test_send_errors_close_an_rtu_over_tcp_link():
+    controller, client = _controller_failing_requests(AsyncModbusTcpClient, CONN_TYPE_RTU_TCP, error=OSError("write failed"))
+    controller._client_manager.is_shared.return_value = True
 
     await _fail_every_kind_of_request(controller)
 

@@ -4,10 +4,8 @@ import re
 
 import voluptuous as vol
 from homeassistant import config_entries
-from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.framer import FramerType
 
-from .client_manager import create_serial_client
+from .client_manager import create_serial_client, create_tcp_client
 from .compat import OptionsFlowBase
 from .const import (
     CONF_BAUDRATE,
@@ -471,17 +469,7 @@ class ModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if conn_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
             host, port = user_input["host"], user_input.get("port", 502)
 
-            client_kwargs = {
-                "host": host,
-                "port": port,
-                "timeout": 5,
-                "retries": 1,
-            }
-
-            if conn_type == CONN_TYPE_RTU_TCP:
-                client_kwargs["framer"] = FramerType.RTU
-
-            client = AsyncModbusTcpClient(**client_kwargs)
+            client = create_tcp_client(host, port, rtu=conn_type == CONN_TYPE_RTU_TCP)
 
         else:  # Serial
             serial_params = {

@@ -12,7 +12,8 @@ from pymodbus.framer import FramerRTU
 from pymodbus.pdu.register_message import ReadInputRegistersRequest
 
 from custom_components.solis_modbus import client_manager
-from custom_components.solis_modbus.client_manager import MIN_INTER_FRAME_MS, ModbusClientManager, create_serial_client
+from custom_components.solis_modbus.client_manager import MIN_INTER_FRAME_MS, ModbusClientManager, connection_key, create_serial_client, create_tcp_client
+from custom_components.solis_modbus.const import CONN_TYPE_RTU_TCP, CONN_TYPE_SERIAL, CONN_TYPE_TCP
 from custom_components.solis_modbus.rtu_framer import FIRST_BYTE_DEADLINE_S, ResyncFramerRTU
 
 
@@ -74,6 +75,7 @@ class TestModbusClientManager(unittest.TestCase):
             timeout=5,
             retries=1,
             framer=FramerType.RTU,
+            reconnect_delay=0,
         )
         self.assertIs(client, mock_client)
         self.assertEqual(
@@ -209,7 +211,7 @@ async def test_serial_client_waits_1500_ms_and_retries_3_times(pyserial_present)
 
 
 async def test_serial_client_leaves_reconnecting_to_the_integration(pyserial_present):
-    """pymodbus's own reconnect (after retries+3 unanswered requests) would race check_connection."""
+    """pymodbus's own reconnect (after retries+4 unanswered requests) would race check_connection."""
     client = create_serial_client("/dev/ttyUSB0", 9600, 8, "N", 1)
 
     assert client.ctx.comm_params.reconnect_delay == 0
@@ -340,6 +342,74 @@ async def test_serial_client_framer_replacement_keeps_the_stock_type_for_tid_han
 
     assert isinstance(client.ctx.framer, FramerRTU)
     assert client.ctx.getNextTID() == 0
+
+
+async def test_connection_key_is_the_one_the_manager_files_each_client_under(pyserial_present):
+    manager = ModbusClientManager()
+    manager.get_tcp_client("1.2.3.4", 502)
+    manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+    manager.get_serial_client("/dev/ttyUSB0", 9600, 8, "N", 1)
+
+    keys = [
+        connection_key(CONN_TYPE_TCP, "1.2.3.4", 502),
+        connection_key(CONN_TYPE_RTU_TCP, "1.2.3.4", 502),
+        connection_key(CONN_TYPE_SERIAL, serial_port="/dev/ttyUSB0"),
+    ]
+
+    assert len(set(keys)) == 3
+    for key in keys:
+        assert manager.get_client_lock(key) is not None
+
+
+async def test_rtu_tcp_client_resyncs_without_early_end():
+    """A transparent gateway passes RS485 noise through; its baud rate is unknown, so no early end."""
+    client = create_tcp_client("1.2.3.4", 502, rtu=True)
+
+    assert isinstance(client.ctx.framer, ResyncFramerRTU)
+    assert client.ctx.framer._early_end is None
+    assert (client.ctx.comm_params.timeout_connect, client.ctx.retries) == (5, 1)
+    assert client.ctx.comm_params.reconnect_delay == 0
+
+
+async def test_rtu_tcp_client_decodes_an_answer_behind_a_stray_byte():
+    client = create_tcp_client("1.2.3.4", 502, rtu=True)
+    ctx = client.ctx
+    request = ReadInputRegistersRequest(dev_id=1, address=33000, count=1)
+    ctx.response_future = asyncio.get_running_loop().create_future()
+    ctx.request_dev_id = request.dev_id
+    ctx.framer.buildFrame(request)
+
+    ctx.datagram_received(bytes.fromhex("ff 01 04 02 aa 55 07 af"), None)
+
+    assert ctx.response_future.done()
+    assert ctx.response_future.result().registers == [0xAA55]
+    assert ctx.framer.junk_bytes_skipped == 1
+
+
+async def test_modbus_tcp_client_keeps_the_stock_framer_and_reconnect():
+    client = create_tcp_client("1.2.3.4", 502)
+
+    assert not isinstance(client.ctx.framer, ResyncFramerRTU)
+    assert client.ctx.comm_params.reconnect_delay != 0
+
+
+def test_serial_connection_key_needs_a_port():
+    with pytest.raises(ValueError):
+        connection_key(CONN_TYPE_SERIAL)
+
+
+@patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient")
+def test_a_link_is_shared_once_a_second_controller_holds_it(mock_client_cls):
+    manager = ModbusClientManager()
+    key = connection_key(CONN_TYPE_RTU_TCP, "1.2.3.4", 502)
+
+    manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+    assert manager.is_shared(key) is False
+    manager.get_tcp_client("1.2.3.4", 502, rtu=True)
+    assert manager.is_shared(key) is True
+    manager.release_client(key)
+    assert manager.is_shared(key) is False
+    assert manager.is_shared("9.9.9.9:502") is False
 
 
 if __name__ == "__main__":

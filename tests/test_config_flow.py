@@ -238,7 +238,7 @@ async def test_validate_config_uses_throwaway_client(hass: HomeAssistant):
     manager_clients_before = dict(ModbusClientManager.get_instance()._clients)
 
     with patch(
-        "custom_components.solis_modbus.config_flow.AsyncModbusTcpClient",
+        "custom_components.solis_modbus.client_manager.AsyncModbusTcpClient",
         return_value=mock_client,
     ):
         valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
@@ -263,7 +263,7 @@ async def test_validate_config_connect_failure(hass: HomeAssistant):
     mock_client.connect = AsyncMock()
     mock_client.connected = False
 
-    with patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=mock_client):
+    with patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=mock_client):
         valid, err = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S6-EH1P"})
 
     assert (valid, err) == (False, "tcp_port_closed")
@@ -326,7 +326,7 @@ async def test_skip_conn_check_bypasses_tcp_and_modbus_probe(hass: HomeAssistant
 
     with (
         patch("asyncio.open_connection", AsyncMock()) as mock_probe,
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient") as mock_tcp_client,
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient") as mock_tcp_client,
     ):
         valid, err = await flow._validate_config(
             {
@@ -412,7 +412,7 @@ async def test_flow_user_with_skip_conn_check_does_not_persist_flag(hass: HomeAs
 
     with (
         patch("asyncio.open_connection", AsyncMock()) as mock_probe,
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient") as mock_tcp_client,
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient") as mock_tcp_client,
         patch("custom_components.solis_modbus.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
@@ -470,7 +470,7 @@ async def test_flow_reconfigure_with_skip_conn_check(hass: HomeAssistant):
 
     with (
         patch("asyncio.open_connection", AsyncMock()) as mock_probe,
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient") as mock_tcp_client,
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient") as mock_tcp_client,
         patch("custom_components.solis_modbus.async_setup_entry", return_value=True),
     ):
         result = await entry.start_reconfigure_flow(hass)

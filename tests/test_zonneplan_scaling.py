@@ -150,7 +150,7 @@ def _form(model, serial="SNZP1"):
 
 async def _create(hass, model, client):
     with (
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client),
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client),
         patch("custom_components.solis_modbus.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
@@ -200,7 +200,7 @@ class TestConfigFlow:
 
     async def _reconfigure(self, hass, entry, model, client):
         with (
-            patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client),
+            patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client),
             patch("custom_components.solis_modbus.async_setup_entry", return_value=True),
         ):
             result = await entry.start_reconfigure_flow(hass)
