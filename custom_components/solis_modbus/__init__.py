@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ConfigEntryError, HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceEntry
 
+from .client_manager import connection_key
 from .compat import OPTIONS_FLOW_RELOADS
 from .const import (
     CONF_BAUDRATE,
@@ -621,11 +622,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     port = config.get("port", 502)
 
     # ... (Rest of your function remains the same) ...
-    if connection_type in (CONN_TYPE_TCP, CONN_TYPE_RTU_TCP):
-        connection_id = f"rtu_tcp:{host}:{port}" if connection_type == CONN_TYPE_RTU_TCP else f"{host}:{port}"
-    else:  # Serial
-        serial_port = config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0")
-        connection_id = serial_port
+    connection_id = connection_key(connection_type, host, port, config.get(CONF_SERIAL_PORT, "/dev/ttyUSB0"))
 
     _LOGGER.debug(config)
 

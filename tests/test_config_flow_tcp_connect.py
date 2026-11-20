@@ -82,7 +82,7 @@ def _short_timeout_client(host, port, timeout, retries):
 
 
 async def _validate_against(logger: _FakeLogger):
-    with patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", side_effect=_short_timeout_client):
+    with patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", side_effect=_short_timeout_client):
         return await ModbusConfigFlow()._validate_config({**TCP_INPUT, "host": HOST, "port": logger.port})
 
 
@@ -132,7 +132,7 @@ async def test_failed_connect_is_not_retried():
     client.connected = False
     client.read_input_registers = AsyncMock()
 
-    with patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client):
+    with patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client):
         ok, err = await ModbusConfigFlow()._validate_config(dict(TCP_INPUT))
 
     assert (ok, err) == (False, "tcp_port_closed")
@@ -149,7 +149,7 @@ async def test_open_port_but_bad_modbus_still_reports_cannot_connect():
     client.read_input_registers = AsyncMock(side_effect=ConnectionError("boom"))
 
     with (
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client),
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client),
         patch("asyncio.sleep", AsyncMock()),
     ):
         ok, err = await ModbusConfigFlow()._validate_config(dict(TCP_INPUT))
@@ -173,7 +173,7 @@ async def test_refused_retry_after_an_accepted_connection_is_not_a_closed_port()
     client.connect = connect
 
     with (
-        patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client),
+        patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client),
         patch("asyncio.sleep", AsyncMock()),
     ):
         ok, err = await ModbusConfigFlow()._validate_config(dict(TCP_INPUT))

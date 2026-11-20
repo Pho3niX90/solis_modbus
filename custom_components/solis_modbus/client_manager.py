@@ -28,13 +28,61 @@ SERIAL_TIMEOUT_S = 1.5
 SERIAL_RETRIES = 3
 
 
+# Modbus TCP and RTU-over-TCP client settings. retries=1: the integration has its own reconnect
+# watchdog and per-group recovery. pymodbus-level retry storms (5 × 5 s per dead group) flood the
+# S2-WL datalogger, desync transaction IDs, and starve its cloud uplink (issues #395/#406).
+TCP_TIMEOUT_S = 5
+TCP_RETRIES = 1
+
+
+def connection_key(connection_type: str, host: str | None = None, port: int | None = 502, serial_port: str | None = None) -> str:
+    """Key of the shared link a config entry uses: one client, lock and inter-frame clock per key.
+
+    Modbus TCP and RTU over TCP to the same host and port are different protocols, so they get
+    different keys and never share a client.
+    """
+    if connection_type == CONN_TYPE_SERIAL:
+        if not serial_port:
+            raise ValueError("serial_port is required for a serial connection key")
+        return serial_port
+    if connection_type == CONN_TYPE_RTU_TCP:
+        return f"rtu_tcp:{host}:{port}"
+    return f"{host}:{port}"
+
+
+def create_tcp_client(host: str, port: int, *, rtu: bool = False) -> AsyncModbusTcpClient:
+    """Create a pymodbus TCP socket client, with Modbus TCP framing or (rtu=True) RTU framing.
+
+    RTU over TCP goes through a transparent RS485 gateway that passes line noise through, so it
+    gets the resync framer that finds the answer behind stray bytes. Without `early_end`: the
+    gateway's baud rate is unknown, so attempts end only by the client timeout.
+    """
+    kwargs = {"host": host, "port": port, "timeout": TCP_TIMEOUT_S, "retries": TCP_RETRIES}
+    if rtu:
+        # reconnect_delay=0, as on serial: when several inverters share the gateway a lost RS485 frame
+        # leaves the socket open (see ModbusController._close_after_failed_request), so pymodbus drops
+        # the link itself after retries+4 unanswered requests in a row (6 at retries=1, roughly a
+        # minute at a 5 s timeout), and its own reconnect would race check_connection.
+        kwargs["framer"] = FramerType.RTU
+        kwargs["reconnect_delay"] = 0
+    client = AsyncModbusTcpClient(**kwargs)
+    if rtu:
+        # `ctx.framer` is a plain attribute of pymodbus's transaction manager (3.11.4 - 3.13.1).
+        framer = getattr(getattr(client, "ctx", None), "framer", None)
+        if isinstance(framer, FramerRTU):
+            client.ctx.framer = ResyncFramerRTU(DecodePDU(False))
+        else:
+            _LOGGER.warning("pymodbus RTU-over-TCP client has no RTU framer to replace (%s); keeping its stock framer", type(framer).__name__)
+    return client
+
+
 def _no_early_end() -> None:
     """End function used when the pending attempt's future can't be found: nothing to end."""
 
 
 def create_serial_client(serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient:
     """Create a pymodbus serial client that resyncs past junk and ends failed attempts early."""
-    # reconnect_delay=0: pymodbus drops the port itself after retries+3 unanswered requests in a row. Its
+    # reconnect_delay=0: pymodbus drops the port itself after retries+4 unanswered requests in a row. Its
     # own reconnect would then race the integration's check_connection watchdog, the only place that connects.
     client = AsyncModbusSerialClient(
         port=serial_port,
@@ -84,24 +132,10 @@ class ModbusClientManager:
 
     def get_tcp_client(self, host: str, port: int, *, rtu: bool = False) -> AsyncModbusTcpClient:
         """Get or create a TCP socket client with Modbus TCP or RTU framing."""
-        key = f"rtu_tcp:{host}:{port}" if rtu else f"{host}:{port}"
+        key = connection_key(CONN_TYPE_RTU_TCP if rtu else CONN_TYPE_TCP, host, port)
         if key not in self._clients:
             _LOGGER.debug("Creating new %s client for %s:%s", "RTU-over-TCP" if rtu else "Modbus TCP", host, port)
-            # retries=1: the integration has its own reconnect watchdog and per-group
-            # recovery. pymodbus-level retry storms (5 × 5 s per dead group) flood the
-            # S2-WL datalogger, desync transaction IDs, and starve its cloud uplink
-            # (issues #395/#406).
-            client_kwargs = {
-                "host": host,
-                "port": port,
-                "timeout": 5,
-                "retries": 1,
-            }
-
-            if rtu:
-                client_kwargs["framer"] = FramerType.RTU
-
-            client = AsyncModbusTcpClient(**client_kwargs)
+            client = create_tcp_client(host, port, rtu=rtu)
             self._clients[key] = {
                 "client": client,
                 "ref_count": 0,
@@ -116,7 +150,7 @@ class ModbusClientManager:
 
     def get_serial_client(self, serial_port: str, baudrate: int, bytesize: int, parity: str, stopbits: int) -> AsyncModbusSerialClient | SerialProxyClient:
         """Get or create a Serial Modbus client."""
-        key = serial_port  # Use serial_port as the key
+        key = connection_key(CONN_TYPE_SERIAL, serial_port=serial_port)
         if key not in self._clients:
             _LOGGER.debug(f"Creating new Modbus Serial client for {serial_port} (baudrate={baudrate})")
             if is_serial_proxy(serial_port):
@@ -162,6 +196,11 @@ class ModbusClientManager:
         if connection_id in self._clients:
             return self._clients[connection_id]["lock"]
         return None
+
+    def is_shared(self, connection_id: str) -> bool:
+        """True when more than one controller holds the client for this link."""
+        entry = self._clients.get(connection_id)
+        return entry is not None and entry["ref_count"] > 1
 
     def get_last_modbus_request(self, connection_id: str) -> float:
         """Monotonic time of last inter-frame wait start for this link (shared across Modbus slaves)."""

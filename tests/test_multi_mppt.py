@@ -321,7 +321,7 @@ async def test_setup_reads_the_mppt_count_on_a_multi_mppt_model(hass, model, dc_
     client = MagicMock(connect=AsyncMock(), connected=True)
     client.read_input_registers = AsyncMock(side_effect=lambda address, count, device_id: reads[address])
 
-    with patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client):
+    with patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client):
         valid, _ = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": model})
 
     assert valid
@@ -339,7 +339,7 @@ async def test_setup_does_not_read_the_mppt_count_on_other_models(hass):
     client = MagicMock(connect=AsyncMock(), connected=True)
     client.read_input_registers = AsyncMock(return_value=_registers(0))
 
-    with patch("custom_components.solis_modbus.config_flow.AsyncModbusTcpClient", return_value=client):
+    with patch("custom_components.solis_modbus.client_manager.AsyncModbusTcpClient", return_value=client):
         valid, _ = await flow._validate_config({"connection_type": CONN_TYPE_TCP, "host": "1.2.3.4", "slave": 1, "model": "S5-GR3P"})
 
     assert valid
