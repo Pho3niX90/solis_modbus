@@ -288,8 +288,8 @@ async def test_check_connection_stale_link_forces_reconnect():
     fails. Once last_modbus_success is old enough, the watchdog must force-close
     the client and reconnect instead of trusting the zombie link forever."""
     retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
-    # connected: True on the initial check (zombie link), False after force_close
-    controller.connected = MagicMock(side_effect=[True, False])
+    # connected: True on the initial check (zombie link) and the re-check under the lock, False after force_close
+    controller.connected = MagicMock(side_effect=[True, True, False])
 
     with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
         await retrieval.check_connection()
@@ -308,6 +308,109 @@ async def test_check_connection_healthy_link_returns_early():
 
     controller.force_close.assert_not_called()
     controller.connect.assert_not_awaited()
+
+
+def _sharing_controller(connection_id, last_success):
+    other = MagicMock()
+    other.connection_id = connection_id
+    other.last_modbus_success = last_success
+    other.has_answered = True
+    return other
+
+
+async def test_stale_inverter_leaves_a_link_another_inverter_still_uses_open():
+    """Issue #581: one inverter on a shared link going quiet (night) must not close the link under the others."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    controller.connection_id = "/dev/ttyUSB0"
+    controller.connected = MagicMock(return_value=True)
+    others = [controller, _sharing_controller("/dev/ttyUSB0", datetime.now(UTC) - timedelta(seconds=20))]
+
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.notify_register_update"),
+        patch("custom_components.solis_modbus.data_retrieval.iter_controllers", return_value=others),
+        patch.object(retrieval, "_update_connection_issue") as update_issue,
+    ):
+        await retrieval.check_connection()
+
+    controller.force_close.assert_not_called()
+    controller.connect.assert_not_awaited()
+    update_issue.assert_called_once_with(False)
+
+
+async def test_an_inverter_that_never_answered_does_not_keep_a_stale_link_open():
+    """A controller just set up behind a dead link has last_modbus_success = now but has never answered."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    controller.connection_id = "/dev/ttyUSB0"
+    controller.connected = MagicMock(side_effect=[True, True, False])
+    newcomer = _sharing_controller("/dev/ttyUSB0", datetime.now(UTC))
+    newcomer.has_answered = False
+
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.notify_register_update"),
+        patch("custom_components.solis_modbus.data_retrieval.iter_controllers", return_value=[controller, newcomer]),
+    ):
+        await retrieval.check_connection()
+
+    controller.force_close.assert_called_once()
+
+
+async def test_stale_link_is_closed_when_the_other_inverters_on_it_are_quiet_too():
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    controller.connection_id = "/dev/ttyUSB0"
+    controller.connected = MagicMock(side_effect=[True, True, False])
+    others = [
+        controller,
+        _sharing_controller("/dev/ttyUSB0", datetime.now(UTC) - timedelta(minutes=10)),
+        _sharing_controller("10.0.0.9:502", datetime.now(UTC)),  # a different link answering doesn't count
+    ]
+
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.notify_register_update"),
+        patch("custom_components.solis_modbus.data_retrieval.iter_controllers", return_value=others),
+    ):
+        await retrieval.check_connection()
+
+    controller.force_close.assert_called_once()
+    controller.connect.assert_awaited_once()
+
+
+async def test_stale_link_is_closed_under_the_link_lock():
+    """The close waits for a request another inverter has in flight on the shared link."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    controller.connected = MagicMock(side_effect=[True, True, False])
+    lock = asyncio.Lock()
+    controller.poll_lock = lock
+    closed_while_locked = []
+    controller.force_close = MagicMock(side_effect=lambda: closed_while_locked.append(lock.locked()))
+
+    await lock.acquire()  # another inverter's request is in flight
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        check = asyncio.create_task(retrieval.check_connection())
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert closed_while_locked == []
+        lock.release()
+        await check
+
+    assert closed_while_locked == [True]
+
+
+async def test_stale_link_is_left_open_when_it_answered_while_waiting_for_the_lock():
+    """Another inverter's read in flight succeeds while the watchdog waits: the link is alive, don't close it."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    controller.connected = MagicMock(return_value=True)
+    lock = asyncio.Lock()
+    controller.poll_lock = lock
+
+    await lock.acquire()
+    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+        check = asyncio.create_task(retrieval.check_connection())
+        await asyncio.sleep(0)
+        controller.last_modbus_success = datetime.now(UTC)  # the read in flight answered
+        lock.release()
+        await check
+
+    controller.force_close.assert_not_called()
 
 
 async def test_link_is_stale_thresholds():
