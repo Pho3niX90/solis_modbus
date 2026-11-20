@@ -309,13 +309,51 @@ class DataRetrieval:
                     pass
                 setattr(self, task_attr, None)
 
+    def _stale_after_s(self) -> float:
+        """Seconds without a successful read after which the link counts as stale."""
+        return max(120.0, float(max(self.controller.poll_speed.values())) * 3)
+
     def _link_is_stale(self) -> bool:
         """True when the link claims to be connected but reads have stopped succeeding."""
         last = self.controller.last_modbus_success
         if last is None:
             return False
-        stale_after = max(120.0, float(max(self.controller.poll_speed.values())) * 3)
-        return (datetime.now(UTC) - last).total_seconds() > stale_after
+        return (datetime.now(UTC) - last).total_seconds() > self._stale_after_s()
+
+    def _link_answers_another_inverter(self) -> bool:
+        """True when another inverter on this link read successfully within the stale window.
+
+        Several inverters can share one serial port or RS485 gateway. When only this one has gone
+        quiet (powered off at night, say) the link itself is fine, and closing it would cut the
+        other inverters' requests (issue #581).
+        """
+        connection_id = self.controller.connection_id
+        stale_after = self._stale_after_s()
+        now = datetime.now(UTC)
+        for other in iter_controllers(self.hass):
+            if other is self.controller or getattr(other, "connection_id", None) != connection_id:
+                continue
+            # has_answered: last_modbus_success starts at "now", so a controller that never answered
+            # (just set up behind a dead link) would otherwise look alive for a whole window.
+            last = other.last_modbus_success
+            if other.has_answered and last is not None and (now - last).total_seconds() <= stale_after:
+                return True
+        return False
+
+    def _force_close_if_still_stale(self) -> None:
+        """Close the link unless it came back while waiting for the link lock.
+
+        The wait can take seconds behind another inverter's request: that read may succeed, another
+        entry's watchdog may already have reopened the link, or this entry may have been unloaded.
+        """
+        if self._stopping or not self.controller.connected():
+            return
+        if not self._link_is_stale() or self._link_answers_another_inverter():
+            # The link answered while we waited: drop the issue raised before the wait, as
+            # nothing will reconnect (and clear it) on a link that stays open.
+            self._update_connection_issue(False)
+            return
+        self.controller.force_close()
 
     def _expected_offline_at_night(self) -> bool:
         """True when the datalogger is expected to be offline because it's night.
@@ -444,6 +482,16 @@ class DataRetrieval:
                 if not self._link_is_stale():
                     self._update_connection_issue(False)
                     return
+                if self._link_answers_another_inverter():
+                    # The link is alive: another inverter on it still answers. Only this one is quiet,
+                    # so no "datalogger unreachable" issue: before #581 the close and reconnect
+                    # cleared it in the same tick.
+                    self._update_connection_issue(False)
+                    _LOGGER.debug(
+                        f"({self.controller.host}.{self.controller.slave}) No successful read since {self.controller.last_modbus_success}, "
+                        f"but another inverter on {self.controller.connection_id} still answers; leaving the shared link open."
+                    )
+                    return
                 # The socket claims to be connected but reads have stopped
                 # succeeding — a half-open TCP link (e.g. the WiFi datalogger
                 # slept overnight and the stack never noticed, issue #411).
@@ -454,7 +502,13 @@ class DataRetrieval:
                     f"no successful read since {self.controller.last_modbus_success}; forcing a reconnect.",
                 )
                 self._update_connection_issue(True)
-                self.controller.force_close()
+                # Under the link lock, so the close can't cut a request another inverter has in flight.
+                lock = self.controller.poll_lock
+                if lock:
+                    async with lock:
+                        self._force_close_if_still_stale()
+                else:
+                    self._force_close_if_still_stale()
 
             retry_delay = 0.5
             while not self.controller.connected() and not self._stopping:
