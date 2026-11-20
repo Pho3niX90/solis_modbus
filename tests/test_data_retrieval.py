@@ -403,7 +403,10 @@ async def test_stale_link_is_left_open_when_it_answered_while_waiting_for_the_lo
     controller.poll_lock = lock
 
     await lock.acquire()
-    with patch("custom_components.solis_modbus.data_retrieval.notify_register_update"):
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.notify_register_update"),
+        patch.object(retrieval, "_update_connection_issue") as update_issue,
+    ):
         check = asyncio.create_task(retrieval.check_connection())
         await asyncio.sleep(0)
         controller.last_modbus_success = datetime.now(UTC)  # the read in flight answered
@@ -411,6 +414,32 @@ async def test_stale_link_is_left_open_when_it_answered_while_waiting_for_the_lo
         await check
 
     controller.force_close.assert_not_called()
+    assert update_issue.call_args_list[-1].args == (False,)
+
+
+async def test_stale_link_is_left_open_when_another_inverter_answered_while_waiting_for_the_lock():
+    """This inverter stays quiet, but the other inverter's read in flight succeeds: the link is alive."""
+    retrieval, controller = _make_stale_watchdog_fixture(datetime.now(UTC) - timedelta(minutes=10))
+    controller.connection_id = "/dev/ttyUSB0"
+    controller.connected = MagicMock(return_value=True)
+    lock = asyncio.Lock()
+    controller.poll_lock = lock
+    sibling = _sharing_controller("/dev/ttyUSB0", datetime.now(UTC) - timedelta(minutes=10))
+
+    await lock.acquire()
+    with (
+        patch("custom_components.solis_modbus.data_retrieval.notify_register_update"),
+        patch("custom_components.solis_modbus.data_retrieval.iter_controllers", return_value=[controller, sibling]),
+        patch.object(retrieval, "_update_connection_issue") as update_issue,
+    ):
+        check = asyncio.create_task(retrieval.check_connection())
+        await asyncio.sleep(0)
+        sibling.last_modbus_success = datetime.now(UTC)  # the other inverter's read in flight answered
+        lock.release()
+        await check
+
+    controller.force_close.assert_not_called()
+    assert update_issue.call_args_list[-1].args == (False,)
 
 
 async def test_link_is_stale_thresholds():

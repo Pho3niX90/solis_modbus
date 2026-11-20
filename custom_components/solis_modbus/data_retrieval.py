@@ -349,6 +349,9 @@ class DataRetrieval:
         if self._stopping or not self.controller.connected():
             return
         if not self._link_is_stale() or self._link_answers_another_inverter():
+            # The link answered while we waited: drop the issue raised before the wait, as
+            # nothing will reconnect (and clear it) on a link that stays open.
+            self._update_connection_issue(False)
             return
         self.controller.force_close()
 
