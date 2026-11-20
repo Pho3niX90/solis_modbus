@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "Fast poll interval is below the minimum for the selected poll profile. Only the extreme profile allows intervals below 10s (minimum 2s)."
     },
     "abort": {
-      "already_configured": "This device is already configured."
+      "already_configured": "This device is already configured.",
+      "invalid_connection_type": "This entry has an unknown connection type. Remove it and add the inverter again."
     }
   },
   "options": {

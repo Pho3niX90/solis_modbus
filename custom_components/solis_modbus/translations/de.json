@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "Das schnelle Abfrageintervall liegt unter dem Minimum für das gewählte Abfrageprofil. Nur das Extrem-Profil erlaubt Intervalle unter 10s (Minimum 2s)."
     },
     "abort": {
-      "already_configured": "Dieses Gerät ist bereits konfiguriert."
+      "already_configured": "Dieses Gerät ist bereits konfiguriert.",
+      "invalid_connection_type": "Dieser Eintrag hat einen unbekannten Verbindungstyp. Entfernen Sie ihn und fügen Sie den Wechselrichter erneut hinzu."
     }
   },
   "options": {

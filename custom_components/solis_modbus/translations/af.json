@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "Vinnige peilinterval is onder die minimum vir die gekose peilprofiel. Slegs die uiterste profiel laat intervalle onder 10s toe (minimum 2s)."
     },
     "abort": {
-      "already_configured": "Hierdie toestel is reeds gekonfigureer."
+      "already_configured": "Hierdie toestel is reeds gekonfigureer.",
+      "invalid_connection_type": "Hierdie inskrywing het 'n onbekende verbindingstipe. Verwyder dit en voeg die omsetter weer by."
     }
   },
   "options": {

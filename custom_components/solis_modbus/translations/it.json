@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "L'intervallo di polling veloce è inferiore al minimo per il profilo selezionato. Solo il profilo estremo consente intervalli inferiori a 10s (minimo 2s)."
     },
     "abort": {
-      "already_configured": "Questo dispositivo è già configurato."
+      "already_configured": "Questo dispositivo è già configurato.",
+      "invalid_connection_type": "Questa voce ha un tipo di connessione sconosciuto. Rimuovila e aggiungi di nuovo l'inverter."
     }
   },
   "options": {

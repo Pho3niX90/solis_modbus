@@ -95,7 +95,8 @@
       "poll_interval_below_floor": "El intervalo de sondeo rápido está por debajo del mínimo para el perfil seleccionado. Solo el perfil extremo permite intervalos inferiores a 10s (mínimo 2s)."
     },
     "abort": {
-      "already_configured": "Este dispositivo ya está configurado."
+      "already_configured": "Este dispositivo ya está configurado.",
+      "invalid_connection_type": "Esta entrada tiene un tipo de conexión desconocido. Elimínala y vuelve a añadir el inversor."
     }
   },
   "options": {
