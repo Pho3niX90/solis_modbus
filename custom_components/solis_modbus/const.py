@@ -41,6 +41,11 @@ DEFAULT_STOPBITS = 1
 # Distinguishes "you asked for the wrong thing" from "the read failed".
 MODBUS_ILLEGAL_DATA_ADDRESS = 2
 
+# Modbus exception code 5 (standard: Acknowledge; Solis RS485 protocol §4:
+# "HMI and DSP communication failure"). Seen on PV-powered string inverters
+# while the HMI is up but the DSP is still booting or dropping out at dawn/dusk (#584).
+MODBUS_ACKNOWLEDGE = 5
+
 # Time-of-use function version (input register 33289, protocol Ver3.4 p18).
 # 0xAA55 = "Optimized Revenue V2": TOU runs off the 43707 period switches, and
 # 43110 bit 1 (the V1 enable) is acknowledged but cleared by the firmware within

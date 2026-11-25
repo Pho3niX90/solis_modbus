@@ -20,6 +20,7 @@ from custom_components.solis_modbus.const import (
     DEFAULT_STOPBITS,
     DOMAIN,
     MANUFACTURER,
+    MODBUS_ACKNOWLEDGE,
 )
 from custom_components.solis_modbus.data.enums import PollSpeed
 from custom_components.solis_modbus.data.solis_config import InverterConfig
@@ -43,6 +44,11 @@ def is_number(value) -> bool:
 
 # Modbus exception codes we treat as address/map issues worth splitting reads (see data_retrieval recovery).
 RECOVERABLE_REGISTER_READ_EXCEPTIONS = frozenset({2, 3})
+
+# Gateway-generated exception codes (10 = Gateway Path Unavailable, 11 = Gateway Target Device Failed to
+# Respond). These come from a TCP-to-RS485 bridge when the downstream bus/inverter is dead, so they must
+# not count as a live inverter reply for shared-link watchdogs.
+_GATEWAY_EXCEPTION_CODES = frozenset({10, 11})
 
 # Queued writes older than this are dropped instead of sent late (#534): after a
 # link outage, a backlog of control setpoints must not replay minutes later.
@@ -167,6 +173,9 @@ class ModbusController:
         # multiple), sent in order or dropped together once queued_at is too old.
         self.write_queue = asyncio.Queue()
         self._last_modbus_success = datetime.now(UTC)
+        # Monotonic time of the last Modbus response frame of any kind (including exception
+        # responses such as exc 5): proves the underlying link is alive for shared-bus watchdogs.
+        self.last_modbus_reply: float | None = None
         # Whether this inverter has answered a read since startup (unlike
         # _last_modbus_success, which starts at "now").
         self.has_answered = False
@@ -378,11 +387,16 @@ class ModbusController:
 
                 if result.isError():
                     exc = _exception_code_from_modbus_result(result)
-                    log_fn = _LOGGER.debug if quiet else _LOGGER.error
+                    if exc is not None and exc not in _GATEWAY_EXCEPTION_CODES:
+                        self.last_modbus_reply = time.monotonic()
+                    # Exception 5 (Solis: HMI/DSP not ready) is routine during morning startup;
+                    # DataRetrieval handles backoff and transition logging (#584).
+                    log_fn = _LOGGER.debug if quiet or exc == MODBUS_ACKNOWLEDGE else _LOGGER.error
                     log_fn(f"({self.host}.{self.device_id}) Failed to read input registers starting at {register}: {result}")
                     return None, exc
 
                 self._last_modbus_success = datetime.now(UTC)
+                self.last_modbus_reply = time.monotonic()
                 self.has_answered = True
                 return result.registers, None
             except Exception as e:
@@ -444,11 +458,16 @@ class ModbusController:
 
                 if result.isError():
                     exc = _exception_code_from_modbus_result(result)
-                    log_fn = _LOGGER.debug if quiet else _LOGGER.error
+                    if exc is not None and exc not in _GATEWAY_EXCEPTION_CODES:
+                        self.last_modbus_reply = time.monotonic()
+                    # Exception 5 (Solis: HMI/DSP not ready) is routine during morning startup;
+                    # DataRetrieval handles backoff and transition logging (#584).
+                    log_fn = _LOGGER.debug if quiet or exc == MODBUS_ACKNOWLEDGE else _LOGGER.error
                     log_fn(f"({self.host}.{self.device_id}) Failed to read holding registers starting at {register}: {result}")
                     return None, exc
 
                 self._last_modbus_success = datetime.now(UTC)
+                self.last_modbus_reply = time.monotonic()
                 self.has_answered = True
                 return result.registers, None
             except Exception as e:

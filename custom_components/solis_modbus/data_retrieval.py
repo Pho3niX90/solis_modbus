@@ -17,7 +17,7 @@ from custom_components.solis_modbus.helpers import (
     notify_register_update,
 )
 
-from .const import CONN_TYPE_SERIAL, DOMAIN
+from .const import CONN_TYPE_SERIAL, DOMAIN, MODBUS_ACKNOWLEDGE
 from .data.enums import PollSpeed
 from .modbus_controller import RECOVERABLE_REGISTER_READ_EXCEPTIONS, ModbusController
 from .sensors.solis_base_sensor import SolisSensorGroup, cluster_sensors_by_contiguous_registers
@@ -41,6 +41,13 @@ _SLAVE_PROBE_AFTER = timedelta(minutes=1)
 # Failed model-number probes on one connection before polling goes ahead without
 # the blank image check (an inverter that rejects the register mustn't stall).
 _MAX_INCONCLUSIVE_IMAGE_PROBES = 3
+
+# Backoff after Modbus exception 5 (Solis: HMI/DSP communication failure, #584).
+# Keeps polling off a waking/shutting-down inverter without blocking shared links,
+# and stays below _stale_after_s() (>= 120 s) so the watchdog sees live replies.
+_NOT_READY_BACKOFF_INITIAL_S = 15.0
+_NOT_READY_BACKOFF_MAX_S = 60.0
+_NOT_READY_WARN_AFTER_S = 600.0
 
 
 class DataRetrieval:
@@ -70,6 +77,16 @@ class DataRetrieval:
         self._image_checked_on: int | None = None
         self._blank_since: float | None = None
         self._inconclusive_image_probes = 0
+        # Modbus exception 5 (Solis: HMI/DSP communication failure, issue #584):
+        # per-controller non-blocking backoff so startup/shutdown doesn't hammer the inverter.
+        self._not_ready_until: float | None = None
+        self._not_ready_since: float | None = None
+        self._last_not_ready: float | None = None
+        self._not_ready_delay: float = _NOT_READY_BACKOFF_INITIAL_S
+        self._not_ready_warned: bool = False
+        self._not_ready_last_success: datetime | None = None
+        self._not_ready_connection: int | None = None
+        self._not_ready_issue_raised: bool | None = None
         self.poll_lock = asyncio.Lock()
         # Incremented per poll batch; sent with each value so derived sensors can pair
         # registers from different groups that were read in the same batch.
@@ -125,16 +142,124 @@ class DataRetrieval:
             return await self.controller.async_read_holding_registers_with_exception(start_register, count)
         return await self.controller.async_read_input_registers_with_exception(start_register, count)
 
-    async def _probe_register_block_quiet(self, start_register: int, count: int, is_holding: bool) -> tuple[bool, list[int] | None]:
+    def _note_inverter_not_ready(self) -> None:
+        """Pause polling this inverter after Modbus exception 5 (Solis: HMI/DSP comm failure, #584)."""
+        now = time.monotonic()
+        # A long gap since the last exception 5 (e.g. unrelated errors in between) starts a fresh episode.
+        if self._last_not_ready is not None and (now - self._last_not_ready) > self._stale_after_s():
+            self._clear_inverter_not_ready(recovered=False)
+        delay = self._not_ready_delay
+        self._not_ready_until = now + delay
+        self._last_not_ready = now
+        self._not_ready_delay = min(delay * 2, _NOT_READY_BACKOFF_MAX_S)
+        last = getattr(self.controller, "last_modbus_success", None)
+        self._not_ready_last_success = last if isinstance(last, datetime) else None
+        conn = getattr(self.controller, "connection_count", None)
+        self._not_ready_connection = conn if isinstance(conn, int) and not isinstance(conn, bool) else None
+        if self._not_ready_since is None:
+            self._not_ready_since = now
+            self._not_ready_warned = False
+            _LOGGER.info(
+                "(%s.%s) Inverter not ready (Modbus exception 5: HMI/DSP communication failure); pausing polls for %.0f s.",
+                self.controller.host,
+                self.controller.slave,
+                delay,
+            )
+            return
+        elapsed = now - self._not_ready_since
+        if elapsed >= _NOT_READY_WARN_AFTER_S:
+            self._update_not_ready_issue(True)
+            if not self._not_ready_warned and not self._expected_offline_at_night():
+                self._not_ready_warned = True
+                _LOGGER.warning(
+                    "(%s.%s) Inverter still not ready after %.0f s (Modbus exception 5: HMI/DSP communication failure).",
+                    self.controller.host,
+                    self.controller.slave,
+                    elapsed,
+                )
+                return
+        _LOGGER.debug(
+            "(%s.%s) Inverter still not ready (Modbus exception 5); pausing polls for %.0f s.",
+            self.controller.host,
+            self.controller.slave,
+            delay,
+        )
+
+    def _clear_inverter_not_ready(self, *, recovered: bool = True) -> None:
+        """Reset exception-5 backoff once the inverter answers again (or the link fails differently)."""
+        if self._not_ready_since is not None and recovered:
+            elapsed = time.monotonic() - self._not_ready_since
+            log_fn = _LOGGER.warning if self._not_ready_warned else _LOGGER.info
+            log_fn(
+                "(%s.%s) Inverter ready again after %.0f s of Modbus exception 5; resuming normal polling.",
+                self.controller.host,
+                self.controller.slave,
+                elapsed,
+            )
+        self._not_ready_until = None
+        self._not_ready_since = None
+        self._last_not_ready = None
+        self._not_ready_delay = _NOT_READY_BACKOFF_INITIAL_S
+        self._not_ready_warned = False
+        self._not_ready_last_success = None
+        self._not_ready_connection = None
+        self._update_not_ready_issue(False)
+
+    def _reset_not_ready_pause(self) -> None:
+        """Clear the poll-pause window without ending an ongoing exception-5 episode.
+
+        A single lost frame or transient reconnect shouldn't reset the 10-minute
+        escalation clock or flap the repair issue; if exception 5 really stopped,
+        the stale-gap rule and watchdog will end the episode.
+        """
+        self._not_ready_until = None
+        self._not_ready_delay = _NOT_READY_BACKOFF_INITIAL_S
+
+    def _is_backed_off(self) -> bool:
+        """Pure check: True while the exception-5 pause deadline has not expired."""
+        return self._not_ready_until is not None and time.monotonic() < self._not_ready_until
+
+    def _poll_paused_for_not_ready(self) -> bool:
+        """Check whether this poll tick should skip due to exception-5 backoff.
+
+        Clears the pause early if the link reconnected or another read
+        (e.g. a service call) succeeded in the meantime.
+        """
+        if self._not_ready_until is None:
+            return False
+        conn = getattr(self.controller, "connection_count", None)
+        if self._not_ready_connection is not None and isinstance(conn, int) and not isinstance(conn, bool) and conn != self._not_ready_connection:
+            self._reset_not_ready_pause()
+            return False
+        last = getattr(self.controller, "last_modbus_success", None)
+        if isinstance(last, datetime) and self._not_ready_last_success is not None and last > self._not_ready_last_success:
+            self._clear_inverter_not_ready(recovered=True)
+            return False
+        return self._is_backed_off()
+
+    def _inverter_not_ready_recently(self) -> bool:
+        """True when the inverter recently replied with Modbus exception 5 (HMI/DSP not ready).
+
+        The link itself is alive (the HMI is replying to Modbus frames), so the stale-link
+        watchdog must not treat it as a half-open socket and tear it down.
+        """
+        if self._last_not_ready is None:
+            return False
+        conn = getattr(self.controller, "connection_count", None)
+        if self._not_ready_connection is not None and isinstance(conn, int) and not isinstance(conn, bool) and conn != self._not_ready_connection:
+            return False
+        return (time.monotonic() - self._last_not_ready) <= self._stale_after_s()
+
+    async def _probe_register_block_quiet(self, start_register: int, count: int, is_holding: bool) -> tuple[bool, list[int] | None, int | None]:
         if count <= 0:
-            return True, []
+            return True, [], None
         if is_holding:
-            vals, _err = await self.controller._async_read_holding_register_raw_detailed(start_register, count, quiet=True)
+            vals, err = await self.controller._async_read_holding_register_raw_detailed(start_register, count, quiet=True)
         else:
-            vals, _err = await self.controller._async_read_input_register_raw_detailed(start_register, count, quiet=True)
+            vals, err = await self.controller._async_read_input_register_raw_detailed(start_register, count, quiet=True)
         if vals is None or len(vals) != count:
-            return False, None
-        return True, vals
+            return False, None, err
+        return True, vals, None
 
     async def _async_isolate_one_bad_register(self, start: int, count: int, is_holding: bool) -> int | None:
         if count <= 0:
@@ -144,14 +269,23 @@ class DataRetrieval:
         mid = count // 2
         if mid < 1:
             mid = 1
-        left_ok, _ = await self._probe_register_block_quiet(start, mid, is_holding)
+        left_ok, _, left_exc = await self._probe_register_block_quiet(start, mid, is_holding)
+        if left_exc == MODBUS_ACKNOWLEDGE:
+            self._note_inverter_not_ready()
+            return None
         if not left_ok:
             return await self._async_isolate_one_bad_register(start, mid, is_holding)
-        right_ok, _ = await self._probe_register_block_quiet(start + mid, count - mid, is_holding)
+        right_ok, _, right_exc = await self._probe_register_block_quiet(start + mid, count - mid, is_holding)
+        if right_exc == MODBUS_ACKNOWLEDGE:
+            self._note_inverter_not_ready()
+            return None
         if not right_ok:
             return await self._async_isolate_one_bad_register(start + mid, count - mid, is_holding)
         for off in range(count):
-            ok_one, _ = await self._probe_register_block_quiet(start + off, 1, is_holding)
+            ok_one, _, exc_one = await self._probe_register_block_quiet(start + off, 1, is_holding)
+            if exc_one == MODBUS_ACKNOWLEDGE:
+                self._note_inverter_not_ready()
+                return None
             if not ok_one:
                 return start + off
         return None
@@ -167,13 +301,23 @@ class DataRetrieval:
         proves nothing: during a blank image it stays blank, otherwise the
         result is None (unknown).
         """
-        ok, vals = await self._probe_register_block_quiet(self.controller.inverter_config.identity_register, 1, False)
+        ok, vals, exc = await self._probe_register_block_quiet(self.controller.inverter_config.identity_register, 1, False)
+        if exc == MODBUS_ACKNOWLEDGE:
+            # HMI is awake but DSP is not ready yet (#584): back off without
+            # counting this against the blank-image probe limit.
+            self._inconclusive_image_probes = 0
+            self._note_inverter_not_ready()
+            return True if self._blank_since is not None else None
         if not ok:
+            if self._not_ready_until is not None and (not self._can_poll() or self.controller.last_read_unanswered is True):
+                self._reset_not_ready_pause()
             if self._blank_since is not None:
                 return True
             self._inconclusive_image_probes += 1
             return None
         self._inconclusive_image_probes = 0
+        if self._not_ready_since is not None:
+            self._clear_inverter_not_ready(recovered=True)
         if vals == [0]:
             if self._blank_since is None:
                 self._blank_since = time.monotonic()
@@ -267,12 +411,17 @@ class DataRetrieval:
             vals, exc = await self._read_register_block_with_exception(g.start_register, g.registrar_count, is_holding)
             if vals is not None and len(vals) == g.registrar_count:
                 results.append((g, vals))
+            elif exc == MODBUS_ACKNOWLEDGE:
+                self._note_inverter_not_ready()
+                break
             elif exc in RECOVERABLE_REGISTER_READ_EXCEPTIONS:
                 nested = await self._recover_sensor_group_after_modbus_failure(
                     g, g.start_register, g.registrar_count, is_holding, marked_for_removal, _depth=_depth + 1
                 )
                 if nested:
                     results.extend(nested)
+                if self._is_backed_off():
+                    break
         return results if results else None
 
     async def async_stop(self):
@@ -281,6 +430,7 @@ class DataRetrieval:
         # the datalogger is offline — otherwise it keeps spinning after unload).
         self._stopping = True
         self._update_connection_issue(False)
+        self._update_not_ready_issue(False)
         if self._entry_id is not None:
             # A reload re-raises it if it still applies.
             ir.async_delete_issue(self.hass, DOMAIN, f"serial_slave_id_{self._entry_id}")
@@ -321,18 +471,23 @@ class DataRetrieval:
         return (datetime.now(UTC) - last).total_seconds() > self._stale_after_s()
 
     def _link_answers_another_inverter(self) -> bool:
-        """True when another inverter on this link read successfully within the stale window.
+        """True when another inverter on this link replied within the stale window.
 
         Several inverters can share one serial port or RS485 gateway. When only this one has gone
         quiet (powered off at night, say) the link itself is fine, and closing it would cut the
-        other inverters' requests (issue #581).
+        other inverters' requests (issue #581). A valid Modbus exception reply (such as exc 5
+        during dawn startup) also proves the link is alive (#584).
         """
         connection_id = self.controller.connection_id
         stale_after = self._stale_after_s()
         now = datetime.now(UTC)
+        mono_now = time.monotonic()
         for other in iter_controllers(self.hass):
             if other is self.controller or getattr(other, "connection_id", None) != connection_id:
                 continue
+            last_reply = getattr(other, "last_modbus_reply", None)
+            if isinstance(last_reply, (int, float)) and not isinstance(last_reply, bool) and (mono_now - last_reply) <= stale_after:
+                return True
             # has_answered: last_modbus_success starts at "now", so a controller that never answered
             # (just set up behind a dead link) would otherwise look alive for a whole window.
             last = other.last_modbus_success
@@ -348,7 +503,7 @@ class DataRetrieval:
         """
         if self._stopping or not self.controller.connected():
             return
-        if not self._link_is_stale() or self._link_answers_another_inverter():
+        if not self._link_is_stale() or self._inverter_not_ready_recently() or self._link_answers_another_inverter():
             # The link answered while we waited: drop the issue raised before the wait, as
             # nothing will reconnect (and clear it) on a link that stays open.
             self._update_connection_issue(False)
@@ -401,6 +556,38 @@ class DataRetrieval:
         else:
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
             self._issue_raised = False
+
+    def _update_not_ready_issue(self, not_ready: bool) -> None:
+        """Raise/clear the 'inverter not ready' repair issue for prolonged exception 5 (#584)."""
+        if self._entry_id is None:
+            return
+        issue_id = f"inverter_not_ready_{self._entry_id}"
+        if not_ready:
+            if self._expected_offline_at_night():
+                if self._not_ready_issue_raised is not False:
+                    ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+                    self._not_ready_issue_raised = False
+                return
+            if self._not_ready_issue_raised is True:
+                return
+            self._not_ready_issue_raised = True
+            last = self.controller.last_modbus_success
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="inverter_not_ready",
+                translation_placeholders={
+                    "host": str(self.controller.host),
+                    "slave": str(self.controller.slave),
+                    "last_success": last.isoformat(timespec="seconds") if isinstance(last, datetime) else "unknown",
+                },
+            )
+        elif self._not_ready_issue_raised is not False:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            self._not_ready_issue_raised = False
 
     async def _check_serial_slave_id(self) -> None:
         """Raise a repair issue when a serial inverter only answers at unit 1.
@@ -481,7 +668,25 @@ class DataRetrieval:
                     self.first_poll = False
                 if not self._link_is_stale():
                     self._update_connection_issue(False)
+                    if self._not_ready_since is None:
+                        self._update_not_ready_issue(False)
                     return
+                if self._inverter_not_ready_recently():
+                    # The HMI is actively answering Modbus frames with exception 5 (DSP not ready):
+                    # the link itself is up, so don't tear it down or raise datalogger_unreachable (#584).
+                    self._update_connection_issue(False)
+                    _LOGGER.debug(
+                        "(%s.%s) No successful read since %s, but the inverter recently replied with Modbus exception 5 "
+                        "(HMI/DSP not ready); leaving the link open.",
+                        self.controller.host,
+                        self.controller.slave,
+                        self.controller.last_modbus_success,
+                    )
+                    return
+                # Exception 5 replies stopped arriving (link went silent): end the episode and
+                # don't leave a stale inverter_not_ready repair alongside datalogger_unreachable.
+                if self._not_ready_since is not None or self._not_ready_issue_raised is not False:
+                    self._clear_inverter_not_ready(recovered=False)
                 if self._link_answers_another_inverter():
                     # The link is alive: another inverter on it still answers. Only this one is quiet,
                     # so no "datalogger unreachable" issue: before #581 the close and reconnect
@@ -527,6 +732,7 @@ class DataRetrieval:
 
                 # Persistent failure (not a single blip) -> surface a repair issue
                 if self.controller.connect_failures >= _ISSUE_AFTER_FAILURES:
+                    self._clear_inverter_not_ready(recovered=False)
                     self._update_connection_issue(True)
 
                 if self._stopping:
@@ -660,7 +866,12 @@ class DataRetrieval:
         """
         if not self._can_poll():
             # Covers a link that dropped outside a batch (e.g. a failed write).
+            if self._not_ready_until is not None and not self.controller.connected():
+                self._reset_not_ready_pause()
             self._request_reconnect()
+            return
+
+        if self._poll_paused_for_not_ready():
             return
 
         group_hash = frozenset({group.start_register for group in groups})
@@ -673,6 +884,10 @@ class DataRetrieval:
 
         try:
             async with self.poll_lock:
+                # Re-check after acquiring poll_lock in case a concurrent batch just entered backoff.
+                if self._poll_paused_for_not_ready():
+                    return
+
                 total_start_time = time.perf_counter()
                 total_registrars, total_groups = 0, 0
                 self._poll_id += 1
@@ -692,9 +907,13 @@ class DataRetrieval:
                         )
                         self._inconclusive_image_probes = 0
                     elif blank is not False:
+                        if not self._can_poll():
+                            self._request_reconnect()
                         return
                     self._image_checked_on = connection
                 image_checked = False
+                batch_succeeded = False
+                batch_hit_not_ready = False
 
                 for sensor_group in groups:
                     start_register = sensor_group.start_register
@@ -709,11 +928,20 @@ class DataRetrieval:
                     values, exc_code = await self._read_register_block_with_exception(start_register, count, is_holding)
 
                     if values is None:
+                        if exc_code == MODBUS_ACKNOWLEDGE:
+                            self._note_inverter_not_ready()
+                            batch_hit_not_ready = True
+                            break
                         if exc_code in RECOVERABLE_REGISTER_READ_EXCEPTIONS:
+                            last_not_ready = self._last_not_ready
                             recovered = await self._recover_sensor_group_after_modbus_failure(
                                 sensor_group, start_register, count, is_holding, marked_for_removal
                             )
                             if recovered:
+                                if self._last_not_ready == last_not_ready:
+                                    batch_succeeded = True
+                                else:
+                                    batch_hit_not_ready = True
                                 for rg, block_values in recovered:
                                     self._apply_register_read_to_cache(rg, block_values, marked_for_removal, poll_id)
                             else:
@@ -721,6 +949,9 @@ class DataRetrieval:
                                     f"⚠️ Received None for register {start_register} - {end_register}, "
                                     f"for ({self.controller.host}.{self.controller.slave}), skipping."
                                 )
+                            if self._is_backed_off():
+                                batch_hit_not_ready = True
+                                break
                         else:
                             _LOGGER.debug(
                                 f"⚠️ Received None for register {start_register} - {end_register}, "
@@ -732,6 +963,8 @@ class DataRetrieval:
                             # wouldn't stop the batch. Reading the remaining groups would each
                             # fail again (issue #478); leave reconnection to check_connection,
                             # started now when the link is down (issue #556).
+                            if self._not_ready_until is not None:
+                                self._reset_not_ready_pause()
                             _LOGGER.debug(
                                 f"⚠️ Link to ({self.controller.host}.{self.controller.slave}) down or stopping, skipping remaining {speed.name} groups."
                             )
@@ -752,9 +985,18 @@ class DataRetrieval:
                         if await self._image_is_blank() is not False:
                             # Blank or unknown: re-check before the next batch applies anything.
                             self._image_checked_on = None
+                            if self._is_backed_off():
+                                batch_hit_not_ready = True
                             break
 
+                    batch_succeeded = True
                     self._apply_register_read_to_cache(sensor_group, values, marked_for_removal, poll_id)
+
+                if batch_succeeded and not batch_hit_not_ready:
+                    if self._not_ready_since is not None:
+                        self._clear_inverter_not_ready(recovered=True)
+                    elif self._not_ready_issue_raised is not False:
+                        self._update_not_ready_issue(False)
 
                 # Remove "ONCE" poll speed groups
                 self.controller._sensor_groups = [g for g in self.controller.sensor_groups if g not in marked_for_removal]

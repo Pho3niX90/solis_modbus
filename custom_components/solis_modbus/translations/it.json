@@ -209,6 +209,10 @@
     "serial_slave_id": {
       "title": "L'inverter Solis non risponde all'ID slave {slave}",
       "description": "L'inverter su {port} non risponde al suo ID slave Modbus configurato {slave}, ma un dispositivo sul bus risponde all'ID slave 1. Le versioni precedenti di questa integrazione inviavano ogni richiesta seriale (RS485) all'ID slave 1, qualunque fosse l'ID configurato, quindi questa configurazione potrebbe aver funzionato finora. Se l'inverter è all'ID slave 1, riconfigurare la voce dell'integrazione e impostare l'ID slave a 1."
+    },
+    "inverter_not_ready": {
+      "title": "Inverter Solis non pronto (errore di comunicazione HMI/DSP)",
+      "description": "L'inverter su {host} (ID slave {slave}) risponde persistentemente con l'eccezione Modbus 5 (errore di comunicazione HMI/DSP); nessuna lettura riuscita da {last_success}. Il collegamento al datalogger è attivo — brevi occorrenze all'alba o al tramonto sono normali durante l'avvio o lo spegnimento, ma se il problema persiste alla luce del giorno, controllare il display dell'inverter per eventuali guasti HMI/DSP."
     }
   }
 }
