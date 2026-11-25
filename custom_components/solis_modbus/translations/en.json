@@ -209,6 +209,10 @@
     "serial_slave_id": {
       "title": "Solis inverter not answering at slave ID {slave}",
       "description": "The inverter on {port} doesn't answer at its configured Modbus slave ID {slave}, but a device on the bus answers at slave ID 1. Older versions of this integration sent every serial (RS485) request to slave ID 1 whatever ID was configured, so this setup may have worked until now. If the inverter is at slave ID 1, reconfigure the integration entry and set the slave ID to 1."
+    },
+    "inverter_not_ready": {
+      "title": "Solis inverter not ready (HMI/DSP communication failure)",
+      "description": "The inverter at {host} (slave ID {slave}) is persistently replying with Modbus exception 5 (HMI/DSP communication failure); no successful read since {last_success}. The datalogger link is up — brief occurrences at dawn or dusk are normal during startup or shutdown, but if this persists during daylight, check the inverter display for HMI/DSP faults."
     }
   }
 }

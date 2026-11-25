@@ -209,6 +209,10 @@
     "serial_slave_id": {
       "title": "O inversor Solis não responde no ID de escravo {slave}",
       "description": "O inversor em {port} não responde no seu ID de escravo Modbus configurado {slave}, mas um dispositivo no barramento responde no ID de escravo 1. Versões anteriores desta integração enviavam todos os pedidos série (RS485) para o ID de escravo 1, qualquer que fosse o ID configurado, pelo que esta configuração pode ter funcionado até agora. Se o inversor estiver no ID de escravo 1, reconfigure a entrada da integração e defina o ID de escravo como 1."
+    },
+    "inverter_not_ready": {
+      "title": "Inversor Solis não pronto (falha de comunicação HMI/DSP)",
+      "description": "O inversor em {host} (ID de escravo {slave}) responde persistentemente com a exceção Modbus 5 (falha de comunicação HMI/DSP); nenhuma leitura bem-sucedida desde {last_success}. A ligação ao datalogger está ativa — breves ocorrências ao amanhecer ou ao anoitecer são normais durante o arranque ou encerramento, mas se persistir durante o dia, verifique o visor do inversor quanto a falhas HMI/DSP."
     }
   }
 }
