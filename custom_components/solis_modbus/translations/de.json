@@ -209,6 +209,10 @@
     "serial_slave_id": {
       "title": "Solis-Wechselrichter antwortet nicht unter Slave-ID {slave}",
       "description": "Der Wechselrichter an {port} antwortet nicht unter seiner konfigurierten Modbus-Slave-ID {slave}, aber ein Gerät am Bus antwortet unter Slave-ID 1. Ältere Versionen dieser Integration haben jede serielle (RS485) Anfrage unabhängig von der konfigurierten ID an Slave-ID 1 gesendet, daher hat diese Konfiguration bisher möglicherweise funktioniert. Wenn der Wechselrichter Slave-ID 1 hat, den Integrationseintrag neu konfigurieren und die Slave-ID auf 1 setzen."
+    },
+    "inverter_not_ready": {
+      "title": "Solis-Wechselrichter nicht bereit (HMI/DSP-Kommunikationsfehler)",
+      "description": "Der Wechselrichter unter {host} (Slave-ID {slave}) antwortet anhaltend mit Modbus-Ausnahme 5 (HMI/DSP-Kommunikationsfehler); kein erfolgreicher Lesevorgang seit {last_success}. Die Verbindung zum Datenlogger besteht — kurzes Auftreten bei Sonnenauf- oder -untergang ist beim Starten oder Abschalten normal, bei anhaltendem Problem bei Tageslicht jedoch das Wechselrichter-Display auf HMI/DSP-Fehler prüfen."
     }
   }
 }

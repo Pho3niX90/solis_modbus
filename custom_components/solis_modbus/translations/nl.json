@@ -209,6 +209,10 @@
     "serial_slave_id": {
       "title": "Solis-omvormer antwoordt niet op slave-ID {slave}",
       "description": "De omvormer op {port} antwoordt niet op zijn ingestelde Modbus-slave-ID {slave}, maar een apparaat op de bus antwoordt op slave-ID 1. Oudere versies van deze integratie stuurden elk serieel (RS485) verzoek naar slave-ID 1, ongeacht de ingestelde ID, dus deze opstelling heeft mogelijk tot nu toe gewerkt. Staat de omvormer op slave-ID 1, herconfigureer dan de integratie-invoer en stel de slave-ID in op 1."
+    },
+    "inverter_not_ready": {
+      "title": "Solis-omvormer niet gereed (HMI/DSP-communicatiefout)",
+      "description": "De omvormer op {host} (slave-ID {slave}) antwoordt aanhoudend met Modbus-uitzondering 5 (HMI/DSP-communicatiefout); geen geslaagde uitlezing sinds {last_success}. De verbinding met de datalogger is actief — korte meldingen bij zonsopgang of zonsondergang zijn normaal tijdens opstarten of afsluiten, maar controleer bij aanhouden overdag het scherm van de omvormer op HMI/DSP-fouten."
     }
   }
 }

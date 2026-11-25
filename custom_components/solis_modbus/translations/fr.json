@@ -209,6 +209,10 @@
     "serial_slave_id": {
       "title": "L'onduleur Solis ne répond pas à l'ID esclave {slave}",
       "description": "L'onduleur sur {port} ne répond pas à son ID esclave Modbus configuré {slave}, mais un appareil du bus répond à l'ID esclave 1. Les anciennes versions de cette intégration envoyaient toutes les requêtes série (RS485) à l'ID esclave 1, quel que soit l'ID configuré ; cette configuration a donc pu fonctionner jusqu'ici. Si l'onduleur est à l'ID esclave 1, reconfigurez l'entrée de l'intégration et réglez l'ID esclave sur 1."
+    },
+    "inverter_not_ready": {
+      "title": "Onduleur Solis non prêt (défaut de communication HMI/DSP)",
+      "description": "L'onduleur sur {host} (ID esclave {slave}) répond de manière persistante par l'exception Modbus 5 (défaut de communication HMI/DSP) ; aucune lecture réussie depuis {last_success}. La liaison avec l'enregistreur est active — de brèves occurrences à l'aube ou au crépuscule sont normales lors du démarrage ou de l'arrêt, mais si cela persiste en plein jour, vérifiez l'écran de l'onduleur pour d'éventuels défauts HMI/DSP."
     }
   }
 }

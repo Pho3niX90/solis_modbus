@@ -34,6 +34,7 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_STOPBITS,
     DOMAIN,
+    MODBUS_ACKNOWLEDGE,
     MODBUS_ILLEGAL_DATA_ADDRESS,
     POLL_PROFILE_ESSENTIAL,
     POLL_PROFILE_EXTREME,
@@ -341,6 +342,10 @@ async def async_setup(hass: HomeAssistant, entry: ConfigEntry):
                 raise ServiceValidationError(
                     f"The inverter has no {register_type} register at {address} (count {count}). "
                     f'If you are probing a documented address, try register_type: "{other}".'
+                )
+            if exception_code == MODBUS_ACKNOWLEDGE:
+                raise HomeAssistantError(
+                    f"Inverter not ready while reading {register_type} register {address} (count {count}): Modbus exception 5 (HMI/DSP communication failure)"
                 )
             raise HomeAssistantError(f"Read of {register_type} register {address} (count {count}) failed — see logs")
 
