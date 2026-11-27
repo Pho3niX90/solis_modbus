@@ -310,6 +310,7 @@ Editable number entities (hybrid).
 | Solis LLC Bus Voltage                                     | VOLTAGE        | VOLT                 | MEASUREMENT      | 33136                                           |
 | Solis Backup AC Voltage Phase A                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 33137                                           |
 | Solis Backup AC Current Phase A                           | CURRENT        | AMPERE               | MEASUREMENT      | 33138                                           |
+| Solis Battery Combined SOC                                | BATTERY        | %                    | MEASUREMENT      | 33139, 34278                                    |
 | Solis Battery SOC                                         | BATTERY        | %                    | MEASUREMENT      | 33139                                           |
 | Solis Battery SOH                                         |                | %                    | MEASUREMENT      | 33140                                           |
 | Solis Battery Voltage (BMS)                               | VOLTAGE        | VOLT                 | MEASUREMENT      | 33141                                           |
@@ -321,6 +322,7 @@ Editable number entities (hybrid).
 | Solis Household load power                                | POWER          | WATT                 | MEASUREMENT      | 33147                                           |
 | Solis Backup Load power                                   | POWER          | WATT                 | MEASUREMENT      | 33148                                           |
 | Solis Battery Charge Power                                | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135, 0                          |
+| Solis Battery Combined Power                              | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135, 34368, 34369, 34291        |
 | Solis Battery Discharge Power                             | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135, 1                          |
 | Solis Battery Power                                       | POWER          | WATT                 | MEASUREMENT      | 33149, 33150                                    |
 | Solis Battery Power Net                                   | POWER          | WATT                 | MEASUREMENT      | 33149, 33150, 33135                             |
@@ -435,12 +437,38 @@ Editable number entities (hybrid).
 | Solis Backup Load Month Energy                            | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33594, 33595                                    |
 | Solis Backup Load Today Energy                            | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 33596                                           |
 | Solis Parallel Synchronization Setting Parameter Result   |                |                      |                  | 34243                                           |
+| Solis Battery 2 Voltage (BMS)                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 34275                                           |
+| Solis Battery 2 Current (BMS)                             | CURRENT        | AMPERE               | MEASUREMENT      | 34276                                           |
+| Solis Battery 2 Temperature (BMS)                         | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34277                                           |
+| Solis Battery 2 SOC                                       | BATTERY        | %                    | MEASUREMENT      | 34278                                           |
+| Solis Battery 2 SOH                                       |                | %                    | MEASUREMENT      | 34279                                           |
+| Solis Battery 2 Charge Voltage Limitation (BMS)           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34280                                           |
+| Solis Battery 2 Charge Current Limitation (BMS)           | CURRENT        | AMPERE               | MEASUREMENT      | 34281                                           |
+| Solis Battery 2 Discharge Current Limitation (BMS)        | CURRENT        | AMPERE               | MEASUREMENT      | 34282                                           |
+| Solis Battery 2 Warning Status 1 (BMS)                    |                |                      | MEASUREMENT      | 34283                                           |
+| Solis Battery 2 Warning Status 2 (BMS)                    |                |                      | MEASUREMENT      | 34284                                           |
+| Solis Battery 2 Fault Status 1 (BMS)                      |                |                      | MEASUREMENT      | 34285                                           |
+| Solis Battery 2 Fault Status 2 (BMS)                      |                |                      | MEASUREMENT      | 34286                                           |
+| Solis Battery 2 Fault Status 3 (BMS)                      |                |                      | MEASUREMENT      | 34287                                           |
+| Solis Battery 2 Status (BMS)                              |                |                      | MEASUREMENT      | 34288                                           |
+| Solis Battery 2 Voltage                                   | VOLTAGE        | VOLT                 | MEASUREMENT      | 34289                                           |
+| Solis Battery 2 Current                                   | CURRENT        | AMPERE               | MEASUREMENT      | 34290                                           |
+| Solis Battery 2 Current Direction                         |                |                      | MEASUREMENT      | 34291                                           |
 | Solis SmartPort A Phase Voltage                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34328                                           |
 | Solis SmartPort B Phase Voltage                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34329                                           |
 | Solis SmartPort C Phase Voltage                           | VOLTAGE        | VOLT                 | MEASUREMENT      | 34330                                           |
 | Solis SmartPort A Phase Current                           | CURRENT        | AMPERE               | MEASUREMENT      | 34331                                           |
 | Solis SmartPort B Phase Current                           | CURRENT        | AMPERE               | MEASUREMENT      | 34332                                           |
 | Solis SmartPort C Phase Current                           | CURRENT        | AMPERE               | MEASUREMENT      | 34333                                           |
+| Solis Battery Min Cell Voltage (BMS)                      | VOLTAGE        | VOLT                 | MEASUREMENT      | 34348                                           |
+| Solis Battery Max Cell Voltage (BMS)                      | VOLTAGE        | VOLT                 | MEASUREMENT      | 34349                                           |
+| Solis Battery Min Cell Temperature (BMS)                  | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34350                                           |
+| Solis Battery Max Cell Temperature (BMS)                  | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34351                                           |
+| Solis Battery 2 Power                                     | POWER          | WATT                 | MEASUREMENT      | 34368, 34369                                    |
+| Solis Battery 2 Min Cell Voltage (BMS)                    | VOLTAGE        | VOLT                 | MEASUREMENT      | 34373                                           |
+| Solis Battery 2 Max Cell Voltage (BMS)                    | VOLTAGE        | VOLT                 | MEASUREMENT      | 34374                                           |
+| Solis Battery 2 Min Cell Temperature (BMS)                | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34375                                           |
+| Solis Battery 2 Max Cell Temperature (BMS)                | TEMPERATURE    | CELSIUS              | MEASUREMENT      | 34376                                           |
 | Solis Smart Port Phase A Active Power                     | POWER          | WATT                 | MEASUREMENT      | 34391                                           |
 | Solis Smart Port Phase B Active Power                     | POWER          | WATT                 | MEASUREMENT      | 34392                                           |
 | Solis Smart Port Phase C Active Power                     | POWER          | WATT                 | MEASUREMENT      | 34393                                           |
@@ -729,6 +757,62 @@ This is only required if your values are higher than expected, if you aren't exp
 | Meter Grid Frequency                                     | FREQUENCY      | HERTZ                | MEASUREMENT      | 3281         |
 | Meter Grid Import Total Energy                           | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 3282, 3283   |
 | Meter Grid Export Total Energy                           | ENERGY         | KILO_WATT_HOUR       | TOTAL_INCREASING | 3284, 3285   |
+| PV String Voltage Current Combination                    |                |                      |                  | 3286         |
+| Total PV Voltage                                         | VOLTAGE        | VOLT                 | MEASUREMENT      | 3298         |
+| Total PV Current                                         | CURRENT        | AMPERE               | MEASUREMENT      | 3299         |
+| PV String Current 1                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3300         |
+| PV String Current 2                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3301         |
+| PV String Current 3                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3302         |
+| PV String Current 4                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3303         |
+| PV String Current 5                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3304         |
+| PV String Current 6                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3305         |
+| PV String Current 7                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3306         |
+| PV String Current 8                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3307         |
+| PV String Current 9                                      | CURRENT        | AMPERE               | MEASUREMENT      | 3308         |
+| PV String Current 10                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3309         |
+| PV String Current 11                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3310         |
+| PV String Current 12                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3311         |
+| PV String Current 13                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3312         |
+| PV String Current 14                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3313         |
+| PV String Current 15                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3314         |
+| PV String Current 16                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3315         |
+| PV String Current 17                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3316         |
+| PV String Current 18                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3317         |
+| PV String Current 19                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3318         |
+| PV String Current 20                                     | CURRENT        | AMPERE               | MEASUREMENT      | 3319         |
+| DC Power 5                                               | POWER          | WATT                 | MEASUREMENT      | 3503, 3533   |
+| DC Voltage 5                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3503         |
+| DC Power 6                                               | POWER          | WATT                 | MEASUREMENT      | 3504, 3534   |
+| DC Voltage 6                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3504         |
+| DC Power 7                                               | POWER          | WATT                 | MEASUREMENT      | 3505, 3535   |
+| DC Voltage 7                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3505         |
+| DC Power 8                                               | POWER          | WATT                 | MEASUREMENT      | 3506, 3536   |
+| DC Voltage 8                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3506         |
+| DC Power 9                                               | POWER          | WATT                 | MEASUREMENT      | 3507, 3537   |
+| DC Voltage 9                                             | VOLTAGE        | VOLT                 | MEASUREMENT      | 3507         |
+| DC Power 10                                              | POWER          | WATT                 | MEASUREMENT      | 3508, 3538   |
+| DC Voltage 10                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3508         |
+| DC Power 11                                              | POWER          | WATT                 | MEASUREMENT      | 3509, 3539   |
+| DC Voltage 11                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3509         |
+| DC Power 12                                              | POWER          | WATT                 | MEASUREMENT      | 3510, 3540   |
+| DC Voltage 12                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3510         |
+| DC Power 13                                              | POWER          | WATT                 | MEASUREMENT      | 3511, 3541   |
+| DC Voltage 13                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3511         |
+| DC Power 14                                              | POWER          | WATT                 | MEASUREMENT      | 3512, 3542   |
+| DC Voltage 14                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3512         |
+| DC Power 15                                              | POWER          | WATT                 | MEASUREMENT      | 3513, 3543   |
+| DC Voltage 15                                            | VOLTAGE        | VOLT                 | MEASUREMENT      | 3513         |
+| DC Current 5                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3533         |
+| DC Current 6                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3534         |
+| DC Current 7                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3535         |
+| DC Current 8                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3536         |
+| DC Current 9                                             | CURRENT        | AMPERE               | MEASUREMENT      | 3537         |
+| DC Current 10                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3538         |
+| DC Current 11                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3539         |
+| DC Current 12                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3540         |
+| DC Current 13                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3541         |
+| DC Current 14                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3542         |
+| DC Current 15                                            | CURRENT        | AMPERE               | MEASUREMENT      | 3543         |
 | EPM Model No                                             |                |                      |                  | 36013        |
 | Inverter EPM Firmware Version                            |                |                      |                  | 36014        |
 | Clock (Hours)                                            |                | HOURS                | MEASUREMENT      | 36022        |
